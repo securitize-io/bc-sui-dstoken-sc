@@ -66,7 +66,47 @@ public struct RwaTransferRequest<phantom T> {
     amount: u64,
 }
 
-public fun create_vault(rwa_registry: &mut RwaRegistry, owner_proof: VaultOwnerProof) {
+/// A deposit request that is generated once an RWA
+/// Token deposit is initiated.
+///
+/// A hot potato that is issued when a deposit is initiated.
+/// It can only be resolved by the `admin` of `T`.
+///
+/// This enables the `resolve` function of each smart contract to
+/// be flexible and implement its own mechanisms for validation.
+/// The individual resolution module can:
+///   - Check whitelists/blacklists
+///   - Enforce holding periods
+///   - Collect fees
+///   - Emit regulatory events
+///   - Handle dividends/distributions
+///   - Implement any jurisdiction-specific rules
+public struct RwaDepositRequest<phantom T> {
+    to: Owner,
+    amount: u64,
+}
+
+/// A withdraw request that is generated once an RWA
+/// Token withdraw is initiated.
+///
+/// A hot potato that is issued when a withdraw is initiated.
+/// It can only be resolved by the `admin` of `T`.
+///
+/// This enables the `resolve` function of each smart contract to
+/// be flexible and implement its own mechanisms for validation.
+/// The individual resolution module can:
+///   - Check whitelists/blacklists
+///   - Enforce holding periods
+///   - Collect fees
+///   - Emit regulatory events
+///   - Handle dividends/distributions
+///   - Implement any jurisdiction-specific rules
+public struct RwaWithdrawRequest<phantom T> {
+    from: Owner,
+    amount: u64,
+}
+
+public fun claim(rwa_registry: &mut RwaRegistry, owner_proof: VaultOwnerProof) {
     let owner = owner_proof.0;
     let owner_address = match (owner) {
         Owner::Address(addr) => addr,
@@ -82,19 +122,17 @@ public fun create_vault(rwa_registry: &mut RwaRegistry, owner_proof: VaultOwnerP
     });
 }
 
-////////////////////////////
-/// NEED CHECK 
-/// transfer RwaTokens to a Vault
-public fun transfer_token<T>(
+/// Initiates a deposit of Balance<T> into a Vault.
+public fun deposit_to_vault<T>(
     rwa_registry: &mut RwaRegistry,
-    token: RwaToken<T>,
+    balance: Balance<T>,
     // Recipients should always be plain addresses, not vaults.
     to: address,
     ctx: &mut TxContext,
-): RwaTransferRequest<T> {
+): RwaDepositRequest<T> {
+    let token = token::new(balance, ctx);
 
-    let request = RwaTransferRequest {
-        from: Owner::Address(ctx.sender()),
+    let request = RwaDepositRequest {
         to: Owner::Address(to),
         amount: token.balance(),
     };
@@ -105,7 +143,20 @@ public fun transfer_token<T>(
     request
 }
 
-////////////////////
+/// Initiates a withdrawal of Balance<T> from a Vault
+public fun withdraw_from_vault<T>(
+    vault: &mut RwaVault,
+    amount: u64,
+): (Balance<T>, RwaWithdrawRequest<T>) {
+    let balance = vault.withdraw_balance<T>(amount);
+
+    let request = RwaWithdrawRequest<T> {
+        from: vault.owner,
+        amount: balance.value(),
+    };
+
+    (balance, request)
+}
 
 /// Initiates a transfer for a `Token` from Vault A, to another Vault (no squashing involved).
 public fun transfer<T>(
@@ -182,8 +233,18 @@ public fun proof_as_uid(uid: &mut UID): VaultOwnerProof {
 }
 
 /// Internal function to resolve a transfer request.
-public(package) fun resolve<T>(request: RwaTransferRequest<T>) {
+public(package) fun resolve_transfer<T>(request: RwaTransferRequest<T>) {
     let RwaTransferRequest { .. } = request;
+}
+
+/// Internal function to resolve a withdraw request.
+public(package) fun resolve_withdraw<T>(request: RwaWithdrawRequest<T>) {
+    let RwaWithdrawRequest { .. } = request;
+}
+
+/// Internal function to resolve a deposit request.
+public(package) fun resolve_deposit<T>(request: RwaDepositRequest<T>) {
+    let RwaDepositRequest { .. } = request;
 }
 
 public(package) fun deposit_balance<T>(vault: &mut RwaVault, balance: Balance<T>) {
