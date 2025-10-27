@@ -206,3 +206,20 @@ fun create_balance_if_not_exists<T>(vault: &mut RwaVault) {
 fun assert_is_valid_for_vault(proof: &VaultOwnerProof, vault: &RwaVault) {
     assert!(&proof.0 == &vault.owner, ENotOwner);
 }
+
+// ========== Request Getter Functions ==========
+
+/// Get the from owner of a transfer request
+public fun request_from<T>(request: &RwaTransferRequest<T>): Owner {
+    request.from
+}
+
+/// Get the to owner of a transfer request
+public fun request_to<T>(request: &RwaTransferRequest<T>): Owner {
+    request.to
+}
+
+/// Get the amount of a transfer request
+public fun request_amount<T>(request: &RwaTransferRequest<T>): u64 {
+    request.amount
+}
