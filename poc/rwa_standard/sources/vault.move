@@ -6,9 +6,12 @@ use sui::balance::{Self, Balance};
 use sui::derived_object;
 use sui::dynamic_field as df;
 use sui::transfer::Receiving;
+use rwa::registry::RwaRegistry;
+use rwa::registry::uid_mut;
 
 const ENotOwner: u64 = 1;
 const ENonExistentBalance: u64 = 2;
+const EVaultAlreadyExists: u64 = 3;
 
 /// The owner of a vault.
 public enum Owner has copy, drop, store {
@@ -63,17 +66,58 @@ public struct RwaTransferRequest<phantom T> {
     amount: u64,
 }
 
+public fun create_vault(rwa_registry: &mut RwaRegistry, owner_proof: VaultOwnerProof) {
+    let owner = owner_proof.0;
+    let owner_address = match (owner) {
+        Owner::Address(addr) => addr,
+        Owner::Object(id) => id.to_address(),
+    };
+
+    assert!(!derived_object::exists(rwa_registry.uid_mut(), RwaVaultKey(owner_address)), EVaultAlreadyExists);
+
+    transfer::share_object(RwaVault {
+        id: derived_object::claim(uid_mut(rwa_registry), RwaVaultKey(owner_address)),
+        registry_id: rwa_registry.uid_mut().to_inner(),
+        owner,
+    });
+}
+
+////////////////////////////
+/// NEED CHECK 
+/// transfer RwaTokens to a Vault
+public fun transfer_token<T>(
+    rwa_registry: &mut RwaRegistry,
+    token: RwaToken<T>,
+    // Recipients should always be plain addresses, not vaults.
+    to: address,
+    ctx: &mut TxContext,
+): RwaTransferRequest<T> {
+
+    let request = RwaTransferRequest {
+        from: Owner::Address(ctx.sender()),
+        to: Owner::Address(to),
+        amount: token.balance(),
+    };
+
+    let receiving_vault = derived_object::derive_address(rwa_registry.uid_mut().to_inner(), RwaVaultKey(to));
+
+    token.transfer(receiving_vault);
+    request
+}
+
+////////////////////
+
 /// Initiates a transfer for a `Token` from Vault A, to another Vault (no squashing involved).
 public fun transfer<T>(
     vault: &mut RwaVault,
-    proof: &VaultOwnerProof,
+    owner_proof: &VaultOwnerProof,
     amount: u64,
     // Recipients should always be plain addresses, not vaults.
     to: address,
     ctx: &mut TxContext,
 ): RwaTransferRequest<T> {
     // verify that the proof is valid for the vault.
-    proof.assert_is_valid_for_vault(vault);
+    owner_proof.assert_is_valid_for_vault(vault);
 
     let token = token::new(vault.withdraw_balance<T>(amount), ctx);
 
@@ -93,19 +137,19 @@ public fun transfer<T>(
 /// This might be useful for defi operations (chaining of actions).
 public fun transfer_to_vault<T>(
     vault: &mut RwaVault,
-    proof: &VaultOwnerProof,
+    owner_proof: &VaultOwnerProof,
     amount: u64,
     to: &mut RwaVault,
     _: &mut TxContext,
 ): RwaTransferRequest<T> {
-    proof.assert_is_valid_for_vault(vault);
+    owner_proof.assert_is_valid_for_vault(vault);
 
     let balance = vault.withdraw_balance<T>(amount);
 
     let request = RwaTransferRequest {
         from: vault.owner,
         to: to.owner,
-        amount: balance.value(),
+        amount: balance.value()
     };
 
     to.deposit_balance(balance);
