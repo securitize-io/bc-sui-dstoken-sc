@@ -20,3 +20,15 @@ fun init(ctx: &mut TxContext) {
 public(package) fun uid_mut(registry: &mut RwaRegistry): &mut UID {
     &mut registry.id
 }
+
+#[test_only]
+public fun create_for_testing(ctx: &mut TxContext): RwaRegistry {
+    RwaRegistry {
+        id: object::new(ctx),
+    }
+}
+
+#[test_only]
+public fun share_for_testing(rwa_registry: RwaRegistry) {
+    transfer::share_object(rwa_registry);
+}

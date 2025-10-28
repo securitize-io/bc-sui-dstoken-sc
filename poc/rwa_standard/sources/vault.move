@@ -284,3 +284,15 @@ public fun request_to<T>(request: &RwaTransferRequest<T>): Owner {
 public fun request_amount<T>(request: &RwaTransferRequest<T>): u64 {
     request.amount
 }
+
+// ========== Test-Only Functions ==========
+
+#[test_only]
+public fun proof_as_sender_for_testing(sender: address): VaultOwnerProof {
+    VaultOwnerProof(Owner::Address(sender))
+}
+
+#[test_only]
+public fun vault_key_for_testing(sender: address): RwaVaultKey {
+    RwaVaultKey(sender)
+}

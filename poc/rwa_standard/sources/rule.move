@@ -3,7 +3,6 @@ module rwa::rule;
 use rwa::move_command::MoveCommand;
 use rwa::vault::{RwaTransferRequest, RwaVault};
 use rwa::registry::RwaRegistry;
-use rwa::token::{Self, RwaToken};
 use std::type_name::{Self, TypeName};
 use sui::balance::Balance;
 use sui::vec_map::{Self, VecMap};
@@ -95,7 +94,6 @@ public fun resolve_withdraw<T, U: drop>(
     // destructuring the request to finalize the withdraw.
     request.resolve_withdraw();
 }
-
 
 /// Allows the creator to clawback tokens from vaults, as long as it is allowed.
 public fun clawback<T, U: drop>(
