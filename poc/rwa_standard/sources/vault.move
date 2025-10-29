@@ -268,6 +268,21 @@ fun assert_is_valid_for_vault(proof: &VaultOwnerProof, vault: &RwaVault) {
     assert!(&proof.0 == &vault.owner, ENotOwner);
 }
 
+// ========== Vault Getter Functions ==========
+/// Get the owner of a vault as address
+public fun get_owner_address(vault: &RwaVault): address {
+    match (vault.owner) {
+        Owner::Address(addr) => addr,
+        Owner::Object(id) => id.to_address(),
+    }
+}
+
+public fun get_balance<T>(vault: &RwaVault): u64 {
+    assert!(df::exists_(&vault.id, BalanceKey<T>()), ENonExistentBalance);
+    let vault_balance: &Balance<T> = df::borrow(&vault.id, BalanceKey<T>());
+    vault_balance.value()
+}
+
 // ========== Request Getter Functions ==========
 
 /// Get the from owner of a transfer request
@@ -275,9 +290,25 @@ public fun request_from<T>(request: &RwaTransferRequest<T>): Owner {
     request.from
 }
 
+/// Get the from owner of a transfer request as address
+public fun request_from_address<T>(request: &RwaTransferRequest<T>): address {
+    match (request.from) {
+        Owner::Address(addr) => addr,
+        Owner::Object(id) => id.to_address(),
+    }
+}
+
 /// Get the to owner of a transfer request
 public fun request_to<T>(request: &RwaTransferRequest<T>): Owner {
     request.to
+}
+
+/// Get the to owner of a transfer request as address
+public fun request_to_address<T>(request: &RwaTransferRequest<T>): address {
+    match (request.to) {
+        Owner::Address(addr) => addr,
+        Owner::Object(id) => id.to_address(),
+    }
 }
 
 /// Get the amount of a transfer request
