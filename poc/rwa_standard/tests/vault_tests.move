@@ -37,8 +37,8 @@ fun test_claim_vault_for_address() {
     let mut registry = scenario.take_shared<RwaRegistry>();
 
     // Claim vault for address
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut registry, owner_proof);
+    let owner = vault::owner_from_address(@0x1);
+    vault::claim(&mut registry, owner);
 
     scenario.next_tx(@0x1);
 
@@ -61,12 +61,12 @@ fun test_claim_vault_twice_fails() {
     let mut registry = scenario.take_shared<RwaRegistry>();
 
     // Claim vault first time
-    let owner_proof1 = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut registry, owner_proof1);
+    let owner = vault::owner_from_address(@0x1);
+    vault::claim(&mut registry, owner);
 
     // Try to claim vault again - should fail
-    let owner_proof2 = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut registry, owner_proof2);
+    let owner2 = vault::owner_from_address(@0x1);
+    vault::claim(&mut registry, owner2);
 
     abort
 }
@@ -84,7 +84,7 @@ fun test_deposit_to_vault() {
 
     // Create vault for receiver
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     // Mint and deposit
     let coins = treasury_cap.mint(1000, scenario.ctx());
@@ -114,7 +114,7 @@ fun test_withdraw_from_vault() {
 
     // Create vault
     let owner = @0x1;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(owner));
+    vault::claim(&mut registry, vault::owner_from_address(owner));
 
     scenario.next_tx(owner);
 
@@ -155,8 +155,8 @@ fun test_transfer_between_vaults() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
 
@@ -199,8 +199,8 @@ fun test_transfer_invalid_owner_proof() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
     let sender_vault_id = derived_object::derive_address(registry.uid_mut().to_inner(), vault_key_for_testing(sender));
@@ -235,8 +235,8 @@ fun test_transfer_to_vault_direct() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
 
@@ -283,7 +283,7 @@ fun test_squash_multiple_tokens() {
 
     // Create vault
     let owner = @0x1;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(owner));
+    vault::claim(&mut registry, vault::owner_from_address(owner));
 
     scenario.next_tx(owner);
     let owner_vault_id = derived_object::derive_address(registry.uid_mut().to_inner(), vault_key_for_testing(owner));

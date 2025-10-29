@@ -106,8 +106,7 @@ public struct RwaWithdrawRequest<phantom T> {
     amount: u64,
 }
 
-public fun claim(rwa_registry: &mut RwaRegistry, owner_proof: VaultOwnerProof) {
-    let owner = owner_proof.0;
+public fun claim(rwa_registry: &mut RwaRegistry, owner: Owner) {
     let owner_address = match (owner) {
         Owner::Address(addr) => addr,
         Owner::Object(id) => id.to_address(),
@@ -220,6 +219,16 @@ public fun squash_tokens<T>(vault: &mut RwaVault, tokens: vector<Receiving<RwaTo
     });
 
     vault.deposit_balance(temp_balance);
+}
+
+/// Generate an owner from an address
+public fun owner_from_address(addr: address): Owner {
+    Owner::Address(addr)
+}
+
+/// Generate an owner from a `UID` object, to allow objects to own vaults.
+public fun owner_from_uid(uid: &mut UID): Owner {
+    Owner::Object(uid.to_inner())
 }
 
 /// Generate an ownership proof from the sender of the transaction

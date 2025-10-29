@@ -128,8 +128,8 @@ fun test_resolve_transfer_success() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -181,8 +181,8 @@ fun test_resolve_transfer_invalid_witness() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -231,7 +231,7 @@ fun test_resolve_deposit_success() {
 
     // Create vault for receiver
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(@0x0);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -273,7 +273,7 @@ fun test_resolve_deposit_invalid_witness() {
 
     // Create vault
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(@0x0);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -314,7 +314,7 @@ fun test_resolve_withdraw_success() {
 
     // Create vault
     let owner = @0x1;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(owner));
+    vault::claim(&mut registry, vault::owner_from_address(owner));
 
     scenario.next_tx(owner);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -362,7 +362,7 @@ fun test_resolve_withdraw_invalid_witness() {
 
     // Create vault
     let owner = @0x1;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(owner));
+    vault::claim(&mut registry, vault::owner_from_address(owner));
 
     scenario.next_tx(owner);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
