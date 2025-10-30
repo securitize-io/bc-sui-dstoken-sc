@@ -71,77 +71,7 @@ fun test_claim_vault_twice_fails() {
     abort
 }
 
-// // ========== Deposit Tests ==========
-
-#[test]
-fun test_deposit_to_vault() {
-    let mut scenario = ts::begin(@0x0);
-    setup_registry(&mut scenario);
-
-    scenario.next_tx(@0x0);
-    let mut registry = scenario.take_shared<RwaRegistry>();
-    let mut treasury_cap = create_test_coin(&mut scenario);
-
-    // Create vault for receiver
-    let receiver = @0x2;
-    vault::claim(&mut registry, vault::owner_from_address(receiver));
-
-    // Mint and deposit
-    let coins = treasury_cap.mint(1000, scenario.ctx());
-    let _deposit_request = vault::deposit_to_vault(
-        &mut registry,
-        coins.into_balance(),
-        receiver,
-        scenario.ctx()
-    );
-
-    destroy(_deposit_request);
-    ts::return_shared(registry);
-    destroy(treasury_cap);
-    scenario.end();
-}
-
-// // ========== Withdraw Tests ==========
-
-#[test]
-fun test_withdraw_from_vault() {
-    let mut scenario = ts::begin(@0x0);
-    setup_registry(&mut scenario);
-
-    scenario.next_tx(@0x0);
-    let mut registry = scenario.take_shared<RwaRegistry>();
-    let mut treasury_cap = create_test_coin(&mut scenario);
-
-    // Create vault
-    let owner = @0x1;
-    vault::claim(&mut registry, vault::owner_from_address(owner));
-
-    scenario.next_tx(owner);
-
-    let vault_id = derived_object::derive_address(registry.uid_mut().to_inner(), vault_key_for_testing(owner));
-    let mut vault_obj = scenario.take_shared_by_id<RwaVault>(vault_id.to_id());
-
-    // Mint and deposit
-    let coins = treasury_cap.mint(1000, scenario.ctx());
-    vault_obj.deposit_balance(coins.into_balance());
-
-    // Withdraw
-    let (balance, _withdraw_request) = vault::withdraw_from_vault<TEST_COIN>(
-        &mut vault_obj,
-        100,
-    );
-
-    assert_eq!(balance.value(), 100);
-
-    destroy(_withdraw_request);
-    balance.destroy_for_testing();
-    ts::return_shared(registry);
-    ts::return_shared(vault_obj);
-    destroy(treasury_cap);
-    scenario.end();
-}
-
-// // ========== Transfer Tests ==========
+// ========== Transfer Tests ==========
 
 #[test]
 fun test_transfer_between_vaults() {
@@ -294,13 +224,10 @@ fun test_squash_multiple_tokens() {
     vault.deposit_balance(treasury_cap.mint(200, scenario.ctx()).into_balance());
     vault.deposit_balance(treasury_cap.mint(300, scenario.ctx()).into_balance());
 
-    // Verify total by withdrawing
-    let (balance, _request) = vault::withdraw_from_vault<TEST_COIN>(&mut vault, 600);
-    assert_eq!(balance.value(), 600);
+    // Verify total balance
+    assert_eq!(vault.get_balance<TEST_COIN>(), 600);
 
-    balance.destroy_for_testing();
     ts::return_shared(vault);
-    destroy(_request);
     ts::return_shared(registry);
     destroy(treasury_cap);
     scenario.end();
