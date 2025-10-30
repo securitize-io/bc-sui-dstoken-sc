@@ -82,7 +82,7 @@ public fun deposit_to_vault<T, U: drop>(
     vault.deposit_balance(balance)
 }
 
-/// Allows the creator and owner to withdraw balance from vaults, as long as it is allowed.
+/// Allows the owner to withdraw balance from vaults, as long as it is allowed.
 public fun withdraw_from_vault<T, U: drop>(
     rule: &RwaRule<T>,
     vault: &mut RwaVault,

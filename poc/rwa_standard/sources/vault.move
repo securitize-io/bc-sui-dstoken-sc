@@ -145,17 +145,17 @@ public fun squash_tokens<T>(vault: &mut RwaVault, tokens: vector<Receiving<RwaTo
     vault.deposit_balance(temp_balance);
 }
 
-/// Generate an owner from an address
+/// Generate an owner from an address.
 public fun owner_from_address(addr: address): Owner {
     Owner::Address(addr)
 }
 
-/// Generate an owner from a `ID` object, to allow objects to own vaults.
+/// Generate an owner from an `ID` object.
 public fun owner_from_id(id: ID): Owner {
     Owner::Object(id)
 }
 
-/// Generate an ownership proof from the sender of the transaction
+/// Generate an ownership proof from the sender of the transaction.
 public fun proof_as_sender(ctx: &TxContext): VaultOwnerProof {
     VaultOwnerProof(Owner::Address(ctx.sender()))
 }
