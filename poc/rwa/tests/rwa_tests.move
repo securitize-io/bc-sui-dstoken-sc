@@ -8,7 +8,6 @@ use sui::test_utils::{destroy};
 use rwa::registry::{Self, RwaRegistry};
 use rwa::rule::{RwaRule};
 use rwa::vault::{Self, RwaVault};
-use rwa::token::{RwaToken};
 use rwa_poc::setup::{Self, DeployerRegistry};
 use rwa_poc::rwa::{Self, RWA};
 use rwa_poc::investors::{Self, InvestorRegistry};
@@ -30,28 +29,25 @@ fun test_rwa_mint() {
         INVESTOR,
     );
     scenario.next_tx(DEPLOYER);
+    let owner = vault::owner_from_address(INVESTOR);
+    vault::claim(&mut rwa_reg, owner);
+
+    scenario.next_tx(DEPLOYER);
+    let mut vault = scenario.take_shared<RwaVault>();
     let config = scenario.take_shared<ComplianceConfig<RWA>>();
     let rule = scenario.take_shared<RwaRule<RWA>>();
     treasury::mint(
         &mut treasury,
         &investors,
         &config,
-        &mut rwa_reg,
         &rule,
+        &mut vault,
         INVESTOR,
         10_000_000_000,
         scenario.ctx(),
     );
 
-    scenario.next_tx(INVESTOR);
-    let owner = vault::owner_from_address(scenario.ctx().sender());
-    vault::claim(&mut rwa_reg, owner);
-
     // assert that the vault exists and has the correct balance
-    scenario.next_tx(DEPLOYER);
-    let mut vault = scenario.take_shared<RwaVault>();
-    let receiving = test_scenario::most_recent_receiving_ticket<RwaToken<RWA>>(&object::id(&vault));
-    vault::squash_tokens<RWA>(&mut vault, vector[receiving]); 
     assert!(vault.get_balance<RWA>() == 10_000_000_000);
     
     destroy(treasury);
@@ -80,28 +76,23 @@ fun test_rwa_transfer() {
         INVESTOR_2,
     );
     scenario.next_tx(DEPLOYER);
+    let owner = vault::owner_from_address(INVESTOR);
+    vault::claim(&mut rwa_reg, owner);
+
+    scenario.next_tx(DEPLOYER);
+    let mut vault = scenario.take_shared<RwaVault>();
     let config = scenario.take_shared<ComplianceConfig<RWA>>();
     let rule = scenario.take_shared<RwaRule<RWA>>();
     treasury::mint(
         &mut treasury,
         &investors,
         &config,
-        &mut rwa_reg,
         &rule,
+        &mut vault,
         INVESTOR,
         10_000_000_000,
         scenario.ctx(),
     );
-
-    scenario.next_tx(INVESTOR);
-    let owner = vault::owner_from_address(scenario.ctx().sender());
-    vault::claim(&mut rwa_reg, owner);
-
-    // assert that the vault exists and has the correct balance
-    scenario.next_tx(DEPLOYER);
-    let mut vault = scenario.take_shared<RwaVault>();
-    let receiving = test_scenario::most_recent_receiving_ticket<RwaToken<RWA>>(&object::id(&vault));
-    vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
 
     scenario.next_tx(INVESTOR_2);
     let owner = vault::owner_from_address(scenario.ctx().sender());
@@ -141,36 +132,33 @@ fun test_rwa_burn() {
         INVESTOR,
     );
     scenario.next_tx(DEPLOYER);
+    let owner = vault::owner_from_address(INVESTOR);
+    vault::claim(&mut rwa_reg, owner);
+
+    scenario.next_tx(DEPLOYER);
+    let mut vault = scenario.take_shared<RwaVault>();
     let config = scenario.take_shared<ComplianceConfig<RWA>>();
     let rule = scenario.take_shared<RwaRule<RWA>>();
     treasury::mint(
         &mut treasury,
         &investors,
         &config,
-        &mut rwa_reg,
         &rule,
+        &mut vault,
         INVESTOR,
         10_000_000_000,
         scenario.ctx(),
     );
 
     scenario.next_tx(INVESTOR);
-    let owner = vault::owner_from_address(scenario.ctx().sender());
-    vault::claim(&mut rwa_reg, owner);
-
-    // assert that the vault exists and has the correct balance
-    scenario.next_tx(DEPLOYER);
-    let mut vault = scenario.take_shared<RwaVault>();
-    let receiving = test_scenario::most_recent_receiving_ticket<RwaToken<RWA>>(&object::id(&vault));
-    vault::squash_tokens<RWA>(&mut vault, vector[receiving]); 
-
-    scenario.next_tx(DEPLOYER);
+    let owner_proof = vault::proof_as_sender(scenario.ctx());
     treasury::burn(
         &mut treasury,
         &investors,
         &config,
         &rule,
         &mut vault,
+        &owner_proof,
         9_000_000_000,
         scenario.ctx(),
     );
@@ -198,37 +186,32 @@ fun test_rwa_clawback() {
     );
 
     scenario.next_tx(DEPLOYER);
+    let owner = vault::owner_from_address(INVESTOR);
+    vault::claim(&mut rwa_reg, owner);
+
+    scenario.next_tx(DEPLOYER);
+    let mut vault = scenario.take_shared<RwaVault>();
     let config = scenario.take_shared<ComplianceConfig<RWA>>();
     let rule = scenario.take_shared<RwaRule<RWA>>();
     treasury::mint(
         &mut treasury,
         &investors,
         &config,
-        &mut rwa_reg,
         &rule,
+        &mut vault,
         INVESTOR,
         10_000_000_000,
         scenario.ctx(),
     );
 
-    scenario.next_tx(INVESTOR);
-    let owner = vault::owner_from_address(scenario.ctx().sender());
-    vault::claim(&mut rwa_reg, owner);
-
-    // assert that the vault exists and has the correct balance
-    scenario.next_tx(DEPLOYER);
-    let mut vault = scenario.take_shared<RwaVault>();
-    let receiving = test_scenario::most_recent_receiving_ticket<RwaToken<RWA>>(&object::id(&vault));
-    vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
-
     scenario.next_tx(DEPLOYER);
     compliance::clawback(
+        &rwa_reg,
         &config,
-        &mut rwa_reg,
         &rule,
         &mut vault,
         10_000_000_000,
-        scenario.ctx(),
+        scenario.ctx()
     );
 
     scenario.next_tx(DEPLOYER);
@@ -260,28 +243,23 @@ fun test_rwa_transfer_invalid() {
         INVESTOR_2,
     );
     scenario.next_tx(DEPLOYER);
+    let owner = vault::owner_from_address(INVESTOR);
+    vault::claim(&mut rwa_reg, owner);
+
+    scenario.next_tx(DEPLOYER);
+    let mut vault = scenario.take_shared<RwaVault>();
     let config = scenario.take_shared<ComplianceConfig<RWA>>();
     let rule = scenario.take_shared<RwaRule<RWA>>();
     treasury::mint(
         &mut treasury,
         &investors,
         &config,
-        &mut rwa_reg,
         &rule,
+        &mut vault,
         INVESTOR,
         10_000_000_000,
         scenario.ctx(),
     );
-
-    scenario.next_tx(INVESTOR);
-    let owner = vault::owner_from_address(scenario.ctx().sender());
-    vault::claim(&mut rwa_reg, owner);
-
-    // assert that the vault exists and has the correct balance
-    scenario.next_tx(DEPLOYER);
-    let mut vault = scenario.take_shared<RwaVault>();
-    let receiving = test_scenario::most_recent_receiving_ticket<RwaToken<RWA>>(&object::id(&vault));
-    vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
 
     scenario.next_tx(INVESTOR_2);
     let owner = vault::owner_from_address(scenario.ctx().sender());
@@ -308,28 +286,23 @@ fun test_rwa_transfer_not_registered() {
     );
 
     scenario.next_tx(DEPLOYER);
+    let owner = vault::owner_from_address(INVESTOR);
+    vault::claim(&mut rwa_reg, owner);
+
+    scenario.next_tx(DEPLOYER);
+    let mut vault = scenario.take_shared<RwaVault>();
     let config = scenario.take_shared<ComplianceConfig<RWA>>();
     let rule = scenario.take_shared<RwaRule<RWA>>();
     treasury::mint(
         &mut treasury,
         &investors,
         &config,
-        &mut rwa_reg,
         &rule,
+        &mut vault,
         INVESTOR,
         10_000_000_000,
         scenario.ctx(),
     );
-
-    scenario.next_tx(INVESTOR);
-    let owner = vault::owner_from_address(scenario.ctx().sender());
-    vault::claim(&mut rwa_reg, owner);
-
-    // assert that the vault exists and has the correct balance
-    scenario.next_tx(DEPLOYER);
-    let mut vault = scenario.take_shared<RwaVault>();
-    let receiving = test_scenario::most_recent_receiving_ticket<RwaToken<RWA>>(&object::id(&vault));
-    vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
 
     scenario.next_tx(INVESTOR_2);
     let owner = vault::owner_from_address(scenario.ctx().sender());

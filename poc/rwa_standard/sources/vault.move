@@ -145,6 +145,11 @@ public fun squash_tokens<T>(vault: &mut RwaVault, tokens: vector<Receiving<RwaTo
     vault.deposit_balance(temp_balance);
 }
 
+/// Derive the address of a vault for a given owner address.
+public fun derive_address(rwa_registry: &RwaRegistry, owner_addr: address): address {
+    derived_object::derive_address(object::id(rwa_registry), RwaVaultKey(owner_addr))
+}
+
 /// Generate an owner from an address.
 public fun owner_from_address(addr: address): Owner {
     Owner::Address(addr)

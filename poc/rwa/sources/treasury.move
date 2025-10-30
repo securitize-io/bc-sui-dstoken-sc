@@ -4,9 +4,11 @@ use sui::coin::{TreasuryCap};
 use sui::coin_registry::{MetadataCap};
 use rwa_poc::investors::InvestorRegistry;
 use rwa_poc::compliance::{Self, ComplianceConfig};
-use rwa::vault::{Self, RwaVault};
+use rwa::vault::{RwaVault, VaultOwnerProof};
 use rwa::registry::{RwaRegistry};
 use rwa::rule::{RwaRule};
+
+const ENotVaultOwner: u64 = 0;
 
 public struct Treasury<phantom T> has key {
     id: UID,
@@ -31,24 +33,20 @@ public fun mint<T>(
     treasury: &mut Treasury<T>,
     investors: &InvestorRegistry<T>,
     config: &ComplianceConfig<T>,
-    rwa_reg: &mut RwaRegistry,
     rule: &RwaRule<T>,
+    vault: &mut RwaVault,
     to: address,
     amount: u64,
     ctx: &mut TxContext,
 ) {
+    assert!(vault.get_owner_address() == to, ENotVaultOwner);
     let balance = treasury.treasury_cap.mint_balance(amount);
-    let req = vault::deposit_to_vault<T>(
-        rwa_reg,
-        balance,
-        to,
-        ctx
-    );
     compliance::validate_mint(
         rule, 
-        req, 
         config, 
         investors,
+        vault,
+        balance,
         to,
         amount,
         ctx 
@@ -60,20 +58,19 @@ public fun burn<T>(
     investors: &InvestorRegistry<T>,
     config: &ComplianceConfig<T>,
     rule: &RwaRule<T>,
-    from: &mut RwaVault,
+    vault: &mut RwaVault,
+    owner_proof: &VaultOwnerProof,
     amount: u64,
     ctx: &mut TxContext,
 ) {
-    let (balance, req) = vault::withdraw_from_vault<T>(
-        from,
-        amount,
-    );
-    compliance::validate_burn(
+    let from = vault.get_owner_address();
+    let balance = compliance::validate_burn(
         rule, 
-        req, 
         config, 
         investors,
-        from.get_owner_address(),
+        vault,
+        owner_proof,
+        from,
         amount,
         ctx 
     );

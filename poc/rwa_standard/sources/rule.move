@@ -1,14 +1,16 @@
 module rwa::rule;
 
 use rwa::move_command::MoveCommand;
-use rwa::vault::{RwaTransferRequest, RwaVault};
+use rwa::vault::{Self, RwaTransferRequest, RwaVault};
 use rwa::registry::RwaRegistry;
+use rwa::token;
 use std::type_name::{Self, TypeName};
 use sui::balance::Balance;
 use sui::vec_map::{Self, VecMap};
 use sui::coin::TreasuryCap;
 use sui::derived_object;
 use rwa::vault::VaultOwnerProof;
+
 
 const EInvalidProof: u64 = 0;
 const EClawbackNotAllowed: u64 = 1;
@@ -70,7 +72,24 @@ public fun resolve_transfer<T, U: drop>(
     request.resolve_transfer();
 }
 
-/// Allows the creator to deposit balance to vaults, as long as it is allowed.
+/// Allows the creator to deposit balance to Vault, as long as it is allowed (no squashing involved).
+public fun deposit<T, U: drop>(
+    rwa_registry: &RwaRegistry,
+    rule: &RwaRule<T>,
+    to: address,
+    balance: Balance<T>,
+    _stamp: U,
+    ctx: &mut TxContext,
+) {
+    rule.assert_is_valid_creator_proof<T, U>();
+
+    let token = token::new(balance, ctx);
+    let receiving_vault = vault::derive_address(rwa_registry, to);
+
+    token.transfer(receiving_vault);
+}
+
+/// Allows the creator to deposit balance to Vault, as long as it is allowed.
 public fun deposit_to_vault<T, U: drop>(
     rule: &RwaRule<T>,
     vault: &mut RwaVault,
@@ -82,7 +101,7 @@ public fun deposit_to_vault<T, U: drop>(
     vault.deposit_balance(balance)
 }
 
-/// Allows the owner to withdraw balance from vault, as long as it is allowed.
+/// Allows the owner to withdraw balance from Vault, as long as it is allowed.
 public fun withdraw_from_vault<T, U: drop>(
     rule: &RwaRule<T>,
     vault: &mut RwaVault,
@@ -96,7 +115,7 @@ public fun withdraw_from_vault<T, U: drop>(
     vault.withdraw_balance<T>(amount)
 }
 
-/// Allows the creator to clawback tokens from vaults, as long as it is allowed.
+/// Allows the creator to clawback tokens from Vault, as long as it is allowed.
 public fun clawback<T, U: drop>(
     rule: &RwaRule<T>,
     vault: &mut RwaVault,

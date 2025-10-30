@@ -1,9 +1,10 @@
 module rwa_poc::compliance;
 
 use sui::coin::{TreasuryCap};
+use sui::balance::Balance;
 use rwa_poc::investors::{Self, InvestorRegistry};
-use rwa::rule::{Self, RwaRule, resolve_transfer, resolve_deposit, resolve_withdraw};
-use rwa::vault::{Self, RwaVault, RwaTransferRequest, RwaDepositRequest, RwaWithdrawRequest};
+use rwa::rule::{Self, RwaRule, resolve_transfer};
+use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
 use rwa::registry::{RwaRegistry};
 
 const CLAWBACK_ADDRESS: address = @0xDEADBEEF;
@@ -64,9 +65,10 @@ public fun validate_transfer<T>(
 
 public fun validate_mint<T>(
     rule: &RwaRule<T>,
-    req: RwaDepositRequest<T>,
     _config: &ComplianceConfig<T>,
     investors: &InvestorRegistry<T>,
+    vault: &mut RwaVault,
+    balance: Balance<T>,
     to: address,
     _amount: u64,
     _ctx: &mut TxContext,
@@ -76,42 +78,57 @@ public fun validate_mint<T>(
     // Add your compliance logic here
     // For minting, you might want to check the investor's country or other criteria
 
-    resolve_deposit(rule, req, SecuritizeCompliance());
+    rule::deposit_to_vault(
+        rule,
+        vault,
+        balance,
+        SecuritizeCompliance(),
+    );
 }
 
-public fun validate_burn<T>(
+public(package) fun validate_burn<T>(
     rule: &RwaRule<T>,
-    req: RwaWithdrawRequest<T>,
     _config: &ComplianceConfig<T>,
     investors: &InvestorRegistry<T>,
+    vault: &mut RwaVault,
+    owner_proof: &VaultOwnerProof,
     from: address,
-    _amount: u64,
+    amount: u64,
     _ctx: &mut TxContext,
-) {
+): Balance<T> {
     let _from_country = investors::get_country<T>(investors, from);
 
     // Add your compliance logic here
     // For burning, you might want to check the investor's country or other criteria
 
-    resolve_withdraw(rule, req, SecuritizeCompliance());
+    let balance = rule::withdraw_from_vault(
+        rule,
+        vault,
+        owner_proof,
+        amount,
+        SecuritizeCompliance(),
+    );
+    balance
 }
 
 public fun clawback<T>(
+    rwa_reg: &RwaRegistry,
     config: &ComplianceConfig<T>,
-    rwa_reg: &mut RwaRegistry,
     rule: &RwaRule<T>,
     vault: &mut RwaVault,
     amount: u64,
     ctx: &mut TxContext,
 ) {
+
     let balance = rule::clawback(rule, vault, amount, SecuritizeCompliance());
-    let req = vault::deposit_to_vault<T>(
+    rule::deposit(
         rwa_reg,
-        balance,
+        rule,
         config.clawback_address,
-        ctx
+        balance,
+        SecuritizeCompliance(),
+        ctx,
     );
-    resolve_deposit(rule, req, SecuritizeCompliance());
 }
 
 public(package) fun register_rule<T>(
