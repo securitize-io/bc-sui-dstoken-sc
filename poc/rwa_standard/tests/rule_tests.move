@@ -128,8 +128,8 @@ fun test_resolve_transfer_success() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -181,8 +181,8 @@ fun test_resolve_transfer_invalid_witness() {
     // Create vaults
     let sender = @0x1;
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(sender));
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(sender));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(sender);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -210,10 +210,10 @@ fun test_resolve_transfer_invalid_witness() {
     abort
 }
 
-// ========== Deposit Resolution Tests ==========
+// ========== Deposit Tests ==========
 
 #[test]
-fun test_resolve_deposit_success() {
+fun test_deposit_success() {
     let mut scenario = ts::begin(@0x0);
     setup_registry(&mut scenario);
 
@@ -231,31 +231,27 @@ fun test_resolve_deposit_success() {
 
     // Create vault for receiver
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(@0x0);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
 
-    // Mint and initiate deposit
-    let coins = treasury_cap.mint(1000, scenario.ctx());
-    let deposit_request = vault::deposit_to_vault(
-        &mut registry,
-        coins.into_balance(),
-        receiver,
-        scenario.ctx()
-    );
+    let vault_id = derived_object::derive_address(registry.uid_mut().to_inner(), vault_key_for_testing(receiver));
+    let mut vault = scenario.take_shared_by_id<RwaVault>(vault_id.to_id());
 
-    // Resolve deposit
-    rule::resolve_deposit(&rule, deposit_request, AuthWitness {});
+    // Mint and deposit
+    let coins = treasury_cap.mint(1000, scenario.ctx());
+    rule::deposit_to_vault(&rule, &mut vault, coins.into_balance(), AuthWitness {});
 
     ts::return_shared(rule);
+    ts::return_shared(vault);
     ts::return_shared(registry);
     destroy(treasury_cap);
     scenario.end();
 }
 
 #[test, expected_failure(abort_code = rule::EInvalidProof)]
-fun test_resolve_deposit_invalid_witness() {
+fun test_deposit_invalid_witness() {
     let mut scenario = ts::begin(@0x0);
     setup_registry(&mut scenario);
 
@@ -273,30 +269,25 @@ fun test_resolve_deposit_invalid_witness() {
 
     // Create vault
     let receiver = @0x2;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(receiver));
+    vault::claim(&mut registry, vault::owner_from_address(receiver));
 
     scenario.next_tx(@0x0);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
 
-    // Mint and initiate deposit
-    let coins = treasury_cap.mint(1000, scenario.ctx());
-    let deposit_request = vault::deposit_to_vault(
-        &mut registry,
-        coins.into_balance(),
-        receiver,
-        scenario.ctx()
-    );
+    let vault_id = derived_object::derive_address(registry.uid_mut().to_inner(), vault_key_for_testing(receiver));
+    let mut vault = scenario.take_shared_by_id<RwaVault>(vault_id.to_id());
 
-    // Try to resolve with invalid witness - should fail
-    rule::resolve_deposit(&rule, deposit_request, InvalidAuthWitness {});
+    // Mint and try to deposit with invalid witness - should fail
+    let coins = treasury_cap.mint(1000, scenario.ctx());
+    rule::deposit_to_vault(&rule, &mut vault, coins.into_balance(), InvalidAuthWitness {});
 
     abort
 }
 
-// ========== Withdraw Resolution Tests ==========
+// ========== Withdraw Tests ==========
 
 #[test]
-fun test_resolve_withdraw_success() {
+fun test_withdraw_success() {
     let mut scenario = ts::begin(@0x0);
     setup_registry(&mut scenario);
 
@@ -314,7 +305,7 @@ fun test_resolve_withdraw_success() {
 
     // Create vault
     let owner = @0x1;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(owner));
+    vault::claim(&mut registry, vault::owner_from_address(owner));
 
     scenario.next_tx(owner);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -326,14 +317,15 @@ fun test_resolve_withdraw_success() {
     let coins = treasury_cap.mint(1000, scenario.ctx());
     vault_obj.deposit_balance(coins.into_balance());
 
-    // Initiate withdraw
-    let (balance, withdraw_request) = vault::withdraw_from_vault<TEST_COIN>(
+    // Withdraw with rule
+    let owner_proof = vault::proof_as_sender_for_testing(owner);
+    let balance = rule::withdraw_from_vault<TEST_COIN, AuthWitness>(
+        &rule,
         &mut vault_obj,
+        &owner_proof,
         100,
+        AuthWitness {},
     );
-
-    // Resolve withdraw
-    rule::resolve_withdraw(&rule, withdraw_request, AuthWitness {});
 
     balance.destroy_for_testing();
     ts::return_shared(registry);
@@ -344,7 +336,7 @@ fun test_resolve_withdraw_success() {
 }
 
 #[test, expected_failure(abort_code = rule::EInvalidProof)]
-fun test_resolve_withdraw_invalid_witness() {
+fun test_withdraw_invalid_witness() {
     let mut scenario = ts::begin(@0x0);
     setup_registry(&mut scenario);
 
@@ -362,7 +354,7 @@ fun test_resolve_withdraw_invalid_witness() {
 
     // Create vault
     let owner = @0x1;
-    vault::claim(&mut registry, vault::proof_as_sender_for_testing(owner));
+    vault::claim(&mut registry, vault::owner_from_address(owner));
 
     scenario.next_tx(owner);
     let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
@@ -374,14 +366,59 @@ fun test_resolve_withdraw_invalid_witness() {
     let coins = treasury_cap.mint(1000, scenario.ctx());
     vault_obj.deposit_balance(coins.into_balance());
 
-    // Initiate withdraw
-    let (_balance, withdraw_request) = vault::withdraw_from_vault<TEST_COIN>(
+    // Try to withdraw with invalid witness - should fail
+    let owner_proof = vault::proof_as_sender_for_testing(owner);
+    let _balance = rule::withdraw_from_vault<TEST_COIN, InvalidAuthWitness>(
+        &rule,
         &mut vault_obj,
+        &owner_proof,
         100,
+        InvalidAuthWitness {},
     );
 
-    // Try to resolve with invalid witness - should fail
-    rule::resolve_withdraw(&rule, withdraw_request, InvalidAuthWitness {});
+    abort
+}
+
+#[test, expected_failure(abort_code = vault::ENotOwner)]
+fun test_withdraw_invalid_owner() {
+    let mut scenario = ts::begin(@0x0);
+    setup_registry(&mut scenario);
+
+    scenario.next_tx(@0x0);
+    let mut registry = scenario.take_shared<RwaRegistry>();
+    let mut treasury_cap = create_test_coin(&mut scenario);
+
+    // Create rule
+    rule::new<TEST_COIN, AuthWitness>(
+        &mut registry,
+        &treasury_cap,
+        false,
+        AuthWitness {},
+    );
+
+    // Create vault for owner
+    let owner = @0x1;
+    vault::claim(&mut registry, vault::owner_from_address(owner));
+
+    scenario.next_tx(owner);
+    let rule = scenario.take_shared<RwaRule<TEST_COIN>>();
+
+    let vault_id = derived_object::derive_address(registry.uid_mut().to_inner(), vault_key_for_testing(owner));
+    let mut vault_obj = scenario.take_shared_by_id<RwaVault>(vault_id.to_id());
+
+    // Mint and deposit
+    let coins = treasury_cap.mint(1000, scenario.ctx());
+    vault_obj.deposit_balance(coins.into_balance());
+
+    // Try to withdraw with wrong owner proof - should fail
+    let wrong_owner_proof = vault::proof_as_sender_for_testing(@0x999);
+    let _balance = rule::withdraw_from_vault<TEST_COIN, AuthWitness>(
+        &rule,
+        &mut vault_obj,
+        &wrong_owner_proof,
+        100,
+        AuthWitness {},
+    );
 
     abort
 }

@@ -8,8 +8,7 @@ use sui::balance::Balance;
 use sui::vec_map::{Self, VecMap};
 use sui::coin::TreasuryCap;
 use sui::derived_object;
-use rwa::vault::RwaDepositRequest;
-use rwa::vault::RwaWithdrawRequest;
+use rwa::vault::VaultOwnerProof;
 
 const EInvalidProof: u64 = 0;
 const EClawbackNotAllowed: u64 = 1;
@@ -71,28 +70,30 @@ public fun resolve_transfer<T, U: drop>(
     request.resolve_transfer();
 }
 
-/// U is a witness, which has to match the rule's witness.
-/// This is callable by the smart contract that has to approve a deposit.
-public fun resolve_deposit<T, U: drop>(
+/// Allows the creator to deposit balance to vaults, as long as it is allowed.
+public fun deposit_to_vault<T, U: drop>(
     rule: &RwaRule<T>,
-    request: RwaDepositRequest<T>,
+    vault: &mut RwaVault,
+    balance: Balance<T>,
     _stamp: U,
 ) {
     rule.assert_is_valid_creator_proof<T, U>();
-    // destructuring the request to finalize the deposit.
-    request.resolve_deposit();
+
+    vault.deposit_balance(balance)
 }
 
-/// U is a witness, which has to match the rule's witness.
-/// This is callable by the smart contract that has to approve a withdraw.
-public fun resolve_withdraw<T, U: drop>(
+/// Allows the owner to withdraw balance from vault, as long as it is allowed.
+public fun withdraw_from_vault<T, U: drop>(
     rule: &RwaRule<T>,
-    request: RwaWithdrawRequest<T>,
+    vault: &mut RwaVault,
+    owner_proof: &VaultOwnerProof,
+    amount: u64,
     _stamp: U,
-) {
+): Balance<T> {
+    owner_proof.assert_is_valid_for_vault(vault);
     rule.assert_is_valid_creator_proof<T, U>();
-    // destructuring the request to finalize the withdraw.
-    request.resolve_withdraw();
+
+    vault.withdraw_balance<T>(amount)
 }
 
 /// Allows the creator to clawback tokens from vaults, as long as it is allowed.

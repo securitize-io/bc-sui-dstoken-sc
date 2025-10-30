@@ -44,8 +44,8 @@ fun test_rwa_mint() {
     );
 
     scenario.next_tx(INVESTOR);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     // assert that the vault exists and has the correct balance
     scenario.next_tx(DEPLOYER);
@@ -94,8 +94,8 @@ fun test_rwa_transfer() {
     );
 
     scenario.next_tx(INVESTOR);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     // assert that the vault exists and has the correct balance
     scenario.next_tx(DEPLOYER);
@@ -104,8 +104,8 @@ fun test_rwa_transfer() {
     vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
 
     scenario.next_tx(INVESTOR_2);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     scenario.next_tx(INVESTOR);
     let mut vault_2 = scenario.take_shared<RwaVault>();
@@ -155,8 +155,8 @@ fun test_rwa_burn() {
     );
 
     scenario.next_tx(INVESTOR);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     // assert that the vault exists and has the correct balance
     scenario.next_tx(DEPLOYER);
@@ -212,8 +212,8 @@ fun test_rwa_clawback() {
     );
 
     scenario.next_tx(INVESTOR);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     // assert that the vault exists and has the correct balance
     scenario.next_tx(DEPLOYER);
@@ -274,8 +274,8 @@ fun test_rwa_transfer_invalid() {
     );
 
     scenario.next_tx(INVESTOR);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     // assert that the vault exists and has the correct balance
     scenario.next_tx(DEPLOYER);
@@ -284,8 +284,8 @@ fun test_rwa_transfer_invalid() {
     vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
 
     scenario.next_tx(INVESTOR_2);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     scenario.next_tx(INVESTOR);
     let mut vault_2 = scenario.take_shared<RwaVault>();
@@ -322,8 +322,8 @@ fun test_rwa_transfer_not_registered() {
     );
 
     scenario.next_tx(INVESTOR);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     // assert that the vault exists and has the correct balance
     scenario.next_tx(DEPLOYER);
@@ -332,8 +332,8 @@ fun test_rwa_transfer_not_registered() {
     vault::squash_tokens<RWA>(&mut vault, vector[receiving]);
 
     scenario.next_tx(INVESTOR_2);
-    let owner_proof = vault::proof_as_sender(scenario.ctx());
-    vault::claim(&mut rwa_reg, owner_proof);
+    let owner = vault::owner_from_address(scenario.ctx().sender());
+    vault::claim(&mut rwa_reg, owner);
 
     scenario.next_tx(INVESTOR);
     let mut vault_2 = scenario.take_shared<RwaVault>();
