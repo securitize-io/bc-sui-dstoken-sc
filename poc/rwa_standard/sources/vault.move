@@ -198,14 +198,14 @@ fun create_balance_if_not_exists<T>(vault: &mut RwaVault) {
 
 // ========== Vault Getter Functions ==========
 /// Get the owner of a vault as address
-public fun get_owner_address(vault: &RwaVault): address {
+public fun owner_address(vault: &RwaVault): address {
     match (vault.owner) {
         Owner::Address(addr) => addr,
         Owner::Object(id) => id.to_address(),
     }
 }
 
-public fun get_balance<T>(vault: &RwaVault): u64 {
+public fun balance<T>(vault: &RwaVault): u64 {
     assert!(df::exists_(&vault.id, BalanceKey<T>()), ENonExistentBalance);
     let vault_balance: &Balance<T> = df::borrow(&vault.id, BalanceKey<T>());
     vault_balance.value()
