@@ -1,7 +1,7 @@
 module securitize::setup;
 
+use sui::coin_registry::{CurrencyInitializer};
 use sui::coin::{TreasuryCap};
-use sui::coin_registry::{MetadataCap};
 use sui::vec_set::{Self, VecSet};
 
 /// Error code when the caller is not a registered deployer
@@ -15,7 +15,7 @@ public struct SetupAuth has key {
     /// Set of addresses authorized to deploy tokens
     deployers: VecSet<address>,
     /// Admin address with permission to add/remove deployers
-    // TODO: consider making this a vector for multi-admin support (need to ask Securitize)
+    /// TODO: consider making this a vector for multi-admin support (need to ask Securitize)
     admin: address,
 }
 
@@ -38,11 +38,12 @@ fun init(ctx: &mut TxContext) {
 /// * `ENotDeployer` - If the caller is not in the authorized deployers list
 public fun setup<T: key>(
     registry: &SetupAuth,
+    currency: CurrencyInitializer<T>,
     _treasury_cap: TreasuryCap<T>,
-    _metadata_cap: MetadataCap<T>,
     ctx: &mut TxContext,
 ) {
     assert!(registry.deployers.contains(&ctx.sender()), ENotDeployer);
+    let _metadata_cap = currency.finalize(ctx);
     // TODO: enable once modules are ready
     // treasury::new<T>(treasury_cap, metadata_cap, ctx);
     // investors::new<T>(ctx);
