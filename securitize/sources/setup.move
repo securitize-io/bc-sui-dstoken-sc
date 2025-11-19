@@ -3,12 +3,17 @@ module securitize::setup;
 use sui::coin_registry::{CurrencyInitializer};
 use sui::coin::{TreasuryCap};
 use sui::vec_set::{Self, VecSet};
+use sui::event;
 use securitize::ds_token;
+
+// ==== Error Codes ====
 
 /// Error code when the caller is not a registered deployer
 const ENotDeployer: u64 = 0;
 /// Error code when the caller is not the admin
 const ENotAdmin: u64 = 1;
+
+// ==== Structs ====
 
 /// Registry that tracks authorized deployers and the admin for new ds token deployments.
 public struct SetupAuth has key {
@@ -18,6 +23,21 @@ public struct SetupAuth has key {
     /// Admin address with permission to add/remove deployers
     /// TODO: consider making this a vector for multi-admin support (need to ask Securitize)
     admin: address,
+}
+
+// ==== Events ====
+
+public struct DeployerAdded has copy, drop {
+    deployer: address,
+}
+
+public struct DeployerRemoved has copy, drop {
+    deployer: address,
+}
+
+public struct AdminSwitched has copy, drop {
+    old_admin: address,
+    new_admin: address,
 }
 
 /// Initializes the SetupAuth on module publish.
@@ -30,6 +50,8 @@ fun init(ctx: &mut TxContext) {
     };
     transfer::share_object(registry);
 }
+
+// ==== Public Functions ====
 
 /// Sets up a new securitized token system for the given coin type T.
 /// This function validates that the caller is an authorized deployer and initializes
@@ -59,11 +81,12 @@ public fun setup<T: key>(
 /// * `ENotAdmin` - If the caller is not the admin
 public fun add_deployer(
     registry: &mut SetupAuth,
-    new_deployer: address,
+    deployer: address,
     ctx: &mut TxContext,
 ) {
     assert!(registry.admin == ctx.sender(), ENotAdmin);
-    registry.deployers.insert(new_deployer);
+    registry.deployers.insert(deployer);
+    event::emit( DeployerAdded { deployer });
 }
 
 /// Removes an address from the list of authorized deployers.
@@ -78,6 +101,7 @@ public fun remove_deployer(
 ) {
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.deployers.remove(&deployer);
+    event::emit( DeployerRemoved { deployer });
 }
 
 /// Switches the admin to a new address.
@@ -92,7 +116,15 @@ public fun switch_admin(
 ) {
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.admin = new_admin;
+    event::emit( 
+        AdminSwitched { 
+            old_admin: ctx.sender(), 
+            new_admin 
+        }
+    );
 }
+
+// ==== View Functions ====
 
 /// Checks if the given address is an authorized deployer.
 public fun is_deployer(
@@ -100,6 +132,12 @@ public fun is_deployer(
     addr: address,
 ): bool {
     registry.deployers.contains(&addr)
+}
+
+public fun admin(
+    registry: &SetupAuth,
+): address {
+    registry.admin
 }
 
 /// Test-only function to initialize the SetupAuth in test environments.
