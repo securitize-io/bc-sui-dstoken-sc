@@ -3,6 +3,7 @@ module securitize::setup;
 use sui::coin_registry::{CurrencyInitializer};
 use sui::coin::{TreasuryCap};
 use sui::vec_set::{Self, VecSet};
+use securitize::ds_token;
 
 /// Error code when the caller is not a registered deployer
 const ENotDeployer: u64 = 0;
@@ -39,13 +40,13 @@ fun init(ctx: &mut TxContext) {
 public fun setup<T: key>(
     registry: &SetupAuth,
     currency: CurrencyInitializer<T>,
-    _treasury_cap: TreasuryCap<T>,
+    treasury_cap: TreasuryCap<T>,
     ctx: &mut TxContext,
 ) {
     assert!(registry.deployers.contains(&ctx.sender()), ENotDeployer);
-    let _metadata_cap = currency.finalize(ctx);
+    let metadata_cap = currency.finalize(ctx);
     // TODO: enable once modules are ready
-    // treasury::new<T>(treasury_cap, metadata_cap, ctx);
+    ds_token::new<T>(treasury_cap, metadata_cap, ctx);
     // investors::new<T>(ctx);
     // compliance::new<T>(ctx);
     abort
