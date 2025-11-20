@@ -100,28 +100,28 @@ Token-specific compliance enforcement module that defines operational rules and 
 
 ### **Unclawbackable Vaults**
 
-Vaults include a mechanism for permanently disabling clawback on a per-vault basis. Each Vault includes a boolean field clawback_allowed: bool (default: true), and all clawback operations MUST check that `clawback_allowed == true` in order to proceed.
+Vaults include a mechanism for permanently disabling clawback on a per-vault basis for a specific Permissioned type. Each Vault can be attached a ClawbacksDisabled<T> (always with a boolean true as the value) dynamic field, and all clawback operations MUST check that ClawbacksDisabled<T> does not exist in the vault in order to proceed, using is_clawback_enabled<T>(vault): bool, which checks the existence of the key.
 
-Issuers may call a one-way function disable_clawback() using their authorization witness, which permanently sets clawback_allowed = false. This action is irreversible.
+Issuers may call a one-way function disable_clawback() using their authorization witness, which permanently attaches the DF to the Vault for type T. This action is irreversible.
 
 **Rationale:**
-This feature allows issuers to exempt specific vaults from clawback when the global clawback capability is considered too broad. It guarantees to vault owners that, once certain issuer-defined criteria are met, a vault becomes permanently immune to clawback actions.
+This feature allows issuers to exempt specific vaults from clawback when the global clawback capability is considered too broad. It guarantees to vault owners that, once certain issuer-defined criteria are met, a vault becomes permanently immune to clawback actions for type T.
 
-### **Unlock Non-RWA Funds from a Vault**
+### **Unlock Non-Permissioned Funds from a Vault**
 
-Vaults may receive `Balance<T>` objects that are not governed by any RWA rule. If the Vault receives an asset type `T` for which no `RwaRule<T>` exists, the vault owner is permitted to unlock and withdraw these funds.
+Vaults may receive `Balance<T>` objects that are not governed by any Permissioned rule object. If the Vault receives an asset type `T` for which no `Rule<T>` exists, the vault owner is permitted to unlock and withdraw these funds.
 
 Rule existence is checked via:
 
 ```move
-derived_object::exists(rwa_registry.uid_mut(), RwaRuleKey<T>())
+derived_object::exists(registry.uid_mut(), RuleKey<T>())
 ```
 
-If no rule object exists for `T`, the asset is classified as non-RWA, and the owner may withdraw it.
+If no rule object exists for `T`, the asset is classified as non-Permissioned, and the owner may withdraw it.
 The only required authentication for this operation is possession of the `VaultOwnerProof`.
 
 **Rationale:**
-This prevents non-RWA funds from becoming stuck inside vaults.
+This prevents non-Permissioned funds from becoming stuck inside vaults.
 
 ### **MoveCommand for Off-Chain Action Resolution**
 
@@ -139,7 +139,7 @@ Each token-specific rule exposes:
 resolution_info: VecMap<TypeName, MoveCommand>,
 ```
 
-mapping action types (e.g., `RwaTransferRequest`) to their required validation commands.
+mapping action types (e.g., `TransferRequest`) to their required validation commands.
 
 **Rationale:**
 This allows SDKs to determine and construct the correct validation call inside the PTB, enabling dynamic invocation without hard-coded contract logic.
