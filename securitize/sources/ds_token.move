@@ -2,6 +2,7 @@ module securitize::ds_token;
 
 use sui::coin::{TreasuryCap};
 use sui::coin_registry::{MetadataCap};
+use sui::dynamic_object_field as dof;
 
 // ==== Error Codes ====
 
@@ -31,12 +32,12 @@ public(package) fun new<T: key>(
     metadata_cap: MetadataCap<T>,
     ctx: &mut TxContext,
 ) {
-    let treasury = Treasury {
+    let mut treasury = Treasury {
         id: object::new(ctx),
         metadata_cap,
         paused: false,
     };
-    dof::add(&mut treasury.id, TreasuryCapKey(), treasury);
+    dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
     transfer::share_object(treasury);
 }
 

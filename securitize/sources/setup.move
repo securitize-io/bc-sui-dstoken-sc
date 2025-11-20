@@ -71,7 +71,6 @@ public fun setup<T: key>(
     ds_token::new<T>(treasury_cap, metadata_cap, ctx);
     // investors::new<T>(ctx);
     // compliance::new<T>(ctx);
-    abort
 }
 
 /// Adds a new address to the list of authorized deployers.
