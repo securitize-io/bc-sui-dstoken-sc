@@ -218,7 +218,7 @@ public(package) fun internal_assign_role<T, R: drop>(
     let owner_key = AddressKey { owner };
     assert!(!self.roles_owners.contains(owner_key), EDirectRoleToRoleChange);
 
-    // Add role TransferAgent and increment counter
+    // Add role R and increment counter
     self.roles_owners.add(owner_key, roles_type);
     *self.roles.get_mut(&roles_type) = *self.roles.get_mut(&roles_type) + 1;
 
