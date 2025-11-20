@@ -198,6 +198,7 @@ public fun set_service_owner<T>(
     owner: address,
     ctx: &mut TxContext
 ) {
+    assert!(ctx.sender() != owner, ESelfTransferNotAllowed);
     assert!(owner_has_ability<T, SetServiceOwner>(self, ctx.sender()), ENotEnoughPermissions);
     internal_remove_role<T, Master>(self, ctx.sender(),ctx);
     internal_assign_role<T, Master>(self, owner,ctx);
@@ -230,10 +231,10 @@ public(package) fun internal_assign_role<T, R: drop>(
 }
 
 /// Remove a role R from an owner address
-public fun internal_remove_role<T, R: drop>(
+public(package) fun internal_remove_role<T, R: drop>(
     self: &mut Auth<T>,
     owner: address,
-    ctx: &mut TxContext
+    ctx: &TxContext
 ) {
     let roles_type = type_name::with_original_ids<R>();
 
@@ -384,4 +385,10 @@ public fun remove_role_type<T, R, A>(
     let master_abilities = self.roles_abilities.get_mut(&master_type);
     assert!(master_abilities.contains(&set_ability), EAbilityNotFound);
     master_abilities.remove(&set_ability);
+}
+
+/// Makes the Auth a shared object for public access.
+#[lint_allow(share_owned)]
+public(package) fun share<T>(auth: Auth<T>) {
+    transfer::share_object(auth);
 }
