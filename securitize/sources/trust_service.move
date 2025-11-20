@@ -1,15 +1,15 @@
 /// Module: trust_service
 ///
-/// This is the main module for role management. The core structure here is Auth 
+/// This is the main module for role management. The core structure here is Auth
 /// as an independent shared object.
 /// three main (administrative) roles: Master, Issuer, and TransferAgent.
 module securitize::trust_service;
 
+use std::type_name::{Self, TypeName};
 use sui::bag::{Self, Bag};
+use sui::event;
 use sui::vec_map::{Self, VecMap};
 use sui::vec_set::{Self, VecSet};
-use std::type_name::{Self, TypeName};
-use sui::event;
 
 // ==== Errors and Constants ====
 /// Direct role to role change is not allowed.
@@ -42,13 +42,13 @@ const ERoleHasActiveMembers: u64 = 14;
 public struct DSTrustServiceRoleAdded<phantom T> has copy, drop {
     target_address: address,
     role: TypeName,
-    sender: address
+    sender: address,
 }
 
 public struct DSTrustServiceRoleRemoved<phantom T> has copy, drop {
     target_address: address,
     role: TypeName,
-    sender: address
+    sender: address,
 }
 
 // ==================== Structs ====================
@@ -65,7 +65,7 @@ public struct Auth<phantom T> has key {
 }
 
 /// Key structure for identifying role ownership
-public struct AddressKey has copy, store, drop {
+public struct AddressKey has copy, drop, store {
     owner: address,
 }
 
@@ -130,21 +130,18 @@ public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
         id: object::new(ctx),
         roles,
         roles_abilities,
-        roles_owners: bag::new(ctx)
+        roles_owners: bag::new(ctx),
     };
 
     // Assign initial Master
-    internal_assign_role<T, Master>(&mut auth, ctx.sender(),ctx);
+    internal_assign_role<T, Master>(&mut auth, ctx.sender(), ctx);
     auth
 }
 
 // ==================== Role Management Functions ====================
 
 /// Check the role of the address
-public fun get_role<T>(
-    self: &Auth<T>,
-    owner: address
-): TypeName {
+public fun get_role<T>(self: &Auth<T>, owner: address): TypeName {
     let owner_key = AddressKey { owner };
     assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
     *self.roles_owners.borrow(owner_key)
@@ -152,56 +149,36 @@ public fun get_role<T>(
 
 /// Set/grant a role TransferAgent to an owner address
 /// Creates an AddressKey and stores it in the roles Bag
-public fun set_transfer_agent<T>(
-    self: &mut Auth<T>,
-    owner: address,
-    ctx: &mut TxContext
-) {
+public fun set_transfer_agent<T>(self: &mut Auth<T>, owner: address, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetTransferAgent>(self, ctx.sender()), ENotEnoughPermissions);
-    internal_assign_role<T, TransferAgent>(self, owner,ctx);
+    internal_assign_role<T, TransferAgent>(self, owner, ctx);
 }
 
 /// Remove a role TransferAgent from an owner address
-public fun remove_transfer_agent<T>(
-    self: &mut Auth<T>,
-    owner: address,
-    ctx: &mut TxContext
-) {
+public fun remove_transfer_agent<T>(self: &mut Auth<T>, owner: address, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetTransferAgent>(self, ctx.sender()), ENotEnoughPermissions);
-    internal_remove_role<T, TransferAgent>(self, owner,ctx);
+    internal_remove_role<T, TransferAgent>(self, owner, ctx);
 }
 
 /// Set/grant a role Issuer to an owner address
 /// Creates an AddressKey and stores it in the roles Bag
-public fun set_issuer<T>(
-    self: &mut Auth<T>,
-    owner: address,
-    ctx: &mut TxContext
-) {
+public fun set_issuer<T>(self: &mut Auth<T>, owner: address, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetIssuer>(self, ctx.sender()), ENotEnoughPermissions);
-    internal_assign_role<T, Issuer>(self, owner,ctx);
+    internal_assign_role<T, Issuer>(self, owner, ctx);
 }
 
 /// Remove a role Issuer from an owner address
-public fun remove_issuer<T>(
-    self: &mut Auth<T>,
-    owner: address,
-    ctx: &mut TxContext
-) {
+public fun remove_issuer<T>(self: &mut Auth<T>, owner: address, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetIssuer>(self, ctx.sender()), ENotEnoughPermissions);
-    internal_remove_role<T, Issuer>(self, owner,ctx);
+    internal_remove_role<T, Issuer>(self, owner, ctx);
 }
 
 /// Set/transfer service ownership (reassigns Master role)
-public fun set_service_owner<T>(
-    self: &mut Auth<T>,
-    owner: address,
-    ctx: &mut TxContext
-) {
+public fun set_service_owner<T>(self: &mut Auth<T>, owner: address, ctx: &mut TxContext) {
     assert!(ctx.sender() != owner, ESelfTransferNotAllowed);
     assert!(owner_has_ability<T, SetServiceOwner>(self, ctx.sender()), ENotEnoughPermissions);
-    internal_remove_role<T, Master>(self, ctx.sender(),ctx);
-    internal_assign_role<T, Master>(self, owner,ctx);
+    internal_remove_role<T, Master>(self, ctx.sender(), ctx);
+    internal_assign_role<T, Master>(self, owner, ctx);
 }
 
 /// Set/grant a role R to an owner address
@@ -209,7 +186,7 @@ public fun set_service_owner<T>(
 public(package) fun internal_assign_role<T, R: drop>(
     self: &mut Auth<T>,
     owner: address,
-    ctx: &TxContext
+    ctx: &TxContext,
 ) {
     let roles_type = type_name::with_original_ids<R>();
     assert!(self.roles.contains(&roles_type), ERoleNotFound);
@@ -226,7 +203,7 @@ public(package) fun internal_assign_role<T, R: drop>(
     event::emit(DSTrustServiceRoleAdded<T> {
         target_address: owner,
         role: roles_type,
-        sender: ctx.sender()
+        sender: ctx.sender(),
     });
 }
 
@@ -234,7 +211,7 @@ public(package) fun internal_assign_role<T, R: drop>(
 public(package) fun internal_remove_role<T, R: drop>(
     self: &mut Auth<T>,
     owner: address,
-    ctx: &TxContext
+    ctx: &TxContext,
 ) {
     let roles_type = type_name::with_original_ids<R>();
 
@@ -251,7 +228,7 @@ public(package) fun internal_remove_role<T, R: drop>(
     event::emit(DSTrustServiceRoleRemoved<T> {
         target_address: owner,
         role: roles_type,
-        sender: ctx.sender()
+        sender: ctx.sender(),
     });
 }
 
@@ -259,10 +236,7 @@ public(package) fun internal_remove_role<T, R: drop>(
 
 /// Add an ability A to role R
 /// This grants all holders of role R the ability to perform actions requiring A
-public fun add_role_ability<T, R: drop, A: drop>(
-    self: &mut Auth<T>,
-    ctx: &TxContext
-) {
+public fun add_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &TxContext) {
     assert!(owner_has_ability<T, SetAbilities>(self, ctx.sender()), ENotEnoughPermissions);
 
     let roles_type = type_name::with_original_ids<R>();
@@ -279,10 +253,7 @@ public fun add_role_ability<T, R: drop, A: drop>(
 
 /// Remove an ability A from role R
 /// This revokes the ability to perform actions requiring A from all holders of role R
-public fun remove_role_ability<T, R: drop, A: drop>(
-    self: &mut Auth<T>,
-    ctx: &TxContext
-) {
+public fun remove_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &TxContext) {
     assert!(owner_has_ability<T, SetAbilities>(self, ctx.sender()), ENotEnoughPermissions);
 
     let roles_type = type_name::with_original_ids<R>();
@@ -290,8 +261,10 @@ public fun remove_role_ability<T, R: drop, A: drop>(
 
     // Prevent removing SetAbilities from Master role
     assert!(
-        !(roles_type == type_name::with_original_ids<Master>() && ability_type == type_name::with_original_ids<SetAbilities>()),
-        ECannotRemoveMaster
+        !(
+            roles_type == type_name::with_original_ids<Master>() && ability_type == type_name::with_original_ids<SetAbilities>(),
+        ),
+        ECannotRemoveMaster,
     );
     assert!(self.roles.contains(&roles_type), ERoleNotFound);
     assert!(self.roles_abilities.contains(&roles_type), ERoleAbilitiesNotFound);
@@ -303,9 +276,7 @@ public fun remove_role_ability<T, R: drop, A: drop>(
 }
 
 /// Check if role R has ability A
-public fun role_has_ability<T, R: drop, A: drop>(
-    self: &Auth<T>,
-): bool {
+public fun role_has_ability<T, R: drop, A: drop>(self: &Auth<T>): bool {
     let roles_type = type_name::with_original_ids<R>();
     let ability_type = type_name::with_original_ids<A>();
 
@@ -317,10 +288,7 @@ public fun role_has_ability<T, R: drop, A: drop>(
 
 /// Check if an owner address has ability A through their role
 /// This is a combined check: does the owner have a role, and does that role have ability A
-public fun owner_has_ability<T, A: drop>(
-    self: &Auth<T>,
-    owner: address,
-): bool {
+public fun owner_has_ability<T, A: drop>(self: &Auth<T>, owner: address): bool {
     let owner_key = AddressKey { owner };
     assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
     let owner_role = self.roles_owners.borrow(owner_key);
@@ -332,10 +300,7 @@ public fun owner_has_ability<T, A: drop>(
 
 /// Add a new role type R to the system
 /// When a new role is added, Master automatically gets the ability to set it
-public fun add_role_type<T, R, A>(
-    self: &mut Auth<T>,
-    ctx: &mut TxContext
-) {
+public fun add_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);
 
     let roles_type = type_name::with_original_ids<R>();
@@ -358,10 +323,7 @@ public fun add_role_type<T, R, A>(
 /// Remove a role type R from the system
 /// Can only remove if no addresses currently have this role (counter == 0)
 /// Also cleans up the role's abilities and removes it from Master's abilities
-public fun remove_role_type<T, R, A>(
-    self: &mut Auth<T>,
-    ctx: &mut TxContext
-) {
+public fun remove_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);
 
     let roles_type = type_name::with_original_ids<R>();
