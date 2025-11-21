@@ -49,19 +49,11 @@ export const publishPackage = async ({
       x.objectType.includes("setup::SetupAuth")
   );
 
-  const treasury = results.objectChanges?.find(
-    (x) =>
-      x.type === "created" &&
-      x.objectType.includes("ds_token::Treasury")
-  );
-
   // Update .env file
   for (const [key, val] of [
     [propName, packageId],
     // @ts-ignore-next-line
     ["SETUP_AUTH", setupAuth?.objectId],
-    // @ts-ignore-next-line
-    ["TREASURY", treasury?.objectId],
   ]) {
     try {
       const envContent = readFileSync(".env", "utf8");

@@ -5,7 +5,6 @@ import { readFileSync } from "fs";
 import path from "path";
 import { homedir } from "os";
 import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
-import { SuiPriceServiceConnection, SuiPythClient } from "@pythnetwork/pyth-sui-js";
 
 export type Network = "mainnet" | "testnet" | "devnet" | "localnet";
 

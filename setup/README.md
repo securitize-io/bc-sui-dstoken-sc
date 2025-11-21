@@ -16,7 +16,7 @@ sui client switch --env localnet
 ```
 3. Import an address that is created for testing purposes and is used within the contracts with 
 ```
-sui keytool import --alias admin suiprivkey1qpq4r2l7ed3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q ed25519
+sui keytool import --alias admin suiprivkey1qpq4r2l7kr3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q ed25519
 ```
 4. Switch to that address and get some sui tokens to publish the contracts and run the transactions 
 ```
@@ -29,9 +29,8 @@ sui client faucet
 ```
     touch .env
     echo "NETWORK=localnet" >> .env
-    echo "ADMIN_PRIVATE_KEY=suiprivkey1qpq4r2l7ed3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q" >> .env
+    echo "ADMIN_PRIVATE_KEY=suiprivkey1qpq4r2l7kr3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q" >> .env
     echo "FULLNODE_URL=http://127.0.0.1:9000" >> .env
-    echo "DENY_LIST_ID=0x403" >> .env
 ```
 2. Install the dependencies with 
 ```
@@ -41,8 +40,7 @@ pnpm install
 ```
 pnpm test publish.test.ts
 ```
-You will see that in the .env file some addresses were added which correspond to the shared objects created on publish.
-Also you will notice the ./src/gen folder which contains all the generated interfaces.
+
 4. Then run all other tests 
 ```
 pnpm test "**/*.test.ts" -- --testPathIgnorePatterns=publish.test.ts
