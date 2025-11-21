@@ -2,7 +2,7 @@
 module securitize::setup_tests;
 
 use sui::test_scenario as ts;
-use sui::test_utils;
+use std::unit_test::destroy;
 use securitize::setup::{Self, SetupAuth};
 
 const ADMIN: address = @0xCAFE;
@@ -26,7 +26,7 @@ fun test_setup_auth() {
     let new_admin: address = @0xDEAD;
     setup::switch_admin(&mut setup_auth, new_admin, ts.ctx());
 
-    test_utils::destroy(setup_auth);
+    destroy(setup_auth);
     ts.end();
 }
 
