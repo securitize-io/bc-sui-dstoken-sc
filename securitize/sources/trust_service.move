@@ -11,45 +11,32 @@ use sui::event;
 use sui::vec_map::{Self, VecMap};
 use sui::vec_set::{Self, VecSet};
 
-// ==== Errors and Constants ====
+// ==== Error Codes ====
+
 /// Direct role to role change is not allowed.
-const EDirectRoleToRoleChange: u64 = 3;
+const EDirectRoleToRoleChange: u64 = 0;
 /// Cannot remove master role.
-const ECannotRemoveMaster: u64 = 4;
+const ECannotRemoveMaster: u64 = 1;
 /// Not enough permissions.
-const ENotEnoughPermissions: u64 = 5;
+const ENotEnoughPermissions: u64 = 2;
 /// Cannot transfer ownership to self.
-const ESelfTransferNotAllowed: u64 = 6;
+const ESelfTransferNotAllowed: u64 = 3;
 /// Owner has no role assigned.
-const EOwnerHasNoRole: u64 = 7;
+const EOwnerHasNoRole: u64 = 4;
 /// Role type not found in the system.
-const ERoleNotFound: u64 = 8;
+const ERoleNotFound: u64 = 5;
 /// Role type mismatch - stored role doesn't match expected.
-const ERoleTypeMismatch: u64 = 9;
+const ERoleTypeMismatch: u64 = 6;
 /// Role abilities mapping not found.
-const ERoleAbilitiesNotFound: u64 = 10;
+const ERoleAbilitiesNotFound: u64 = 7;
 /// Ability already exists for this role.
-const EAbilityAlreadyExists: u64 = 11;
+const EAbilityAlreadyExists: u64 = 8;
 /// Ability not found for this role.
-const EAbilityNotFound: u64 = 12;
+const EAbilityNotFound: u64 = 9;
 /// Role type already exists.
-const ERoleAlreadyExists: u64 = 13;
+const ERoleAlreadyExists: u64 = 10;
 /// Role has active members and cannot be removed.
-const ERoleHasActiveMembers: u64 = 14;
-
-// ==== Events ====
-
-public struct DSTrustServiceRoleAdded<phantom T> has copy, drop {
-    target_address: address,
-    role: TypeName,
-    sender: address,
-}
-
-public struct DSTrustServiceRoleRemoved<phantom T> has copy, drop {
-    target_address: address,
-    role: TypeName,
-    sender: address,
-}
+const ERoleHasActiveMembers: u64 = 11;
 
 // ==================== Structs ====================
 
@@ -67,6 +54,20 @@ public struct Auth<phantom T> has key {
 /// Key structure for identifying role ownership
 public struct AddressKey has copy, drop, store {
     owner: address,
+}
+
+// ==== Events ====
+
+public struct DSTrustServiceRoleAdded<phantom T> has copy, drop {
+    target_address: address,
+    role: TypeName,
+    sender: address,
+}
+
+public struct DSTrustServiceRoleRemoved<phantom T> has copy, drop {
+    target_address: address,
+    role: TypeName,
+    sender: address,
 }
 
 // ==================== Roles ====================
