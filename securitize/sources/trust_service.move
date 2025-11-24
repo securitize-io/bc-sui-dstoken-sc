@@ -99,33 +99,33 @@ public struct SetRoleTypes has drop {}
 public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
     // Initialize roles VecMap with Master, Issuer, TransferAgent roles
     let mut roles = vec_map::empty();
-    roles.insert(type_name::with_original_ids<Master>(), 0);
-    roles.insert(type_name::with_original_ids<Issuer>(), 0);
-    roles.insert(type_name::with_original_ids<TransferAgent>(), 0);
+    roles.insert(type_name::with_defining_ids<Master>(), 0);
+    roles.insert(type_name::with_defining_ids<Issuer>(), 0);
+    roles.insert(type_name::with_defining_ids<TransferAgent>(), 0);
 
     // Initialize roles_abilities VecMap
     let mut roles_abilities = vec_map::empty();
 
     // Add all abilities to Master role, including role TypeNames
     let mut master_abilities = vec_set::empty();
-    master_abilities.insert(type_name::with_original_ids<SetAbilities>());
-    master_abilities.insert(type_name::with_original_ids<SetRoleTypes>());
+    master_abilities.insert(type_name::with_defining_ids<SetAbilities>());
+    master_abilities.insert(type_name::with_defining_ids<SetRoleTypes>());
 
     // Add role TypeNames as abilities (Master can set all roles)
-    master_abilities.insert(type_name::with_original_ids<SetServiceOwner>());
-    master_abilities.insert(type_name::with_original_ids<SetIssuer>());
-    master_abilities.insert(type_name::with_original_ids<SetTransferAgent>());
-    roles_abilities.insert(type_name::with_original_ids<Master>(), master_abilities);
+    master_abilities.insert(type_name::with_defining_ids<SetServiceOwner>());
+    master_abilities.insert(type_name::with_defining_ids<SetIssuer>());
+    master_abilities.insert(type_name::with_defining_ids<SetTransferAgent>());
+    roles_abilities.insert(type_name::with_defining_ids<Master>(), master_abilities);
 
     // Add TransferAgent role TypeName as ability to TransferAgent role
     let mut transfer_agent_abilities = vec_set::empty();
-    transfer_agent_abilities.insert(type_name::with_original_ids<SetTransferAgent>());
-    roles_abilities.insert(type_name::with_original_ids<TransferAgent>(), transfer_agent_abilities);
+    transfer_agent_abilities.insert(type_name::with_defining_ids<SetTransferAgent>());
+    roles_abilities.insert(type_name::with_defining_ids<TransferAgent>(), transfer_agent_abilities);
 
     // Add Issuer role TypeName as ability to Issuer role
     let mut issuer_abilities = vec_set::empty();
-    issuer_abilities.insert(type_name::with_original_ids<SetIssuer>());
-    roles_abilities.insert(type_name::with_original_ids<Issuer>(), issuer_abilities);
+    issuer_abilities.insert(type_name::with_defining_ids<SetIssuer>());
+    roles_abilities.insert(type_name::with_defining_ids<Issuer>(), issuer_abilities);
 
     let mut auth = Auth<T> {
         id: object::new(ctx),
@@ -189,7 +189,7 @@ public(package) fun internal_assign_role<T, R: drop>(
     owner: address,
     ctx: &TxContext,
 ) {
-    let roles_type = type_name::with_original_ids<R>();
+    let roles_type = type_name::with_defining_ids<R>();
     assert!(self.roles.contains(&roles_type), ERoleNotFound);
 
     // Assert if the address already has a role
@@ -214,7 +214,7 @@ public(package) fun internal_remove_role<T, R: drop>(
     owner: address,
     ctx: &TxContext,
 ) {
-    let roles_type = type_name::with_original_ids<R>();
+    let roles_type = type_name::with_defining_ids<R>();
 
     // Assert if the address doesn't have a role
     let owner_key = AddressKey { owner };
@@ -240,8 +240,8 @@ public(package) fun internal_remove_role<T, R: drop>(
 public fun add_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &TxContext) {
     assert!(owner_has_ability<T, SetAbilities>(self, ctx.sender()), ENotEnoughPermissions);
 
-    let roles_type = type_name::with_original_ids<R>();
-    let ability_type = type_name::with_original_ids<A>();
+    let roles_type = type_name::with_defining_ids<R>();
+    let ability_type = type_name::with_defining_ids<A>();
 
     assert!(self.roles.contains(&roles_type), ERoleNotFound);
     assert!(self.roles_abilities.contains(&roles_type), ERoleAbilitiesNotFound);
@@ -257,13 +257,13 @@ public fun add_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &TxCon
 public fun remove_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &TxContext) {
     assert!(owner_has_ability<T, SetAbilities>(self, ctx.sender()), ENotEnoughPermissions);
 
-    let roles_type = type_name::with_original_ids<R>();
-    let ability_type = type_name::with_original_ids<A>();
+    let roles_type = type_name::with_defining_ids<R>();
+    let ability_type = type_name::with_defining_ids<A>();
 
     // Prevent removing SetAbilities from Master role
     assert!(
         !(
-            roles_type == type_name::with_original_ids<Master>() && ability_type == type_name::with_original_ids<SetAbilities>(),
+            roles_type == type_name::with_defining_ids<Master>() && ability_type == type_name::with_defining_ids<SetAbilities>(),
         ),
         ECannotRemoveMaster,
     );
@@ -278,8 +278,8 @@ public fun remove_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &Tx
 
 /// Check if role R has ability A
 public fun role_has_ability<T, R: drop, A: drop>(self: &Auth<T>): bool {
-    let roles_type = type_name::with_original_ids<R>();
-    let ability_type = type_name::with_original_ids<A>();
+    let roles_type = type_name::with_defining_ids<R>();
+    let ability_type = type_name::with_defining_ids<A>();
 
     assert!(self.roles_abilities.contains(&roles_type), ERoleAbilitiesNotFound);
 
@@ -294,7 +294,7 @@ public fun owner_has_ability<T, A: drop>(self: &Auth<T>, owner: address): bool {
     assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
     let owner_role = self.roles_owners.borrow(owner_key);
 
-    let ability_type = type_name::with_original_ids<A>();
+    let ability_type = type_name::with_defining_ids<A>();
     let abilities = self.roles_abilities.get(owner_role);
     abilities.contains(&ability_type)
 }
@@ -304,8 +304,8 @@ public fun owner_has_ability<T, A: drop>(self: &Auth<T>, owner: address): bool {
 public fun add_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);
 
-    let roles_type = type_name::with_original_ids<R>();
-    let set_ability = type_name::with_original_ids<A>();
+    let roles_type = type_name::with_defining_ids<R>();
+    let set_ability = type_name::with_defining_ids<A>();
     // Check if the type already exists
     assert!(!self.roles.contains(&roles_type), ERoleAlreadyExists);
     // Add new type R with a 0 counter in the MAP
@@ -316,7 +316,7 @@ public fun add_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
     self.roles_abilities.insert(roles_type, roles_abilities_set);
 
     // Add the role set ability A to Master (so Master can set this new role)
-    let master_type = type_name::with_original_ids<Master>();
+    let master_type = type_name::with_defining_ids<Master>();
     let master_abilities = self.roles_abilities.get_mut(&master_type);
     master_abilities.insert(set_ability);
 }
@@ -327,11 +327,11 @@ public fun add_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
 public fun remove_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);
 
-    let roles_type = type_name::with_original_ids<R>();
-    let set_ability = type_name::with_original_ids<A>();
+    let roles_type = type_name::with_defining_ids<R>();
+    let set_ability = type_name::with_defining_ids<A>();
 
     // Prevent removing Master role
-    assert!(roles_type != type_name::with_original_ids<Master>(), ECannotRemoveMaster);
+    assert!(roles_type != type_name::with_defining_ids<Master>(), ECannotRemoveMaster);
 
     assert!(self.roles.contains(&roles_type), ERoleNotFound);
 
@@ -344,7 +344,7 @@ public fun remove_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
     self.roles_abilities.remove(&roles_type);
 
     // Clean up: Remove this role from Master's abilities
-    let master_type = type_name::with_original_ids<Master>();
+    let master_type = type_name::with_defining_ids<Master>();
     let master_abilities = self.roles_abilities.get_mut(&master_type);
     assert!(master_abilities.contains(&set_ability), EAbilityNotFound);
     master_abilities.remove(&set_ability);
