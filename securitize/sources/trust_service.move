@@ -12,7 +12,6 @@ use sui::vec_map::{Self, VecMap};
 use sui::vec_set::{Self, VecSet};
 
 // ==== Error Codes ====
-
 /// Direct role to role change is not allowed.
 const EDirectRoleToRoleChange: u64 = 0;
 /// Cannot remove master role.
@@ -37,6 +36,12 @@ const EAbilityNotFound: u64 = 9;
 const ERoleAlreadyExists: u64 = 10;
 /// Role has active members and cannot be removed.
 const ERoleHasActiveMembers: u64 = 11;
+/// Version has changed.
+const EDeprecated: u64 = 12;
+
+// ==================== Version ====================
+
+const VERSION: u64 = 1;
 
 // ==================== Structs ====================
 
@@ -49,6 +54,8 @@ public struct Auth<phantom T> has key {
     roles_abilities: VecMap<TypeName, VecSet<TypeName>>,
     /// Role keys registry (Bag of AddressKey structs)
     roles_owners: Bag,
+    // Contract Version
+    version: u64
 }
 
 /// Key structure for identifying role ownership
@@ -132,6 +139,7 @@ public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
         roles,
         roles_abilities,
         roles_owners: bag::new(ctx),
+        version: VERSION
     };
 
     // Assign initial Master
@@ -143,6 +151,7 @@ public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
 
 /// Check the role of the address
 public fun get_role<T>(self: &Auth<T>, owner: address): TypeName {
+    assert!(self.version == VERSION, EDeprecated);
     let owner_key = AddressKey { owner };
     assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
     *self.roles_owners.borrow(owner_key)
@@ -278,6 +287,8 @@ public fun remove_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, ctx: &Tx
 
 /// Check if role R has ability A
 public fun role_has_ability<T, R: drop, A: drop>(self: &Auth<T>): bool {
+    assert!(self.version == VERSION, EDeprecated);
+
     let roles_type = type_name::with_defining_ids<R>();
     let ability_type = type_name::with_defining_ids<A>();
 
@@ -290,6 +301,8 @@ public fun role_has_ability<T, R: drop, A: drop>(self: &Auth<T>): bool {
 /// Check if an owner address has ability A through their role
 /// This is a combined check: does the owner have a role, and does that role have ability A
 public fun owner_has_ability<T, A: drop>(self: &Auth<T>, owner: address): bool {
+    assert!(self.version == VERSION, EDeprecated);
+    
     let owner_key = AddressKey { owner };
     assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
     let owner_role = self.roles_owners.borrow(owner_key);
@@ -354,4 +367,9 @@ public fun remove_role_type<T, R, A>(self: &mut Auth<T>, ctx: &mut TxContext) {
 #[lint_allow(share_owned)]
 public(package) fun share<T>(auth: Auth<T>) {
     transfer::share_object(auth);
+}
+
+// Migrate object to the current version.
+public fun migrate<T>(auth: &mut Auth<T>) {
+        auth.version = VERSION;
 }
