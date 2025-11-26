@@ -1,7 +1,8 @@
 module securitize::setup;
 
-use securitize::ds_token;
 use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
+use securitize::ds_token;
+use securitize::version::Version;
 
 // ==== Error Codes ====
 
@@ -58,10 +59,12 @@ fun init(ctx: &mut TxContext) {
 /// * `ENotDeployer` - If the caller is not in the authorized deployers list
 public fun setup<T: key>(
     registry: &SetupAuth,
+    version: &Version,
     currency: CurrencyInitializer<T>,
     treasury_cap: TreasuryCap<T>,
     ctx: &mut TxContext,
 ) {
+    version.check_is_valid();
     assert!(registry.deployers.contains(&ctx.sender()), ENotDeployer);
     let metadata_cap = currency.finalize(ctx);
     // TODO: enable once modules are ready
@@ -75,7 +78,13 @@ public fun setup<T: key>(
 ///
 /// # Aborts
 /// * `ENotAdmin` - If the caller is not the admin
-public fun add_deployer(registry: &mut SetupAuth, deployer: address, ctx: &mut TxContext) {
+public fun add_deployer(
+    registry: &mut SetupAuth,
+    deployer: address,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.deployers.insert(deployer);
     event::emit(DeployerAdded { deployer });
@@ -86,7 +95,13 @@ public fun add_deployer(registry: &mut SetupAuth, deployer: address, ctx: &mut T
 ///
 /// # Aborts
 /// * `ENotAdmin` - If the caller is not the admin
-public fun remove_deployer(registry: &mut SetupAuth, deployer: address, ctx: &mut TxContext) {
+public fun remove_deployer(
+    registry: &mut SetupAuth,
+    deployer: address,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.deployers.remove(&deployer);
     event::emit(DeployerRemoved { deployer });
@@ -97,13 +112,21 @@ public fun remove_deployer(registry: &mut SetupAuth, deployer: address, ctx: &mu
 ///
 /// # Aborts
 /// * `ENotAdmin` - If the caller is not the admin
-public fun switch_admin(registry: &mut SetupAuth, new_admin: address, ctx: &mut TxContext) {
+public fun switch_admin(
+    registry: &mut SetupAuth,
+    new_admin: address,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.admin = new_admin;
-    event::emit(AdminSwitched {
-        old_admin: ctx.sender(),
-        new_admin,
-    });
+    event::emit(
+        AdminSwitched {
+            old_admin: ctx.sender(),
+            new_admin
+        }
+    );
 }
 
 // ==== View Functions ====

@@ -1,6 +1,7 @@
 module securitize::ds_token;
 
 use sui::{coin::TreasuryCap, coin_registry::MetadataCap, dynamic_object_field as dof};
+use securitize::version::Version;
 
 // ==== Error Codes ====
 
@@ -50,9 +51,11 @@ public(package) fun new<T: key>(
 ///       with event emitting
 public fun metadata_cap<T: key>(
     treasury: &Treasury<T>,
+    version: &Version,
     // auth: &Auth,
     ctx: &mut TxContext,
 ): &MetadataCap<T> {
+    version.check_is_valid();
     // assert that caller has the right auth if needed
     &treasury.metadata_cap
 }
@@ -64,9 +67,11 @@ public fun metadata_cap<T: key>(
 /// * `ETreasuryAlreadyPaused` - If the treasury is already paused
 public fun pause<T: key>(
     treasury: &mut Treasury<T>,
+    version: &Version,
     // auth: &Auth,
     ctx: &mut TxContext,
 ) {
+    version.check_is_valid();
     assert!(!treasury.is_paused(), ETreasuryAlreadyPaused);
     treasury.paused = true;
 }
@@ -78,9 +83,11 @@ public fun pause<T: key>(
 /// * `ETreasuryNotPaused` - If the treasury is not currently paused
 public fun unpause<T: key>(
     treasury: &mut Treasury<T>,
+    version: &Version,
     // auth: &Auth,
     ctx: &mut TxContext,
 ) {
+    version.check_is_valid();
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
 }

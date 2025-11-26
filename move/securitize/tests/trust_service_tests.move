@@ -12,6 +12,7 @@ use securitize::trust_service::{
     SetServiceOwner
 };
 use sui::test_scenario::{Self as ts, Scenario};
+use securitize::version::{Self, Version};
 
 const ADMIN: address = @0xCAFE;
 
@@ -22,6 +23,8 @@ public struct TestWitness has drop {}
 public struct CustomAbility has drop {}
 
 fun setup_for_testing(ts: &mut Scenario) {
+    ts.next_tx(ADMIN);
+    version::init_for_testing(ts.ctx());
     ts.next_tx(ADMIN);
     let auth = trust_service::new<TestWitness>(ts.ctx());
     trust_service::share(auth);
@@ -34,6 +37,7 @@ fun test_auth_initialization_and_master_role() {
 
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TestWitness>>();
+    let version = ts.take_shared<Version>();
 
     // Verify sender has Master role
     let role = trust_service::get_role(&auth, ADMIN);
@@ -52,6 +56,7 @@ fun test_auth_initialization_and_master_role() {
     assert!(trust_service::owner_has_ability<TestWitness, SetTransferAgent>(&auth, ADMIN), 8);
 
     ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 
@@ -64,11 +69,13 @@ fun test_auth_initialization_non_master_has_no_role() {
     let non_master = @0xB;
     ts.next_tx(non_master);
     let auth = ts.take_shared<Auth<TestWitness>>();
+    let version = ts.take_shared<Version>();
 
     // This should abort because non_master doesn't have a role
     let _role = trust_service::get_role(&auth, non_master);
 
     ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 
@@ -82,12 +89,15 @@ fun test_set_role_master_can_assign_issuer() {
     // Master assigns Issuer role to new_issuer
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::set_issuer<TestWitness>(&mut auth, new_issuer, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::set_issuer<TestWitness>(&mut auth, new_issuer, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // Verify new_issuer has Issuer role
     ts.next_tx(new_issuer);
     let auth = ts.take_shared<Auth<TestWitness>>();
+    let version = ts.take_shared<Version>();
 
     let role = trust_service::get_role(&auth, new_issuer);
     assert!(role == std::type_name::with_defining_ids<Issuer>(), 0);
@@ -96,6 +106,7 @@ fun test_set_role_master_can_assign_issuer() {
     assert!(trust_service::owner_has_ability<TestWitness, SetIssuer>(&auth, new_issuer), 1);
 
     ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 
@@ -110,21 +121,27 @@ fun test_set_role_issuer_can_assign_another_issuer() {
     // Master assigns Issuer role to issuer1
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::set_issuer<TestWitness>(&mut auth, issuer1, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::set_issuer<TestWitness>(&mut auth, issuer1, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // issuer1 assigns Issuer role to issuer2
     ts.next_tx(issuer1);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::set_issuer<TestWitness>(&mut auth, issuer2, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::set_issuer<TestWitness>(&mut auth, issuer2, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // Verify issuer2 has Issuer role
     ts.next_tx(issuer2);
     let auth = ts.take_shared<Auth<TestWitness>>();
+    let version = ts.take_shared<Version>();
     let role = trust_service::get_role(&auth, issuer2);
     assert!(role == std::type_name::with_defining_ids<Issuer>(), 0);
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     ts.end();
 }
@@ -140,14 +157,18 @@ fun test_set_role_cannot_assign_to_existing_role_holder() {
     // Master assigns Issuer role
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::set_issuer<TestWitness>(&mut auth, issuer, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::set_issuer<TestWitness>(&mut auth, issuer, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // Try to assign TransferAgent to same address - should fail
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::set_transfer_agent<TestWitness>(&mut auth, issuer, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::set_transfer_agent<TestWitness>(&mut auth, issuer, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     ts.end();
 }
@@ -160,8 +181,10 @@ fun test_add_and_remove_abilities() {
     // Master adds CustomAbility to Issuer role
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::add_role_ability<TestWitness, Issuer, CustomAbility>(&mut auth, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::add_role_ability<TestWitness, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // Verify Issuer role has CustomAbility
     ts.next_tx(ADMIN);
@@ -172,8 +195,10 @@ fun test_add_and_remove_abilities() {
     // Master removes CustomAbility from Issuer role
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::remove_role_ability<TestWitness, Issuer, CustomAbility>(&mut auth, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::remove_role_ability<TestWitness, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // Verify Issuer role no longer has CustomAbility
     ts.next_tx(ADMIN);
@@ -194,15 +219,19 @@ fun test_set_service_owner_transfers_master_role() {
     // Old master transfers ownership to new master
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
-    trust_service::set_service_owner<TestWitness>(&mut auth, new_master, ts.ctx());
+    let version = ts.take_shared<Version>();
+    trust_service::set_service_owner<TestWitness>(&mut auth, new_master, &version, ts.ctx());
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     // Verify new_master has Master role
     ts.next_tx(new_master);
     let auth = ts.take_shared<Auth<TestWitness>>();
+    let version = ts.take_shared<Version>();
     let role = trust_service::get_role(&auth, new_master);
     assert!(role == std::type_name::with_defining_ids<Master>(), 0);
     ts::return_shared(auth);
+    ts::return_shared(version);
 
     ts.end();
 }
