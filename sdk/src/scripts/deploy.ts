@@ -1,3 +1,3 @@
-import {deploy} from 'ts-utils/src/utils/deploy'
+import {deploy} from "../sdk/utils/deploy";
 
 deploy().then(console.log)

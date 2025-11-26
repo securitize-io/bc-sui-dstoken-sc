@@ -1,7 +1,7 @@
 import { ObjectOwner } from '@mysten/sui/client'
 import { normalizeSuiAddress } from '@mysten/sui/utils'
-import { MoveType, SuiClient } from 'ts-utils/src/utils/sui_client'
-import { ADMIN_KEYPAIR, Config } from 'ts-utils/src/config/config'
+import { ADMIN_KEYPAIR, MoveType, SuiClient } from '@easysui/sdk'
+import {Config} from "./utils/config";
 
 interface SuiObjectCreated {
     digest: string
