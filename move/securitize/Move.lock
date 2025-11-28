@@ -2,13 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "F6F8D55F9C9A23223063FCAA03D08706C305610B4FCBE578D3B6D4856326C4EB"
-deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
+manifest_digest = "124591EFC9E13386FB442EFE5BB51B3D47C825FBFD98DB8D45D5AA4DA6C94AA9"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Bridge", name = "Bridge" },
   { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "Sui", name = "Sui" },
   { id = "SuiSystem", name = "SuiSystem" },
+  { id = "rwa", name = "rwa" },
 ]
 
 [[move.package]]
@@ -40,6 +41,17 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "9a4d4016ba66c64
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "rwa"
+source = { git = "https://github.com/MystenLabs/se-rwa-standard.git", rev = "main", subdir = "move/rwa" }
+
+dependencies = [
+  { id = "Bridge", name = "Bridge" },
+  { id = "MoveStdlib", name = "MoveStdlib" },
+  { id = "Sui", name = "Sui" },
+  { id = "SuiSystem", name = "SuiSystem" },
 ]
 
 [move.toolchain-version]

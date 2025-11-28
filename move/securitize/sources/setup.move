@@ -1,8 +1,8 @@
 module securitize::setup;
 
 use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
-use securitize::ds_token;
-use securitize::version::Version;
+use securitize::{version::Version, ds_token, trust_service};
+use rwa::registry::RwaRegistry;
 
 // ==== Error Codes ====
 
@@ -60,6 +60,7 @@ fun init(ctx: &mut TxContext) {
 public fun setup<T: key>(
     registry: &SetupAuth,
     version: &Version,
+    rwa_registry: &mut RwaRegistry,
     currency: CurrencyInitializer<T>,
     treasury_cap: TreasuryCap<T>,
     ctx: &mut TxContext,
@@ -68,9 +69,11 @@ public fun setup<T: key>(
     assert!(registry.deployers.contains(&ctx.sender()), ENotDeployer);
     let metadata_cap = currency.finalize(ctx);
     // TODO: enable once modules are ready
-    ds_token::new<T>(treasury_cap, metadata_cap, ctx);
+    let mut auth = trust_service::new<T>(ctx);
+    ds_token::new<T>(&mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
     // investors::new<T>(ctx);
     // compliance::new<T>(ctx);
+    auth.share();
 }
 
 /// Adds a new address to the list of authorized deployers.
