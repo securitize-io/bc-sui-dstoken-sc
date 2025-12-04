@@ -21,7 +21,6 @@ The project is comprised by 2 main folders:
 
 1. [move](move): This folder holds all the Move on chain contracts and packages
 2. [sdk](sdk): This folder holds a typescript SDK to call the contracts and E2E tests
-3. [ts-utils](sdk): This folder holds some typescript utilities useful for Move and Sui smart cotnracts
 
 ## Executing tests
 

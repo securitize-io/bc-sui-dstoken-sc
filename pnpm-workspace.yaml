@@ -1,4 +1,3 @@
 packages:
   - "move"
   - "sdk"
-  - "ts-utils"

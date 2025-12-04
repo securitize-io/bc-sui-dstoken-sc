@@ -1,4 +1,4 @@
-import { deploy } from 'ts-utils/src/utils/deploy'
+import { deploy } from '../src/sdk/utils/deploy'
 
 beforeAll(async () => {
     // Publish all packages through volora contract

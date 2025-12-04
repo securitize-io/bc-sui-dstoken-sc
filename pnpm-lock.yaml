@@ -19,6 +19,9 @@ importers:
 
   sdk:
     dependencies:
+      '@easysui/sdk':
+        specifier: ^0.0.2
+        version: 0.0.2(@mysten/sui@1.45.0(typescript@5.9.3))
       '@mysten/sui':
         specifier: ^1.38.0
         version: 1.45.0(typescript@5.9.3)
@@ -28,43 +31,6 @@ importers:
       cross-env:
         specifier: ^10.0.0
         version: 10.1.0
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)
-      ts-utils:
-        specifier: workspace:*
-        version: link:../ts-utils
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-    devDependencies:
-      '@types/jest':
-        specifier: ^30.0.0
-        version: 30.0.0
-      jest:
-        specifier: ^30.1.3
-        version: 30.2.0(@types/node@24.10.1)(ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3))
-      prettier:
-        specifier: ^3.6.2
-        version: 3.6.2
-      ts-jest:
-        specifier: ^29.4.1
-        version: 29.4.5(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@30.2.0(@types/node@24.10.1)(ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3)))(typescript@5.9.3)
-
-  ts-utils:
-    dependencies:
-      '@mysten/sui':
-        specifier: ^1.38.0
-        version: 1.45.0(typescript@5.9.3)
-      '@types/node':
-        specifier: ^24.3.1
-        version: 24.10.1
-      cross-env:
-        specifier: ^10.0.0
-        version: 10.1.0
-      dotenv:
-        specifier: ^17.2.2
-        version: 17.2.3
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)
@@ -269,6 +235,11 @@ packages:
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
+
+  '@easysui/sdk@0.0.2':
+    resolution: {integrity: sha512-XulARVZ02NO0+V4hA5lU76sKwbkFbuhKZhE8VC5MRLu5i3Ogb0T2dC91dYU5af0+N9a8NkRMYgJIej15gcZsQw==}
+    peerDependencies:
+      '@mysten/sui': ^1.38.0
 
   '@emnapi/core@1.7.1':
     resolution: {integrity: sha512-o1uhUASyo921r2XtHYOHy7gdkGLge8ghBEQHMWmyJFoXlpU58kIrhhN3w26lpQb6dspetweapMn2CSNwQ8I4wg==}
@@ -1779,6 +1750,12 @@ snapshots:
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
+
+  '@easysui/sdk@0.0.2(@mysten/sui@1.45.0(typescript@5.9.3))':
+    dependencies:
+      '@mysten/sui': 1.45.0(typescript@5.9.3)
+      '@types/node': 24.10.1
+      dotenv: 17.2.3
 
   '@emnapi/core@1.7.1':
     dependencies:

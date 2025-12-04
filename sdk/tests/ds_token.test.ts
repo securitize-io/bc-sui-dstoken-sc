@@ -1,4 +1,4 @@
-import {create_ds_token} from "../src/sdk/ds_token";
+import { create_ds_token } from '../src/sdk/ds_token'
 
 /**
  * Integration tests for Ds token module.
