@@ -1,7 +1,13 @@
 module securitize::setup;
 
 use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
-use securitize::{version::Version, ds_token, trust_service, registry_service};
+use securitize::{
+    version::Version, 
+    ds_token::{Self, Treasury}, 
+    trust_service::{Self, Auth}, 
+    registry_service::{Self, InvestorInfo},
+    compliance_service::{Self, ComplianceConfig}
+};
 use rwa::registry::RwaRegistry;
 
 // ==== Error Codes ====
@@ -22,6 +28,9 @@ public struct SetupAuth has key {
     /// TODO: consider making this a vector for multi-admin support (need to ask Securitize)
     admin: address,
 }
+
+/// Hot potato used to finalize the setup process
+public struct SetupFinalize {}
 
 // ==== Events ====
 
@@ -64,16 +73,34 @@ public fun setup<T: key>(
     treasury_cap: TreasuryCap<T>,
     version: &Version,
     ctx: &mut TxContext,
-) {
+): (Auth<T>, Treasury<T>, InvestorInfo<T>, ComplianceConfig<T>, SetupFinalize) {
     version.check_is_valid();
     assert!(setup_auth.deployers.contains(&ctx.sender()), ENotDeployer);
     let metadata_cap = currency.finalize(ctx);
-    // TODO: enable once modules are ready
     let mut auth = trust_service::new<T>(ctx);
-    ds_token::new<T>(&mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
-    registry_service::new<T>(&mut auth, version, ctx);
-    // compliance::new<T>(ctx);
+    let treasury = ds_token::new<T>(&mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
+    let investor_info = registry_service::new<T>(&mut auth, version, ctx);
+    let compliance = compliance_service::new<T>(&mut auth, version, ctx);
+    (auth, treasury, investor_info, compliance, SetupFinalize {})
+}
+
+/// Finalizes the setup process by sharing the Auth, Treasury, InvestorInfo 
+/// and ComplianceConfig objects, and by resolving the SetupFinalize hot potato.
+public fun finalize_setup<T: key>(
+    finalize: SetupFinalize,
+    auth: Auth<T>,
+    treasury: Treasury<T>,
+    investor_info: InvestorInfo<T>,
+    compliance: ComplianceConfig<T>,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
     auth.share();
+    treasury.share();
+    investor_info.share();
+    compliance.share();
+    let SetupFinalize {} = finalize;
 }
 
 /// Adds a new address to the list of authorized deployers.
