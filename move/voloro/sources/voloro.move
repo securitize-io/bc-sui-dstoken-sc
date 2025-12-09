@@ -1,7 +1,13 @@
 module voloro::voloro;
 
-use securitize::setup::{Self, SetupAuth};
-use securitize::{version::Version};
+use securitize::{
+    setup::{Self, SetupAuth, SetupFinalize},
+    version::Version,
+    trust_service::Auth,
+    ds_token::Treasury,
+    registry_service::InvestorInfo,
+    compliance_service::ComplianceConfig
+};
 use rwa::registry::RwaRegistry;
 use sui::coin_registry::{Self, CoinRegistry};
 use std::string::{String};
@@ -20,7 +26,7 @@ public fun create_ds_token(
     registry: &mut CoinRegistry,
     version: &Version,
     ctx: &mut TxContext,
-) {
+): (Auth<VOLORO>, Treasury<VOLORO>, InvestorInfo<VOLORO>, ComplianceConfig<VOLORO>, SetupFinalize) {
     let (currency, treasury_cap) = coin_registry::new_currency<VOLORO>(
         registry,
         decimals,
@@ -31,5 +37,5 @@ public fun create_ds_token(
         ctx,
     );
 
-    setup::setup(setup_auth, rwa_registry, currency, treasury_cap, version, ctx);
+    setup::setup(setup_auth, rwa_registry, currency, treasury_cap, version, ctx)
 }
