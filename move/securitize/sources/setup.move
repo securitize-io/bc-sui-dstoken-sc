@@ -1,7 +1,7 @@
 module securitize::setup;
 
 use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
-use securitize::{version::Version, ds_token, trust_service};
+use securitize::{version::Version, ds_token, trust_service, registry_service};
 use rwa::registry::RwaRegistry;
 
 // ==== Error Codes ====
@@ -71,7 +71,7 @@ public fun setup<T: key>(
     // TODO: enable once modules are ready
     let mut auth = trust_service::new<T>(ctx);
     ds_token::new<T>(&mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
-    // investors::new<T>(ctx);
+    registry_service::new<T>(&mut auth, version, ctx);
     // compliance::new<T>(ctx);
     auth.share();
 }
