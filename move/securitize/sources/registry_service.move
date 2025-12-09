@@ -191,7 +191,7 @@ public(package) fun new<T: key>(
     auth: &mut Auth<T>,
     version: &Version,
     ctx: &mut TxContext,
-) {
+): InvestorInfo<T> {
     // Assign abilities to roles
     auth.add_role_ability<T, Master, RegisterInvestor>(version,ctx);
     auth.add_role_ability<T, Master, RemoveInvestor>(version,ctx);
@@ -222,6 +222,12 @@ public(package) fun new<T: key>(
         eu_retail_investors_count: table::new(ctx),
         countries_compliances: table::new(ctx),
     };
+    investor_info
+}
+
+/// Makes the InvestorInfo a shared object for public access
+#[lint_allow(share_owned)]
+public(package) fun share<T>(investor_info: InvestorInfo<T>) {
     transfer::share_object(investor_info);
 }
 

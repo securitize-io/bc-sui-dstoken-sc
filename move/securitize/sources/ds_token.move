@@ -85,7 +85,7 @@ public(package) fun new<T: key>(
     metadata_cap: MetadataCap<T>,
     version: &Version,
     ctx: &mut TxContext,
-) {
+): Treasury<T> {
     // Assign abilities to roles
     auth.add_role_ability<T, Master, IssueTokens>(version,ctx);
     auth.add_role_ability<T, Master, BurnTokens>(version,ctx);
@@ -109,6 +109,12 @@ public(package) fun new<T: key>(
     let clawback_allowed = true;
     rule::new(rwa_registry, &treasury_cap, clawback_allowed, DsProtocol());
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
+    treasury
+}
+
+/// Makes the Treasury a shared object for public access
+#[lint_allow(share_owned)]
+public(package) fun share<T>(treasury: Treasury<T>) {
     transfer::share_object(treasury);
 }
 
