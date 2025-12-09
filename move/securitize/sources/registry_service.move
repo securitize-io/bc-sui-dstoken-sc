@@ -53,11 +53,10 @@ const PENDING: u64 = 0;
 const APPROVED: u64 = 1;
 const REJECTED: u64 = 2;
 
-// ==== Compliance Region Constants ====
-
+// ==== TEMP Compliance Region Constants ====
 const US: u64 = 1;
 const EU: u64 = 2;
-const FORBIDDEN: u64 = 3;
+const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
 
 // ==== Structs ====

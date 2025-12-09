@@ -1,2 +1,2 @@
 #[test_only]
-module securitize::ds_token_tests;
+module securitize::registry_service_tests;
