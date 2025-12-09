@@ -58,15 +58,15 @@ fun init(ctx: &mut TxContext) {
 /// # Aborts
 /// * `ENotDeployer` - If the caller is not in the authorized deployers list
 public fun setup<T: key>(
-    registry: &SetupAuth,
-    version: &Version,
+    setup_auth: &SetupAuth,
     rwa_registry: &mut RwaRegistry,
     currency: CurrencyInitializer<T>,
     treasury_cap: TreasuryCap<T>,
+    version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    assert!(registry.deployers.contains(&ctx.sender()), ENotDeployer);
+    assert!(setup_auth.deployers.contains(&ctx.sender()), ENotDeployer);
     let metadata_cap = currency.finalize(ctx);
     // TODO: enable once modules are ready
     let mut auth = trust_service::new<T>(ctx);

@@ -1,3 +1,4 @@
 packages:
-  - "move"
-  - "sdk"
+  - move
+  - sdk
+  - sdk-easysui
