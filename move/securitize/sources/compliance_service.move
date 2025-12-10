@@ -19,6 +19,7 @@ const ERuleNotFound: u64 = 0;
 /// Rule already exists for this asset
 const ERuleAlreadyExists: u64 = 1;
 const EDestinationRestricted: u64 = 2;
+const ENotWhitelisted: u64 = 3;
 
 // ==== Events ====
 
@@ -101,6 +102,11 @@ public fun validate_transfer<T>(
     // lock_manager: &LockManager<T>,
 ): RwaTransferRequest<T> {
     version.check_is_valid();
+
+    let to_address = request.request_to_address();
+    
+    assert!(registry.is_special_wallet(to_address) ||  registry.is_wallet(to_address), ENotWhitelisted);
+
     // Get investor information from registry (fake values for now)
     let from_region = US;
     let to_region = EU;
@@ -143,16 +149,17 @@ public fun validate_transfer<T>(
 
 /// Validate issuance action against all configured rules
 /// Based on Solidity preIssuanceCheck flow
-public(package) fun validate_issue<T>(
+public fun validate_issue<T>(
     config: &ComplianceConfig<T>,
     registry: &InvestorInfo<T>,
+    to: address,
     // lock_manager: &LockManager<T>,
     amount: u64,
     version: &Version,
 ) {
     version.check_is_valid();
 
-    // TODO Check Whitelisted
+    assert!(registry.is_special_wallet(to) ||  registry.is_wallet(to), ENotWhitelisted);
     // registry(to) exists as wallet
 
     let to_region = EU;
