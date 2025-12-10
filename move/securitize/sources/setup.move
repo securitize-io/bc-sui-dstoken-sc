@@ -6,7 +6,8 @@ use securitize::{
     ds_token::{Self, Treasury}, 
     trust_service::{Self, Auth}, 
     registry_service::{Self, InvestorInfo},
-    compliance_service::{Self, ComplianceConfig}
+    compliance_service::{Self, ComplianceConfig},
+    wallet_manager,
 };
 use rwa::registry::RwaRegistry;
 
@@ -81,6 +82,7 @@ public fun setup<T: key>(
     let treasury = ds_token::new<T>(&mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
     let investor_info = registry_service::new<T>(&mut auth, version, ctx);
     let compliance = compliance_service::new<T>(&mut auth, version, ctx);
+    wallet_manager::new<T>(&mut auth, version, ctx);
     (auth, treasury, investor_info, compliance, SetupFinalize {})
 }
 
