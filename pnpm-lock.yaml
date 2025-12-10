@@ -38,6 +38,9 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
     devDependencies:
+      '@changesets/cli':
+        specifier: ^2.29.8
+        version: 2.29.8(@types/node@24.10.1)
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
