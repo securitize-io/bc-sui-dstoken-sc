@@ -1,4 +1,4 @@
-import {deploy as baseDeploy} from '@easysui/sdk'
+import {deploy as baseDeploy} from '../../easysui'
 import {Config} from "./config";
 import {create_ds_token} from "../ds_token";
 import {DeploymentRequest} from "../domains";

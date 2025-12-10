@@ -1,12 +1,12 @@
 import {SuiObjectChangeCreated} from '@mysten/sui/client'
 import {normalizeSuiAddress} from '@mysten/sui/utils'
-import {ADMIN_KEYPAIR, MoveType, SuiClient} from '@easysui/sdk'
+import {ADMIN_KEYPAIR, MoveType, SuiClient} from '../easysui'
 import {Config} from "./utils/config";
 import {DeploymentRequest} from "./domains";
 
 export async function create_ds_token(request: DeploymentRequest) {
     const result = await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR,
+        signer: ADMIN_KEYPAIR!,
         target: `${Config.vars.PACKAGE_ID}::voloro::create_ds_token`,
         args: [
             request.tokenDescription.name,

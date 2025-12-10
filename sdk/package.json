@@ -1,8 +1,26 @@
 {
-  "name": "sdk",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@securitize/sui-sdk",
+  "version": "1.0.7",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepare": "pnpm build",
+    "prepublishOnly": "pnpm build",
+    "changeset": "changeset",
+    "version": "changeset version",
     "deploy_localnet": "sui client switch --env localnet && cross-env NODE_ENV=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_devnet": "sui client switch --env devnet && cross-env NODE_ENV=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_testnet": "sui client switch --env testnet && cross-env NODE_ENV=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
@@ -13,16 +31,18 @@
     "clean": "rm -rf ./node_modules"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@types/jest": "^30.0.0",
     "jest": "^30.1.3",
     "prettier": "^3.6.2",
-    "ts-jest": "^29.4.1"
+    "ts-jest": "^29.4.1",
+    "tsup": "^8.5.1"
   },
   "dependencies": {
-    "@easysui/sdk": "workspace:*",
-    "@mysten/sui": "^1.38.0",
+    "@mysten/sui": "^1.45.2",
     "@types/node": "^24.3.1",
     "cross-env": "^10.0.0",
+    "dotenv": "^17.2.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }

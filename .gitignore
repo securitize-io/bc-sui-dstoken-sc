@@ -30,3 +30,6 @@ lcov.info
 .trace
 
 gas_cost_estimation.csv
+.npmrc
+
+**/.changeset/*.md
