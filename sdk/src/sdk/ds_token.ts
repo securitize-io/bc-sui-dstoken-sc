@@ -6,7 +6,7 @@ import {DeploymentRequest} from "./domains";
 
 export async function create_ds_token(request: DeploymentRequest) {
     const result = await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR,
+        signer: ADMIN_KEYPAIR!,
         target: `${Config.vars.PACKAGE_ID}::voloro::create_ds_token`,
         args: [
             request.tokenDescription.name,
