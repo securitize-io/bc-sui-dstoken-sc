@@ -20,7 +20,7 @@ importers:
   sdk:
     dependencies:
       '@easysui/sdk':
-        specifier: ../sdk-easysui
+        specifier: workspace:*
         version: link:../sdk-easysui
       '@mysten/sui':
         specifier: ^1.45.2
