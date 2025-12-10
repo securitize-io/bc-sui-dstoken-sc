@@ -1,5 +1,13 @@
 # @securitize/sui-sdk
 
+## 1.0.3
+
+### Patch Changes
+
+- Fix build
+- Use easysui using workspaces
+- Make ADMIN_KEYPAIR optional
+
 ## 1.0.2
 
 ### Patch Changes
