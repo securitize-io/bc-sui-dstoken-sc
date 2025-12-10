@@ -1,7 +1,8 @@
 module securitize::ds_token;
 
 use sui::{coin::TreasuryCap, coin_registry::MetadataCap, dynamic_object_field as dof, event};
-use securitize::{version::Version, trust_service::{Auth, Master, Issuer, TransferAgent}};
+use std::string::{Self, String}
+;use securitize::{version::Version, trust_service::{Auth, Master, Issuer, TransferAgent}};
 use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
 use rwa::rule::{Self, RwaRule};
 use rwa::registry::RwaRegistry;
@@ -46,34 +47,39 @@ public struct SeizeTokens() has drop;
 
 public struct MetadataUpdate() has drop;
 
-public struct Pause() has drop;
+public struct Pauser() has drop;
 
 // ==== Events ====
 
-public struct TokensIssued<phantom T> has copy, drop {
+public struct Issue<phantom T> has copy, drop {
     to: address,
-    amount: u64,
+    value: u64,
+    value_locked: u64,
 }
 
-public struct TokensBurned<phantom T> has copy, drop {
-    from: address,
-    amount: u64,
+public struct Burn<phantom T> has copy, drop {
+    burner: address,
+    value: u64,
+    reason: String,
 }
 
-public struct TokensSeized<phantom T> has copy, drop {
-    from: address,
-    amount: u64,
-}
-
-public struct TokensTransferred<phantom T> has copy, drop {
+public struct Seize<phantom T> has copy, drop {
     from: address,
     to: address,
-    amount: u64,
+    value: u64,
+    reason: String,
 }
 
-public struct TreasuryPaused<phantom T> has copy, drop {}
+public struct Transfer<phantom T> has copy, drop {
+    from: address,
+    to: address,
+    value: u64,
+}
 
-public struct TreasuryUnpaused<phantom T> has copy, drop {}
+public struct Pause<phantom T> has copy, drop {
+    pauser: address,
+    is_paused: bool,
+}
 
 /// Initializes a new Treasury for the given token type T.
 ///
@@ -91,14 +97,14 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, BurnTokens>(version,ctx);
     auth.add_role_ability<T, Master, SeizeTokens>(version,ctx);
     auth.add_role_ability<T, Master, MetadataUpdate>(version,ctx);
-    auth.add_role_ability<T, Master, Pause>(version,ctx);
+    auth.add_role_ability<T, Master, Pauser>(version,ctx);
 
     auth.add_role_ability<T, Issuer, IssueTokens>(version,ctx);
     auth.add_role_ability<T, Issuer, BurnTokens>(version,ctx);
 
     auth.add_role_ability<T, TransferAgent, BurnTokens>(version,ctx);
     auth.add_role_ability<T, TransferAgent, SeizeTokens>(version,ctx);
-    auth.add_role_ability<T, TransferAgent, Pause>(version,ctx);
+    auth.add_role_ability<T, TransferAgent, Pauser>(version,ctx);
     // Initialize the Treasury
     let mut treasury = Treasury {
         id: object::new(ctx),
@@ -152,9 +158,10 @@ public fun issue_tokens<T>(
         DsProtocol(),
     );
     event::emit(
-        TokensIssued<T> {
+        Issue<T> {
             to: to_address,
-            amount,
+            value: amount,
+            value_locked: 0, //placeholder
         }
     );
 }
@@ -193,9 +200,10 @@ public fun burn<T>(
         TreasuryCapKey(),
     ).burn(balance.into_coin(ctx));
     event::emit(
-        TokensBurned<T> {
-            from: from_address,
-            amount,
+        Burn<T> {
+            burner: ctx.sender(),
+            value: amount,
+            reason: string::utf8(b""), // Placeholder
         }
     );
 }
@@ -229,9 +237,11 @@ public fun seize<T>(
         DsProtocol(),
     );
     event::emit(
-        TokensSeized<T> {
+        Seize<T> {
             from: from_address,
-            amount,
+            to: @0x0, // Placeholder
+            value: amount,
+            reason: string::utf8(b""), // Placeholder
         }
     );
 }
@@ -255,10 +265,10 @@ public fun transfer<T>(
     // Resolve the request
     rule::resolve_transfer(rwa_rule, request, DsProtocol());
     event::emit(
-        TokensTransferred<T> {
-            from: /* request.from_address */ ctx.sender(),
+        Transfer<T> {
+            from: /* request.from_address */ ctx.sender(), // Placeholder
             to: /* request.to_address */ ctx.sender(), // Placeholder
-            amount: /* request.amount */ 0, // Placeholder
+            value: /* request.amount */ 0, // Placeholder
         }
     );
 }
@@ -293,10 +303,15 @@ public fun pause<T>(
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, Pause>(ctx.sender()), ENotAuthorized);
+    assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(!treasury.is_paused(), ETreasuryAlreadyPaused);
     treasury.paused = true;
-    event::emit( TreasuryPaused<T> {} );
+    event::emit( 
+        Pause<T> {
+            pauser: ctx.sender(),
+            is_paused: true,
+        } 
+    );
 }
 
 /// Unpauses the treasury, allowing token operations to resume.
@@ -311,10 +326,15 @@ public fun unpause<T>(
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, Pause>(ctx.sender()), ENotAuthorized);
+    assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
-    event::emit( TreasuryUnpaused<T> {} );
+    event::emit( 
+        Pause<T> {
+            pauser: ctx.sender(),
+            is_paused: false,
+        } 
+    );
 }
 
 // ==== View Functions ====
