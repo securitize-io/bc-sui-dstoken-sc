@@ -408,6 +408,7 @@ public fun remove_wallet<T>(
     investor_info.investor_wallets.remove(wallet_addr);
     let mut wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
+    investor_info.investor_wallets.remove(wallet_addr);
     wallets.remove(idx);
     event::emit( WalletRemoved<T> {
         wallet: wallet_addr,
@@ -516,12 +517,12 @@ public fun is_special_wallet<T>(
     investor_info: &InvestorInfo<T>,
     wallet: address
 ): bool {
-    let wallet_type = investor_info.get_wallet_type(wallet);
+    let wallet_type = investor_info.get_special_wallet_type(wallet);
     wallet_type != 0
 }
 
-/// Retrieves the wallet type for a wallet address.
-public fun get_wallet_type<T>(
+/// Retrieves the wallet type for a special wallet address.
+public fun get_special_wallet_type<T>(
     investor_info: &InvestorInfo<T>,
     wallet: address
 ): u64 {
@@ -676,6 +677,14 @@ public(package) fun set_special_wallet<T>(
     wallet_type: u64,
 ) {
     investor_info.special_wallets.add(wallet, wallet_type);
+}
+
+/// Removes a special wallet from the registry.
+public(package) fun remove_special_wallet<T>(
+    investor_info: &mut InvestorInfo<T>,
+    wallet: address,
+): u64 {
+    investor_info.special_wallets.remove(wallet)
 }
 
 /// Sets the count of US investors.
