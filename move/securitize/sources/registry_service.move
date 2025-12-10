@@ -511,12 +511,24 @@ public fun is_wallet<T>(
     investor_info.investor_wallets.contains(wallet)
 }
 
-/// Returns whether a wallet is a special wallet (e.g., treasury, reserve).
+/// Returns whether a wallet is a special wallet (e.g., ISSUER, PLATFORM).
 public fun is_special_wallet<T>(
     investor_info: &InvestorInfo<T>,
     wallet: address
 ): bool {
-    investor_info.special_wallets.contains(wallet)
+    let wallet_type = investor_info.get_wallet_type(wallet);
+    wallet_type != 0
+}
+
+/// Retrieves the wallet type for a wallet address.
+public fun get_wallet_type<T>(
+    investor_info: &InvestorInfo<T>,
+    wallet: address
+): u64 {
+    if (!investor_info.special_wallets.contains(wallet)) {
+        return 0
+    };
+    *investor_info.special_wallets.borrow(wallet)
 }
 
 /// Returns the total token balance across all wallets for an investor.
@@ -540,12 +552,30 @@ public fun is_accredited_investor_by_id<T>(
     investor_info.get_attribute_value(investor_id, ACCREDITED) == APPROVED
 }
 
+/// Returns whether an investor has accredited status based on their wallet address.
+public fun is_accredited_investor<T>(
+    investor_info: &InvestorInfo<T>,
+    wallet: address,
+): bool {
+    let id = investor_info.investor_wallets.borrow(wallet).owner;
+    investor_info.is_accredited_investor_by_id(id)
+}
+
 /// Returns whether an investor has qualified status.
 public fun is_qualified_investor_by_id<T>(
     investor_info: &InvestorInfo<T>,
     investor_id: String,
 ): bool {
     investor_info.get_attribute_value(investor_id, QUALIFIED) == APPROVED
+}
+
+/// Returns whether an investor has qualified status based on their wallet address.
+public fun is_qualified_investor<T>(
+    investor_info: &InvestorInfo<T>,
+    wallet: address,
+): bool {
+    let id = investor_info.investor_wallets.borrow(wallet).owner;
+    investor_info.is_qualified_investor_by_id(id)
 }
 
 /// Returns the compliance region for a given country code.
@@ -556,6 +586,14 @@ public fun get_country_compliance<T>(
     *investor_info.countries_compliances.borrow(country)
 }
 
+/// Returns the country of the investor.
+public fun get_country<T>(
+    investor_info: &InvestorInfo<T>,
+    investor_id: String,
+): String {
+    investor_info.investors.borrow(investor_id).country
+}
+
 /// Returns the value of a specific attribute for an investor.
 /// Returns 0 if the investor or attribute does not exist.
 public fun get_attribute_value<T>(
@@ -563,14 +601,122 @@ public fun get_attribute_value<T>(
     investor_id: String,
     attribute_id: u64,
 ): u64 {
-    if (!investor_info.is_investor(investor_id)) {
-        return 0
-    };
     let investor = investor_info.investors.borrow(investor_id);
     if (!investor.attributes.contains(attribute_id)) {
         return 0
     };
     investor.attributes.borrow(attribute_id).value
+}
+
+/// Returns the expiration timestamp of a specific attribute for an investor.
+/// Returns 0 if the investor or attribute does not exist.
+public fun get_attribute_expiration<T>(
+    investor_info: &InvestorInfo<T>,
+    investor_id: String,
+    attribute_id: u64,
+): u64 {
+    let investor = investor_info.investors.borrow(investor_id);
+    if (!investor.attributes.contains(attribute_id)) {
+        return 0
+    };
+    investor.attributes.borrow(attribute_id).expiration
+}
+
+/// Returns the total number of accredited investors.
+public fun get_accredited_investor_count<T>(
+    investor_info: &InvestorInfo<T>,
+): u64 {
+    investor_info.accredited_investors_count
+}
+
+/// Returns the total number of US investors.
+public fun get_us_investor_count<T>(
+    investor_info: &InvestorInfo<T>,
+): u64 {
+    investor_info.us_investors_count
+}
+
+/// Returns the total number of US accredited investors.
+public fun get_us_accredited_investor_count<T>(
+    investor_info: &InvestorInfo<T>,
+): u64 {
+    investor_info.us_accredited_investors_count
+}
+
+/// Returns the total number of JP investors.
+public fun get_jp_investor_count<T>(
+    investor_info: &InvestorInfo<T>,
+): u64 {
+    investor_info.jp_investors_count
+}
+
+/// Returns the total number of EU retail investors for a given country.
+public fun get_eu_retail_investor_count<T>(
+    investor_info: &InvestorInfo<T>,
+    to_country: String,
+): u64 {
+    *investor_info.eu_retail_investors_count.borrow(to_country)
+}
+
+// ==== Public Package Functions ====
+
+/// Sets the compliance region for a given country code.
+public(package) fun set_country_compliance<T>(
+    investor_info: &mut InvestorInfo<T>,
+    country: String,
+    compliance_region: u64,
+) {
+    investor_info.countries_compliances.add(country, compliance_region);
+}
+
+/// Sets a special wallet type for a wallet address.
+public(package) fun set_special_wallet<T>(
+    investor_info: &mut InvestorInfo<T>,
+    wallet: address,
+    wallet_type: u64,
+) {
+    investor_info.special_wallets.add(wallet, wallet_type);
+}
+
+/// Sets the count of US investors.
+public(package) fun set_us_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
+    investor_info.us_investors_count = count;
+}
+
+/// Sets the count of US accredited investors.
+public(package) fun set_us_accredited_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
+    investor_info.us_accredited_investors_count = count;
+}
+
+/// Sets the count of accredited investors.
+public(package) fun set_accredited_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
+    investor_info.accredited_investors_count = count;
+}
+
+/// Sets the count of Japanese investors.
+public(package) fun set_jp_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
+    investor_info.jp_investors_count = count;
+}
+
+public(package) fun set_eu_retail_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    country: String,
+    count: u64,
+) {
+    let count_ref = investor_info.eu_retail_investors_count.borrow_mut(country);
+    *count_ref = count;
 }
 
 // ==== Internal Functions ====
