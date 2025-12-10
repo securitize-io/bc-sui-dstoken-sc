@@ -1,6 +1,6 @@
 import {SuiObjectChangeCreated} from '@mysten/sui/client'
 import {normalizeSuiAddress} from '@mysten/sui/utils'
-import {ADMIN_KEYPAIR, MoveType, SuiClient} from '@securitize/easysui'
+import {ADMIN_KEYPAIR, MoveType, SuiClient} from '../easysui'
 import {Config} from "./utils/config";
 import {DeploymentRequest} from "./domains";
 

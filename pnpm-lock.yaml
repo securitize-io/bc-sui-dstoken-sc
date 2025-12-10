@@ -22,15 +22,15 @@ importers:
       '@mysten/sui':
         specifier: ^1.45.2
         version: 1.45.2(typescript@5.9.3)
-      '@securitize/easysui':
-        specifier: workspace:*
-        version: link:../sdk-easysui
       '@types/node':
         specifier: ^24.3.1
         version: 24.10.1
       cross-env:
         specifier: ^10.0.0
         version: 10.1.0
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)

@@ -1,4 +1,4 @@
-import { Coin } from '@securitize/easysui'
+import { Coin } from '../easysui'
 import { Keypair } from '@mysten/sui/cryptography'
 import {Config} from "./utils/config";
 
