@@ -41,7 +41,7 @@ This will:
 Publish the package to your private registry:
 
 ```bash
-NPM_TOKEN=your_token pnpm release
+NPM_TOKEN=your_token pnpm publish
 ```
 
 This will:
