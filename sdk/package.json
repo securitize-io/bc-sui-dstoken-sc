@@ -2,7 +2,24 @@
   "name": "sdk",
   "version": "0.0.0",
   "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepare": "pnpm build",
+    "prepublishOnly": "pnpm build",
     "deploy_localnet": "sui client switch --env localnet && cross-env NODE_ENV=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_devnet": "sui client switch --env devnet && cross-env NODE_ENV=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_testnet": "sui client switch --env testnet && cross-env NODE_ENV=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
@@ -16,7 +33,8 @@
     "@types/jest": "^30.0.0",
     "jest": "^30.1.3",
     "prettier": "^3.6.2",
-    "ts-jest": "^29.4.1"
+    "ts-jest": "^29.4.1",
+    "tsup": "^8.5.1"
   },
   "dependencies": {
     "@easysui/sdk": "workspace:*",
