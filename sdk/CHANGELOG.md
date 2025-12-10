@@ -1,5 +1,12 @@
 # @securitize/sui-sdk
 
+## 1.0.7
+
+### Patch Changes
+
+- Move easysui inside the sdk
+- rename easysui to securitize/easysui
+
 ## 1.0.6
 
 ### Patch Changes
