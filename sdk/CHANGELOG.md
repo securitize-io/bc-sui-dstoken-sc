@@ -1,5 +1,13 @@
 # @securitize/sui-sdk
 
+## 1.0.6
+
+### Patch Changes
+
+- rename easysui to securitize/easysui
+- Updated dependencies
+    - @securitize/easysui@0.1.4
+
 ## 1.0.5
 
 ### Patch Changes
