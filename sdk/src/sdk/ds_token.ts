@@ -1,37 +1,52 @@
-import {SuiObjectChangeCreated} from '@mysten/sui/client'
 import {normalizeSuiAddress} from '@mysten/sui/utils'
-import {ADMIN_KEYPAIR, MoveType, SuiClient} from '../easysui'
+import {ADMIN_KEYPAIR, SuiClient} from '../easysui'
 import {Config} from "./utils/config";
 import {DeploymentRequest} from "./domains";
+import {Transaction} from "@mysten/sui/transactions";
 
 export async function create_ds_token(request: DeploymentRequest) {
-    const result = await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
+    //TODO: deploy token contract first
+
+    const ptb = new Transaction()
+    const [
+        auth,
+        treasury,
+        investorInfo,
+        complianceConfig,
+        setupFinalize
+    ] = ptb.moveCall({
         target: `${Config.vars.PACKAGE_ID}::voloro::create_ds_token`,
-        args: [
-            request.tokenDescription.name,
-            request.tokenDescription.symbol,
-            "https://aggregator.walrus-mainnet.h2o-nodes.com/v1/blobs/DYlIcfM32ICsXfTJR69kQ6Vv4roYnQbOvoUbRiwsg6g",
-            request.tokenDescription.decimals,
-            Config.vars.SETUP_AUTH,
-            Config.vars.RWA_REGISTRY,
-            normalizeSuiAddress('0xc'),
-            Config.vars.VERSION,
-        ],
-        argTypes: [
-            MoveType.string,
-            MoveType.string,
-            MoveType.string,
-            MoveType.u8,
+        arguments: [
+            ptb.pure.string(request.tokenDescription.name),
+            ptb.pure.string(request.tokenDescription.symbol),
+            ptb.pure.string("https://aggregator.walrus-mainnet.h2o-nodes.com/v1/blobs/DYlIcfM32ICsXfTJR69kQ6Vv4roYnQbOvoUbRiwsg6g"),
+            ptb.pure.u8(request.tokenDescription.decimals),
+            ptb.object(Config.vars.SETUP_AUTH),
+            ptb.object(Config.vars.RWA_REGISTRY),
+            ptb.object(normalizeSuiAddress('0xc')),
+            ptb.object(Config.vars.VERSION),
         ],
     })
 
-    const treasury = (
-        result.objectChanges?.find(
-            (x) => x.type === 'created' && x.objectType.includes('ds_token::Treasury')
-        ) as SuiObjectChangeCreated
-    ).objectId
+    // TODO: Add extra rules to compliance here
 
+    ptb.moveCall({
+        target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,
+        typeArguments: [`${Config.vars.PACKAGE_ID}::voloro::VOLORO`],
+        arguments: [
+            setupFinalize,
+            auth,
+            treasury,
+            investorInfo,
+            complianceConfig,
+            ptb.object(Config.vars.VERSION)
+        ]
+    })
+
+    const result = await SuiClient.signAndExecute(ptb, ADMIN_KEYPAIR!)
+
+    console.log(result);
+    
     return result
 
     // return {

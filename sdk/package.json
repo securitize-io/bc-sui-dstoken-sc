@@ -25,6 +25,7 @@
     "deploy_devnet": "sui client switch --env devnet && cross-env NODE_ENV=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_testnet": "sui client switch --env testnet && cross-env NODE_ENV=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_mainnet": "sui client switch --env mainnet && cross-env NODE_ENV=mainnet pnpm exec ts-node ./src/scripts/deploy.ts",
+    "deploy_test_token": "sui client switch --env devnet && cross-env NODE_ENV=devnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
     "test": "jest --runInBand",
     "lint": "npx prettier -c **/*.ts",
     "fix": "npx prettier -c **/*.ts --write",
