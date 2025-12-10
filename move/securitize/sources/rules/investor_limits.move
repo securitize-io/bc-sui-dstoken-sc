@@ -5,13 +5,8 @@
 module securitize::investor_limits;
 
 use securitize::{version::Version};
-
-// ==== TEMP Compliance Region Constants ====
-
-const US: u64 = 1;
-const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
+use securitize::registry_service::InvestorInfo;
+use std::string::String;
 
 // ==== Error Codes ====
 
@@ -22,6 +17,13 @@ const EMaxNonAccreditedExceeded: u64 = 3;
 const EMaxJPInvestorsExceeded: u64 = 4;
 const EMaxEURetailExceeded: u64 = 5;
 const EBelowMinimumInvestors: u64 = 6;
+
+// ==== TEMP Compliance Region Constants ====
+
+const US: u64 = 1;
+const EU: u64 = 2;
+const FORBIDDEN: u64 = 4;
+const JP: u64 = 8;
 
 // ==== Structs ====
 
@@ -127,18 +129,18 @@ public fun set_max_us_percentage(rule: &mut InvestorLimits, percentage: u64, ver
 /// Validate investor limits for transfer
 public fun validate_investor_limits_for_transfer<T>(
     limits_rule: &InvestorLimits,
-    to_region: u64,
+    registry: &InvestorInfo<T>,
     from_is_accredited: bool,
     from_is_exit_investor: bool,
+    to_region: u64,
+    to_country: String,
     to_is_accredited: bool,
     to_is_qualified: bool,
     to_is_new_investor: bool,
     equal_country: bool,
-    // registry: &InvestorRegistry<T>,
 ) {
-    // Validate total investor limits (for adding new investors)
-    // let total_investors = registry.total_investors();
-    let total_investors = 0;
+
+    let total_investors = registry.get_total_investors_count();
     limits_rule.validate_transfer_total_investors(
         total_investors,
         from_is_exit_investor,
@@ -156,7 +158,7 @@ public fun validate_investor_limits_for_transfer<T>(
     if (to_region == US) {
         validate_us_investor_limits<T>(
             limits_rule,
-            // registry,
+            registry,
             from_is_exit_investor,
             from_is_accredited,
             to_is_new_investor,
@@ -164,8 +166,7 @@ public fun validate_investor_limits_for_transfer<T>(
             equal_country,
         );
     } else if (to_region == JP) {
-        // let jp_count = registry.jp_count();
-        let jp_count = 0;
+        let jp_count = registry.get_jp_investor_count();
         limits_rule.validate_transfer_jp_investors(
             jp_count,
             from_is_exit_investor,
@@ -173,9 +174,8 @@ public fun validate_investor_limits_for_transfer<T>(
             equal_country,
         );
     } else if (to_region == EU && !to_is_qualified) {
-        // EU retail = EU region + not qualified (Retail)
-        // let eu_retail_count = registry.eu_retail_count();
-        let eu_retail_count = 0;
+        // TODO EU retail = EU region && not qualified (Retail)
+        let eu_retail_count = registry.get_eu_retail_investor_count(to_country);
         limits_rule.validate_transfer_eu_retail(
             eu_retail_count,
             from_is_exit_investor,
@@ -186,8 +186,7 @@ public fun validate_investor_limits_for_transfer<T>(
 
     // Validate non-accredited limits
     if (!to_is_accredited) {
-        let accredited_count = 0;
-        // let accredited_count = registry.accredited_count();
+        let accredited_count = registry.get_accredited_investor_count();
         let non_accredited = total_investors - accredited_count;
         limits_rule.validate_transfer_non_accredited(
             non_accredited,
@@ -198,20 +197,63 @@ public fun validate_investor_limits_for_transfer<T>(
     };
 }
 
+/// Validate investor limits for issuance
+public fun validate_investor_limits_for_issuance<T>(
+    limits_rule: &InvestorLimits,
+    registry: &InvestorInfo<T>,
+    to_region: u64,
+    to_country: String,
+    to_is_accredited: bool,
+    to_is_qualified: bool,
+    to_is_new_investor: bool,
+) {
+    // Only check limits if this creates a new investor
+    if (!to_is_new_investor) return;
+
+    let total_investors = registry.get_total_investors_count();
+    let accredited_count = registry.get_accredited_investor_count();
+    let us_count = registry.get_us_investor_count();
+    let us_accredited = registry.get_us_accredited_investor_count();
+    let jp_count = registry.get_jp_investor_count();
+
+    // Validate total investor limit
+    limits_rule.validate_issuance_total_investors(total_investors, to_is_new_investor);
+
+    // Validate non-accredited limit
+    if (!to_is_accredited) {
+        let non_accredited = total_investors - accredited_count;
+        limits_rule.validate_issuance_non_accredited(non_accredited, to_is_new_investor);
+    };
+
+    // Region-specific validations
+    if (to_region == US) {
+        // US investor limit
+        limits_rule.validate_issuance_us_investors(us_count, total_investors, to_is_new_investor);
+        if (to_is_accredited) {
+            limits_rule.validate_issuance_us_accredited(us_accredited, to_is_new_investor);
+        }
+    } else if (to_region == EU && !to_is_qualified) {
+        // EU retail = EU && not qualified
+        let retail_count = registry.get_eu_retail_investor_count(to_country);
+        limits_rule.validate_issuance_eu_retail(retail_count, to_is_new_investor);
+    } else if (to_region == JP) {
+        // JP investor limit
+        limits_rule.validate_issuance_jp_investors(jp_count, to_is_new_investor);
+    };
+}
+
 /// Validate US investor limits
 public fun validate_us_investor_limits<T>(
     limits_rule: &InvestorLimits,
-    // registry: &InvestorRegistry<T>,
+    registry: &InvestorInfo<T>,
     from_is_exit_investor: bool,
     from_is_accredited: bool,
     to_is_new_investor: bool,
     to_is_accredited: bool,
     equal_country: bool,
 ) {
-    // let us_count = registry.us_count();
-    // let total_investors = registry.total_investors();
-    let us_count = 0;
-    let total_investors = 0;
+    let us_count = registry.get_us_investor_count();
+    let total_investors = registry.get_total_investors_count();
 
     limits_rule.validate_transfer_us_investors(
         us_count,
@@ -222,8 +264,7 @@ public fun validate_us_investor_limits<T>(
     );
 
     if (to_is_accredited) {
-        // let us_accredited = registry.us_accredited_count();
-        let us_accredited = 0;
+        let us_accredited = registry.get_us_accredited_investor_count();
 
         limits_rule.validate_transfer_us_accredited(
             us_accredited,
@@ -436,7 +477,7 @@ public fun validate_transfer_minimum_total_investors(
     };
 }
 
-// ==================== Query Functions ====================
+// ==================== View Functions ====================
 
 public fun total_limit(rule: &InvestorLimits): u64 {
     rule.total_investors_limit

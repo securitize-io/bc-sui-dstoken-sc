@@ -7,17 +7,17 @@ module securitize::accredited_only;
 use securitize::{version::Version};
 use std::type_name::{Self, TypeName};
 
+// ==== Error Codes ====
+
+const ENotAccredited: u64 = 0;
+const ENotUSAccredited: u64 = 1;
+
 // ==== TEMP Compliance Region Constants ====
 
 const US: u64 = 1;
 const EU: u64 = 2;
 const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
-
-// ==== Error Codes ====
-
-const ENotAccredited: u64 = 0;
-const ENotUSAccredited: u64 = 1;
 
 // ==== Structs ====
 

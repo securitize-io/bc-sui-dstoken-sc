@@ -12,7 +12,6 @@ const EAboveMaxHolding: u64 = 1;
 const ERegionNotFound: u64 = 2;
 const EInvalidMinimum: u64 = 3;
 const EInvalidMaximum: u64 = 4;
-const EInsufficientBalance: u64 = 5;
 
 // ==== Structs ====
 
@@ -115,25 +114,36 @@ public fun remove_region_min_holdings(
 public fun validate_holding_limits_for_transfer(
     rule: &HoldingLimits,
     amount: u64,
+    from_is_platform_wallet: bool,
     from_balance: u64,
-    to_balance: u64,
     from_region: u64,
+    to_balance: u64,
     to_region: u64,
 ) {
     // ---- SENDER ----
     let from_balance_after = from_balance - amount;
-    // Sender must satisfy MIN only if partial exit
-    assert!(from_balance_after >= 0, EInsufficientBalance);
-
-    if (from_balance_after > 0) {
+    if (from_balance_after > 0 && !from_is_platform_wallet) {
         rule.validate_min_holdings(from_balance_after, from_region);
     };
-    // If zero → full exit → skip all sender checks
     // ---- RECEIVER ----
     let to_balance_after = to_balance + amount;
     // Min holdings check (region-aware)
     rule.validate_min_holdings(to_balance_after, to_region);
     // Max holdings check (receiver only)
+    rule.validate_max_holdings(to_balance_after);
+}
+
+/// Validate holding limits for issuance (receiver only)
+public fun validate_holding_limits_for_issuance(
+    rule: &HoldingLimits,
+    amount: u64,
+    to_balance: u64,
+    to_region: u64,
+) {
+    let to_balance_after = to_balance + amount;
+    // Min holdings check (region-aware)
+    rule.validate_min_holdings(to_balance_after, to_region);
+    // Max holdings check
     rule.validate_max_holdings(to_balance_after);
 }
 
