@@ -21,7 +21,7 @@
     "prepublishOnly": "pnpm build",
     "changeset": "changeset",
     "version": "changeset version",
-    "publish": "pnpm build && changeset publish",
+    "publish": "changeset publish",
     "deploy_localnet": "sui client switch --env localnet && cross-env NODE_ENV=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_devnet": "sui client switch --env devnet && cross-env NODE_ENV=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
     "deploy_testnet": "sui client switch --env testnet && cross-env NODE_ENV=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
