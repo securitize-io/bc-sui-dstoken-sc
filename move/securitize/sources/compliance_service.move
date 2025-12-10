@@ -132,7 +132,7 @@ public fun validate_transfer<T>(
     assert!(from_balance >= amount, ENotEnoughTokens);
     assert!(to_region != FORBIDDEN, EDestinationRestricted);
 
-    let rules =  config.rules;
+    let mut rules =  config.rules;
     // Skip checks for platform wallets except force full transfer
     if (to_is_platform_wallet) {
         rules = vector[]
@@ -167,7 +167,6 @@ public fun validate_transfer<T>(
 }
 
 /// Validate issuance action against all configured rules
-/// Based on Solidity preIssuanceCheck flow
 public fun validate_issue<T>(
     config: &ComplianceConfig<T>,
     registry: &InvestorInfo<T>,
