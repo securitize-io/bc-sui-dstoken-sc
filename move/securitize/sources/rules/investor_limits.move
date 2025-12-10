@@ -8,13 +8,6 @@ use securitize::{version::Version};
 use securitize::registry_service::InvestorInfo;
 use std::string::String;
 
-// ==== TEMP Compliance Region Constants ====
-
-const US: u64 = 1;
-const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
-
 // ==== Error Codes ====
 
 const EMaxInvestorsExceeded: u64 = 0;
@@ -24,6 +17,13 @@ const EMaxNonAccreditedExceeded: u64 = 3;
 const EMaxJPInvestorsExceeded: u64 = 4;
 const EMaxEURetailExceeded: u64 = 5;
 const EBelowMinimumInvestors: u64 = 6;
+
+// ==== TEMP Compliance Region Constants ====
+
+const US: u64 = 1;
+const EU: u64 = 2;
+const FORBIDDEN: u64 = 4;
+const JP: u64 = 8;
 
 // ==== Structs ====
 
@@ -477,7 +477,7 @@ public fun validate_transfer_minimum_total_investors(
     };
 }
 
-// ==================== Query Functions ====================
+// ==================== View Functions ====================
 
 public fun total_limit(rule: &InvestorLimits): u64 {
     rule.total_investors_limit

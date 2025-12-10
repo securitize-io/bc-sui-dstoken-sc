@@ -1,6 +1,6 @@
 module securitize::compliance_service;
 
-use rwa::{registry, vault::RwaTransferRequest};
+use rwa::{vault::RwaTransferRequest};
 use securitize::{
     accredited_only::AccreditedOnly,
     holding_limits::HoldingLimits,
@@ -9,9 +9,8 @@ use securitize::{
     version::Version
 };
 use std::{type_name::{Self, TypeName}};
-use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}};
+use sui::{bag::{Self, Bag}, event};
 use securitize::registry_service::InvestorInfo;
-use std::string;
 use std::string::String;
 
 // ==== Error Codes ====
@@ -56,11 +55,8 @@ const JP: u64 = 8;
 // Compliance Abilities
 
 public struct RegisterRule() has drop;
-
 public struct UnregisterRule() has drop;
-
 public struct SetCountry() has drop;
-
 public struct ManageRules() has drop;
 
 // ==================== Initialization Functions ====================
@@ -111,8 +107,10 @@ public fun validate_transfer<T>(
 
     assert!(registry.is_special_wallet(to_address) ||  registry.is_wallet(to_address), ENotWhitelisted);
     // get investor id
+    // TODO check SPECIAL WALLETS 
     let from_id = registry.get_investor_id_by_wallet(from_address);
     let to_id = registry.get_investor_id_by_wallet(to_address);
+    /////////////////
     let from_country = registry.get_country(from_id);
     let to_country = registry.get_country(to_id);
     let from_region = registry.get_country_compliance(from_country);
@@ -126,15 +124,26 @@ public fun validate_transfer<T>(
     let amount = request.request_amount();
     let from_is_exit_investor = from_balance == amount;
     // TODO add platform wallet
-    let is_platform_wallet_to = false;
+    let to_is_platform_wallet = false;
+    let from_is_platform_wallet = false;
+
     let equal_country = from_country == to_country;
 
     assert!(from_balance >= amount, ENotEnoughTokens);
-
     assert!(to_region != FORBIDDEN, EDestinationRestricted);
 
+    let rules =  config.rules;
+    // Skip checks for platform wallets except force full transfer
+    if (to_is_platform_wallet) {
+        rules = vector[]
+    };
+
+    if (from_address == to_address) {
+        rules = vector[]
+    };
+
     // Validate all configured rules
-    config.rules.do_ref!(|rule| {
+    rules.do_ref!(|rule| {
         validate_transfer_rule(
             config,
             registry,
@@ -144,13 +153,13 @@ public fun validate_transfer<T>(
             from_balance,
             from_is_accredited,
             from_is_exit_investor,
+            from_is_platform_wallet,
             to_region,
             to_country,
             to_balance,
             to_is_accredited,
             to_is_qualified,
             to_is_new_investor,
-            is_platform_wallet_to,
             equal_country,
         );
     });
@@ -172,7 +181,9 @@ public fun validate_issue<T>(
     assert!(registry.is_special_wallet(to) ||  registry.is_wallet(to), ENotWhitelisted);
 
     // get investor info
+    // TODO check SPECIAL WALLETS 
     let to_id = registry.get_investor_id_by_wallet(to);
+    ////////////////
     let to_country = registry.get_country(to_id);
     let to_region = registry.get_country_compliance(to_country);
     let to_balance = registry.investor_wallet_balance_total(to_id);
@@ -184,6 +195,8 @@ public fun validate_issue<T>(
 
     assert!(to_region != FORBIDDEN, EDestinationRestricted);
 
+    // Skip checks for platform wallets
+    if (is_platform_wallet) return;
     // Validate all configured rules
     config.rules.do_ref!(|rule| {
         validate_issuance_rule(
@@ -196,8 +209,7 @@ public fun validate_issue<T>(
             to_country,
             to_is_accredited,
             to_is_qualified,
-            to_is_new_investor,
-            is_platform_wallet,
+            to_is_new_investor
         );
     });
 }
@@ -236,13 +248,13 @@ fun validate_transfer_rule<T>(
     from_balance: u64,
     from_is_accredited: bool,
     from_is_exit_investor: bool,
+    from_is_platform_wallet: bool,
     to_region: u64,
     to_country: String,
     to_balance: u64,
     to_is_accredited: bool,
     to_is_qualified: bool,
     to_is_new_investor: bool,
-    is_platform_wallet_to: bool,
     equal_country: bool,
 ) {
     // Match on rule type and delegate to appropriate validator
@@ -253,6 +265,7 @@ fun validate_transfer_rule<T>(
         let rule: &HoldingLimits = config.rules_bag.borrow(rule);
         rule.validate_holding_limits_for_transfer(
             amount,
+            from_is_platform_wallet,
             from_balance,
             to_balance,
             from_region,
@@ -286,13 +299,8 @@ fun validate_issuance_rule<T>(
     to_is_accredited: bool,
     to_is_qualified: bool,
     to_is_new_investor: bool,
-    is_platform_wallet: bool,
 ) {
-    // Skip most checks for platform wallets
-    if (is_platform_wallet) return;
-
     // TODO: LockManager Is Investor LiquidateOnly
-
     // Accredited only check
     if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
         let rule: &AccreditedOnly = config.rules_bag.borrow(rule);

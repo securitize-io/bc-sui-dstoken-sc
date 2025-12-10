@@ -593,6 +593,9 @@ public fun get_country_compliance<T>(
     investor_info: &InvestorInfo<T>,
     country: String,
 ): u64 {
+    if (!investor_info.countries_compliances.contains(country)) {
+        return NONE;
+    };
     *investor_info.countries_compliances.borrow(country)
 }
 
