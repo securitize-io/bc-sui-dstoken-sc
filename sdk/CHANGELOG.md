@@ -9,7 +9,7 @@
 - Make ADMIN_KEYPAIR optional
 - Publish all
 - Updated dependencies
-    - @easysui/sdk@0.1.2
+    - @securitize/easysui@0.1.2
 
 ## 1.0.3
 

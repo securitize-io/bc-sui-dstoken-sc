@@ -1,4 +1,4 @@
-import {Config as BaseConfig, BaseConfigVars, ExtraVarsMap} from '@easysui/sdk'
+import {Config as BaseConfig, BaseConfigVars, ExtraVarsMap} from '@securitize/easysui'
 
 interface ConfigVars extends BaseConfigVars {
     SETUP_AUTH: string,

@@ -19,12 +19,12 @@ importers:
 
   sdk:
     dependencies:
-      '@easysui/sdk':
-        specifier: workspace:*
-        version: link:../sdk-easysui
       '@mysten/sui':
         specifier: ^1.45.2
         version: 1.45.2(typescript@5.9.3)
+      '@securitize/easysui':
+        specifier: workspace:*
+        version: link:../sdk-easysui
       '@types/node':
         specifier: ^24.3.1
         version: 24.10.1
