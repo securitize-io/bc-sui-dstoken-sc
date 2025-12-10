@@ -5,6 +5,7 @@
 module securitize::investor_limits;
 
 use securitize::{version::Version};
+use securitize::registry_service::InvestorInfo;
 
 // ==== TEMP Compliance Region Constants ====
 
@@ -127,6 +128,7 @@ public fun set_max_us_percentage(rule: &mut InvestorLimits, percentage: u64, ver
 /// Validate investor limits for transfer
 public fun validate_investor_limits_for_transfer<T>(
     limits_rule: &InvestorLimits,
+    registry: &InvestorInfo<T>,
     to_region: u64,
     from_is_accredited: bool,
     from_is_exit_investor: bool,
@@ -134,7 +136,6 @@ public fun validate_investor_limits_for_transfer<T>(
     to_is_qualified: bool,
     to_is_new_investor: bool,
     equal_country: bool,
-    // registry: &InvestorRegistry<T>,
 ) {
     // Validate total investor limits (for adding new investors)
     // let total_investors = registry.total_investors();
@@ -156,7 +157,7 @@ public fun validate_investor_limits_for_transfer<T>(
     if (to_region == US) {
         validate_us_investor_limits<T>(
             limits_rule,
-            // registry,
+            registry,
             from_is_exit_investor,
             from_is_accredited,
             to_is_new_investor,
@@ -247,7 +248,7 @@ public fun validate_investor_limits_for_issuance(
 /// Validate US investor limits
 public fun validate_us_investor_limits<T>(
     limits_rule: &InvestorLimits,
-    // registry: &InvestorRegistry<T>,
+    registry: &InvestorInfo<T>,
     from_is_exit_investor: bool,
     from_is_accredited: bool,
     to_is_new_investor: bool,

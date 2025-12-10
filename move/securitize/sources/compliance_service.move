@@ -10,6 +10,7 @@ use securitize::{
 };
 use std::{ascii::String, type_name::{Self, TypeName}};
 use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}};
+use securitize::registry_service::InvestorInfo;
 
 // ==== Error Codes ====
 
@@ -94,9 +95,9 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 /// Validate transfer action against all configured rules
 public fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
+    registry: &InvestorInfo<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
-    // registry: &InvestorRegistry<T>,
     // lock_manager: &LockManager<T>,
 ): RwaTransferRequest<T> {
     version.check_is_valid();
@@ -120,6 +121,7 @@ public fun validate_transfer<T>(
     config.rules.do_ref!(|rule| {
         validate_transfer_rule(
             config,
+            registry,
             *rule,
             request.request_amount(),
             from_region,
@@ -134,7 +136,6 @@ public fun validate_transfer<T>(
             from_is_exit_investor,
             equal_country,
             is_platform_wallet_to,
-            // registry: &InvestorRegistry<T>,
         );
     });
     request
@@ -144,11 +145,10 @@ public fun validate_transfer<T>(
 /// Based on Solidity preIssuanceCheck flow
 public(package) fun validate_issue<T>(
     config: &ComplianceConfig<T>,
-    to: address,
+    registry: &InvestorInfo<T>,
+    // lock_manager: &LockManager<T>,
     amount: u64,
     version: &Version,
-    // registry: &InvestorRegistry<T>,
-    // lock_manager: &LockManager<T>,
 ) {
     version.check_is_valid();
 
@@ -210,6 +210,7 @@ public(package) fun validate_seize<T>(
 /// Validate a single transfer rule
 fun validate_transfer_rule<T>(
     config: &ComplianceConfig<T>,
+    registry: &InvestorInfo<T>,
     rule: TypeName,
     amount: u64,
     from_region: u64,
@@ -224,7 +225,6 @@ fun validate_transfer_rule<T>(
     from_is_exit_investor: bool,
     equal_country: bool,
     is_platform_wallet_to: bool,
-    // registry: InvestorRegistry<T>
 ) {
     // Match on rule type and delegate to appropriate validator
     if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
@@ -242,6 +242,7 @@ fun validate_transfer_rule<T>(
     } else if (rule == type_name::with_defining_ids<InvestorLimits>()) {
         let rule: &InvestorLimits = config.rules_bag.borrow(rule);
         rule.validate_investor_limits_for_transfer<T>(
+            registry,
             to_region,
             from_is_accredited,
             from_is_exit_investor,
@@ -249,7 +250,6 @@ fun validate_transfer_rule<T>(
             to_is_qualified,
             to_is_new_investor,
             equal_country,
-            // registry,
         );
     };
 }
