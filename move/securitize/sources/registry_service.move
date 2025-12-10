@@ -10,6 +10,7 @@ use std::string::{Self, String};
 use sui::table::{Self, Table};
 use sui::event;
 use securitize::{version::Version, trust_service::{Auth, Master, Issuer}};
+use std::address;
 
 // ==== Error Codes ====
 
@@ -503,6 +504,15 @@ public fun is_investor<T>(
     investor_info.investors.contains(investor_id)
 }
 
+/// Returns whether an investor exists in the registry.
+public fun get_investor_id_by_wallet<T>(
+    investor_info: &InvestorInfo<T>,
+    wallet: address,
+): String {
+    assert!(investor_info.is_wallet(wallet), EInvestorNotFound);
+    investor_info.investor_wallets.borrow(wallet).owner
+}
+
 /// Returns whether a wallet is registered in the registry.
 public fun is_wallet<T>(
     investor_info: &InvestorInfo<T>,
@@ -620,6 +630,13 @@ public fun get_attribute_expiration<T>(
         return 0
     };
     investor.attributes.borrow(attribute_id).expiration
+}
+
+/// Returns the total number of investors.
+public fun get_total_investors_count<T>(
+    investor_info: &InvestorInfo<T>,
+): u64 {
+    investor_info.total_investors_count
 }
 
 /// Returns the total number of accredited investors.
