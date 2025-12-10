@@ -198,6 +198,52 @@ public fun validate_investor_limits_for_transfer<T>(
     };
 }
 
+/// Validate investor limits for issuance
+public fun validate_investor_limits_for_issuance(
+    limits_rule: &InvestorLimits,
+    to_region: u64,
+    to_is_accredited: bool,
+    to_is_qualified: bool,
+    to_is_new_investor: bool,
+) {
+    // Only check limits if this creates a new investor
+    if (!to_is_new_investor) return;
+
+    // TODO: Get actual counts from registry
+    let total_investors = 0;
+    let accredited_count = 0;
+    let us_count = 0;
+    let us_accredited = 0;
+    let jp_count = 0;
+    // TODO get count for country
+
+    // Validate total investor limit
+    limits_rule.validate_issuance_total_investors(total_investors, to_is_new_investor);
+
+    // Validate non-accredited limit
+    if (!to_is_accredited) {
+        let non_accredited = total_investors - accredited_count;
+        limits_rule.validate_issuance_non_accredited(non_accredited, to_is_new_investor);
+    };
+
+    // Region-specific validations
+    if (to_region == US) {
+        // US investor limit
+        limits_rule.validate_issuance_us_investors(us_count, total_investors, to_is_new_investor);
+        if (to_is_accredited) {
+            limits_rule.validate_issuance_us_accredited(us_accredited, to_is_new_investor);
+        }
+    } else if (to_region == EU && !to_is_qualified) {
+        // EU retail = EU + not qualified
+        let retail_count = 0;
+        // TODO: let eu_retail_count for country
+        limits_rule.validate_issuance_eu_retail(retail_count, to_is_new_investor);
+    } else if (to_region == JP) {
+        // JP investor limit
+        limits_rule.validate_issuance_jp_investors(jp_count, to_is_new_investor);
+    };
+}
+
 /// Validate US investor limits
 public fun validate_us_investor_limits<T>(
     limits_rule: &InvestorLimits,

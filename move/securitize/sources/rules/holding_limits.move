@@ -137,6 +137,20 @@ public fun validate_holding_limits_for_transfer(
     rule.validate_max_holdings(to_balance_after);
 }
 
+/// Validate holding limits for issuance (receiver only)
+public fun validate_holding_limits_for_issuance(
+    rule: &HoldingLimits,
+    amount: u64,
+    to_balance: u64,
+    to_region: u64,
+) {
+    let to_balance_after = to_balance + amount;
+    // Min holdings check (region-aware)
+    rule.validate_min_holdings(to_balance_after, to_region);
+    // Max holdings check
+    rule.validate_max_holdings(to_balance_after);
+}
+
 /// Validate only MINIMUM holdings (global + region)
 public fun validate_min_holdings(rule: &HoldingLimits, balance_after: u64, region: u64) {
     // Global minimum

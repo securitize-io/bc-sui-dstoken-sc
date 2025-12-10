@@ -141,15 +141,46 @@ public fun validate_transfer<T>(
 }
 
 /// Validate issuance action against all configured rules
+/// Based on Solidity preIssuanceCheck flow
 public(package) fun validate_issue<T>(
     config: &ComplianceConfig<T>,
     to: address,
     amount: u64,
-    to_balance: u64,
+    version: &Version,
     // registry: &InvestorRegistry<T>,
-    // lock_manager: &mut LockManager<T>,
+    // lock_manager: &LockManager<T>,
 ) {
-    abort 0
+    version.check_is_valid();
+
+    // TODO Check Whitelisted
+    // registry(to) exists as wallet
+
+    let to_region = EU;
+    let to_country = std::ascii::string(b"GREECE");
+    let to_balance = 500;
+    let to_is_accredited = true;
+    let to_is_qualified = true;
+    let is_platform_wallet = false;
+    // Determine if this is a new investor (balance was 0 before issuance)
+    let to_is_new_investor = to_balance == 0;
+
+    assert!(to_region != FORBIDDEN, EDestinationRestricted);
+
+    // Validate all configured rules
+    config.rules.do_ref!(|rule| {
+        validate_issuance_rule(
+            config,
+            *rule,
+            amount,
+            to_balance,
+            to_region,
+            to_country,
+            to_is_accredited,
+            to_is_qualified,
+            to_is_new_investor,
+            is_platform_wallet,
+        );
+    });
 }
 
 /// Validate burn action against all configured rules
@@ -219,6 +250,46 @@ fun validate_transfer_rule<T>(
             to_is_new_investor,
             equal_country,
             // registry,
+        );
+    };
+}
+
+/// Validate a single issuance rule
+fun validate_issuance_rule<T>(
+    config: &ComplianceConfig<T>,
+    rule: TypeName,
+    amount: u64,
+    to_balance: u64,
+    to_region: u64,
+    to_country: String,
+    to_is_accredited: bool,
+    to_is_qualified: bool,
+    to_is_new_investor: bool,
+    is_platform_wallet: bool,
+) {
+    // Skip most checks for platform wallets
+    if (is_platform_wallet) return;
+
+    // TODO: LockManager Is Investor LiquidateOnly
+
+    // Accredited only check
+    if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
+        let rule: &AccreditedOnly = config.rules_bag.borrow(rule);
+        rule.validate_rule(to_region, to_is_accredited);
+    }
+    // Holding limits - min/max holdings
+    else if (rule == type_name::with_defining_ids<HoldingLimits>()) {
+        let rule: &HoldingLimits = config.rules_bag.borrow(rule);
+        rule.validate_holding_limits_for_issuance(amount, to_balance, to_region);
+    }
+    // Investor limits - category limits for new investors
+    else if (rule == type_name::with_defining_ids<InvestorLimits>()) {
+        let rule: &InvestorLimits = config.rules_bag.borrow(rule);
+        rule.validate_investor_limits_for_issuance(
+            to_region,
+            to_is_accredited,
+            to_is_qualified,
+            to_is_new_investor,
         );
     };
 }
