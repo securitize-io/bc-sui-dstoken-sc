@@ -11,6 +11,8 @@
     "lint": "pnpm -r lint",
     "fix": "pnpm -r fix",
     "clean": "rm -rf ./node_modules && pnpm -r clean",
+    "version": "pnpm -r version",
+    "publish": "pnpm -r publish",
     "start_localnet": "RUST_LOG=off sui start --with-faucet --force-regenesis",
     "faucet": "sui client faucet",
     "deploy_localnet": "pnpm -r deploy_localnet",
