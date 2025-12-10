@@ -37,7 +37,7 @@
     "tsup": "^8.5.1"
   },
   "dependencies": {
-    "@easysui/sdk": "workspace:*",
+    "@easysui/sdk": "../sdk-easysui",
     "@mysten/sui": "^1.45.2",
     "@types/node": "^24.3.1",
     "cross-env": "^10.0.0",
