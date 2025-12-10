@@ -28,7 +28,7 @@ This will prompt you to:
 When ready to release, update the version based on changesets:
 
 ```bash
-pnpm version
+pnpm run version
 ```
 
 This will:
