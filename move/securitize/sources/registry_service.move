@@ -143,44 +143,44 @@ public struct RemoveWallet() has drop;
 // ==== Events ====
 
 /// Emitted when a new investor is registered
-public struct InvestorRegistered<phantom T> has copy, drop {
+public struct DSRegistryServiceInvestorAdded<phantom T> has copy, drop {
     investor_id: String,
     sender: address,
 }
 
 /// Emitted when an investor is removed from the registry
-public struct InvestorRemoved<phantom T> has copy, drop {
+public struct DSRegistryServiceInvestorRemoved<phantom T> has copy, drop {
     investor_id: String,
     sender: address,
 }
 
 /// Emitted when an investor's country is changed
-public struct InvestorCountryChanged<phantom T> has copy, drop {
+public struct DSRegistryServiceInvestorCountryChanged<phantom T> has copy, drop {
     investor_id: String,
     country: String,
     sender: address,
 }
 
+/// Emitted when an investor's attribute is changed
+public struct DSRegistryServiceAttributeChanged<phantom T> has copy, drop {
+    investor_id: String,
+    attribute_id: u64,
+    value: u64,
+    expiry: u64,
+    sender: address,
+}
+
 /// Emitted when a wallet is added to an investor
-public struct WalletAdded<phantom T> has copy, drop {
+public struct DSRegistryServiceWalletAdded<phantom T> has copy, drop {
     wallet: address,
     investor_id: String,
     sender: address,
 }
 
 /// Emitted when a wallet is removed from an investor
-public struct WalletRemoved<phantom T> has copy, drop {
+public struct DSRegistryServiceWalletRemoved<phantom T> has copy, drop {
     wallet: address,
     investor_id: String,
-    sender: address,
-}
-
-/// Emitted when an investor's attribute is changed
-public struct AttributeChanged<phantom T> has copy, drop {
-    investor_id: String,
-    attribute_id: u64,
-    value: u64,
-    expiry: u64,
     sender: address,
 }
 
@@ -238,7 +238,7 @@ public(package) fun share<T>(investor_info: InvestorInfo<T>) {
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the RegisterInvestor ability
-/// * `EInvestorNotFound` - If the investor already exists
+/// * `EInvestorExists` - If the investor already exists
 /// * `EEmptyId` - If the investor_id is empty
 public fun register_investor<T: key>(
     investor_info: &mut InvestorInfo<T>,
@@ -249,7 +249,7 @@ public fun register_investor<T: key>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterInvestor>(ctx.sender()), ENotAuthorized);
-    assert!(!investor_info.is_investor(investor_id), EInvestorNotFound);
+    assert!(!investor_info.is_investor(investor_id), EInvestorExists);
     assert!(investor_id.length() > 0, EEmptyId);
 
     let investor = Investor {
@@ -260,7 +260,7 @@ public fun register_investor<T: key>(
         total_balance: 0,
     };
     investor_info.investors.add(investor_id, investor);
-    event::emit(InvestorRegistered<T> { investor_id, sender: ctx.sender() });
+    event::emit(DSRegistryServiceInvestorAdded<T> { investor_id, sender: ctx.sender() });
 }
 
 /// Removes an investor from the registry.
@@ -285,7 +285,7 @@ public fun remove_investor<T: key>(
 
     let Investor { creator:_, country:_, wallets:_, attributes, total_balance:_ } = investor_info.investors.remove(investor_id);
     attributes.drop();
-    event::emit(InvestorRemoved<T> { investor_id, sender: ctx.sender() });
+    event::emit(DSRegistryServiceInvestorRemoved<T> { investor_id, sender: ctx.sender() });
 }
 
 /// Updates an investor's information including country, wallets, and attributes.
@@ -378,7 +378,7 @@ public fun add_wallet<T>(
     };
     investor_info.investor_wallets.add(wallet_addr, wallet);
     investor_info.investors.borrow_mut(investor_id).wallets.push_back(wallet_addr);
-    event::emit( WalletAdded<T> {
+    event::emit( DSRegistryServiceWalletAdded<T> {
         wallet: wallet_addr,
         investor_id,
         sender: ctx.sender()
@@ -409,7 +409,7 @@ public fun remove_wallet<T>(
     let mut wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
     wallets.remove(idx);
-    event::emit( WalletRemoved<T> {
+    event::emit( DSRegistryServiceWalletRemoved<T> {
         wallet: wallet_addr,
         investor_id,
         sender: ctx.sender()
@@ -440,7 +440,7 @@ public fun set_country<T: key>(
     adjust_investor_counts_after_country_change(investor_info, investor_id, country, prev_country);
     let investor = investor_info.investors.borrow_mut(investor_id);
     investor.country = country;
-    event::emit(InvestorCountryChanged<T> {
+    event::emit(DSRegistryServiceInvestorCountryChanged<T> {
         investor_id,
         country,
         sender: ctx.sender(),
@@ -483,7 +483,7 @@ public fun set_attribute<T>(
         investor.attributes.add(attribute_id, attribute);
     };
     event::emit(
-        AttributeChanged<T> {
+        DSRegistryServiceAttributeChanged<T> {
             investor_id,
             attribute_id,
             value: attribute_value,
