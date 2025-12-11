@@ -21,7 +21,7 @@ public fun create_ds_token(
     symbol: String,
     url: String,
     decimals: u8,
-    setup_auth: &SetupRegistry,
+    setup_registry: &mut SetupRegistry,
     rwa_registry: &mut RwaRegistry,
     registry: &mut CoinRegistry,
     version: &Version,
@@ -37,5 +37,5 @@ public fun create_ds_token(
         ctx,
     );
 
-    setup::setup(setup_auth, rwa_registry, currency, treasury_cap, version, ctx)
+    setup::setup(setup_registry, rwa_registry, currency, treasury_cap, version, ctx)
 }

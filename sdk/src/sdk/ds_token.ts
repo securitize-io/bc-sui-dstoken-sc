@@ -24,7 +24,7 @@ export async function create_ds_token(request: DeploymentRequest) {
             ptb.pure.string(tokenSymbol),
             ptb.pure.string("https://aggregator.walrus-mainnet.h2o-nodes.com/v1/blobs/DYlIcfM32ICsXfTJR69kQ6Vv4roYnQbOvoUbRiwsg6g"),
             ptb.pure.u8(request.tokenDescription.decimals),
-            ptb.object(Config.vars.SETUP_AUTH),
+            ptb.object(Config.vars.SETUP_REGISTRY),
             ptb.object(Config.vars.RWA_REGISTRY),
             ptb.object(normalizeSuiAddress('0xc')),
             ptb.object(Config.vars.VERSION),

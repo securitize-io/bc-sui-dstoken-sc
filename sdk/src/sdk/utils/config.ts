@@ -1,7 +1,7 @@
 import {Config as BaseConfig, BaseConfigVars, ExtraVarsMap} from '../../easysui'
 
 interface ConfigVars extends BaseConfigVars {
-    SETUP_AUTH: string,
+    SETUP_REGISTRY: string,
     VERSION: string,
     RWA_REGISTRY: string,
 
@@ -13,7 +13,7 @@ export class Config extends BaseConfig<ConfigVars> {
 
         return {
             ...baseVars,
-            SETUP_AUTH: process.env.SETUP_AUTH || '',
+            SETUP_REGISTRY: process.env.SETUP_REGISTRY || '',
             VERSION: process.env.VERSION || '',
             RWA_REGISTRY: process.env.RWA_REGISTRY || '',
         }
@@ -21,7 +21,7 @@ export class Config extends BaseConfig<ConfigVars> {
 
     static override get extraVars(): ExtraVarsMap {
         return {
-            SETUP_AUTH: "{packageId}::setup::SetupAuth",
+            SETUP_REGISTRY: "{packageId}::setup::SetupRegistry",
             VERSION: "{packageId}::version::Version",
             RWA_REGISTRY: "{packageId}::registry::RwaRegistry",
         }
