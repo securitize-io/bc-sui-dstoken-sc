@@ -1,11 +1,12 @@
 import { SuiClient as SC } from '@mysten/sui/client'
-import { toBase64, fromBase64 } from '@mysten/sui/utils'
+import { toBase64, fromBase64, fromHex } from '@mysten/sui/utils'
 import { Config } from '../config/config'
 import { Transaction } from '@mysten/sui/transactions'
 import { Keypair } from '@mysten/sui/cryptography'
 import { bcs } from '@mysten/sui/bcs'
 import { analyze_cost } from './cost_analyzer'
 import type {SuiTransactionBlockResponse} from "@mysten/sui/jsonRpc";
+import {FORMAT_TYPES, hexToBase64, isHex, toFormatType} from "./byte_utils";
 
 export enum MoveType {
     u8 = 1,
@@ -152,7 +153,7 @@ export class SuiClient {
         ptb,
         withTransfer = false,
         gasOwner,
-        asBase64 = false
+        format = FORMAT_TYPES.hex
     }: {
         signer: string
         target: string
@@ -163,31 +164,30 @@ export class SuiClient {
         ptb?: Transaction
         withTransfer?: boolean
         gasOwner?: string
-        asBase64?: boolean
+        format?: FORMAT_TYPES
     }) {
         ptb = this.getPTB(target, typeArgs, args, argTypes, withTransfer, signer, ptb);
-        try {
-            ptb.setSender(signer)
-            gasOwner ??= signer
-            ptb.setGasOwner(gasOwner || signer)
-            const bytes = await ptb.build({ client: SuiClient.client, onlyTransactionKind: false });
-            return asBase64 ? toBase64(bytes) : bytes
-        } catch (e) {
-            throw new Error(errorHandler(e))
-        }
+        ptb.setSender(signer)
+        gasOwner ??= signer
+        ptb.setGasOwner(gasOwner || signer)
+        const bytes = await ptb.build({ client: SuiClient.client, onlyTransactionKind: false });
+        return toFormatType(format, bytes)
     }
 
-    public static async getSignature(signatureOrKeypair: string | Keypair, bytes: Uint8Array | string) {
+    public static toBytes(bytes: Uint8Array | string) {
         if (typeof bytes === 'string') {
-            bytes = fromBase64(bytes)
+            return isHex(bytes) ? fromHex(bytes) : fromBase64(bytes)
         }
+        return bytes
+    }
 
+    public static async getSignature(signatureOrKeypair: string | Keypair, bytes: Uint8Array) {
         if (typeof signatureOrKeypair !== 'string') {
             const signature = await signatureOrKeypair.signTransaction(bytes)
             return signature.signature
         }
 
-        return signatureOrKeypair
+        return isHex(signatureOrKeypair) ? hexToBase64(signatureOrKeypair) : signatureOrKeypair
     }
 
     public static async executeMoveCallBytes(
@@ -197,23 +197,29 @@ export class SuiClient {
         errorHandler: (e: any) => string = (e) => e,
     ) {
         try {
-            senderSignature = await this.getSignature(senderSignature, bytes)
+            const transactionBlock = this.toBytes(bytes)
+            senderSignature = await this.getSignature(senderSignature, transactionBlock)
 
             const signature = [senderSignature]
             if (gasOwnerSignature) {
-                gasOwnerSignature = await this.getSignature(gasOwnerSignature, bytes)
+                gasOwnerSignature = await this.getSignature(gasOwnerSignature, transactionBlock)
                 signature.push(gasOwnerSignature)
             }
             
+            console.log(bytes)
+            console.log(toBase64(transactionBlock))
+            console.log(signature)
+
             const resp = await SuiClient.client.executeTransactionBlock({
-                transactionBlock: bytes,
+                transactionBlock: toBase64(transactionBlock),
                 signature,
                 options: txOptions
             })
             const ptb = Transaction.from(bytes)
             return SuiClient.waitForTransaction(ptb, resp, errorHandler)
         } catch (e) {
-            throw new Error(errorHandler(e))
+            throw e
+            // throw new Error(errorHandler(e))
         }
     }
 
@@ -271,7 +277,12 @@ export class SuiClient {
     public static async getObject(id: string) {
         return SuiClient.client.getObject({
             id,
-            options: { showContent: true },
+            options: {
+                showContent: true,
+                showType: true,
+                showDisplay: true,
+                showBcs: true,
+            },
         })
     }
 

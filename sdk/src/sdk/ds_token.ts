@@ -8,6 +8,8 @@ export async function create_ds_token(request: DeploymentRequest) {
     //TODO: deploy token contract first
 
     const ptb = new Transaction()
+    const tokenSymbol = request.tokenDescription.symbol
+
     const [
         auth,
         treasury,
@@ -15,10 +17,10 @@ export async function create_ds_token(request: DeploymentRequest) {
         complianceConfig,
         setupFinalize
     ] = ptb.moveCall({
-        target: `${Config.vars.PACKAGE_ID}::voloro::create_ds_token`,
+        target: `${Config.vars.PACKAGE_ID}::${tokenSymbol}::create_ds_token`,
         arguments: [
-            ptb.pure.string(request.tokenDescription.name),
-            ptb.pure.string(request.tokenDescription.symbol),
+            ptb.pure.string(tokenSymbol),
+            ptb.pure.string(tokenSymbol),
             ptb.pure.string("https://aggregator.walrus-mainnet.h2o-nodes.com/v1/blobs/DYlIcfM32ICsXfTJR69kQ6Vv4roYnQbOvoUbRiwsg6g"),
             ptb.pure.u8(request.tokenDescription.decimals),
             ptb.object(Config.vars.SETUP_AUTH),
@@ -32,7 +34,7 @@ export async function create_ds_token(request: DeploymentRequest) {
 
     ptb.moveCall({
         target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,
-        typeArguments: [`${Config.vars.PACKAGE_ID}::voloro::VOLORO`],
+        typeArguments: [`${Config.vars.PACKAGE_ID}::${tokenSymbol}::${tokenSymbol.toUpperCase()}`],
         arguments: [
             setupFinalize,
             auth,

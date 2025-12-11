@@ -17,3 +17,5 @@ const request: DeploymentRequest = {
 export async function deployToken() {
     await create_ds_token(request)
 }
+
+deployToken().then()
