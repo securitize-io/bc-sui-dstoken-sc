@@ -97,11 +97,7 @@ public fun set_region_min_holdings(
 }
 
 /// Remove region-specific minimum
-public fun remove_region_min_holdings(
-    rule: &mut HoldingLimits,
-    region: u64,
-    version: &Version,
-) {
+public fun remove_region_min_holdings(rule: &mut HoldingLimits, region: u64, version: &Version) {
     version.check_is_valid();
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
@@ -121,9 +117,11 @@ public fun validate_holding_limits_for_transfer(
     to_region: u64,
 ) {
     // ---- SENDER ----
-    let from_balance_after = from_balance - amount;
-    if (from_balance_after > 0 && !from_is_platform_wallet) {
-        rule.validate_min_holdings(from_balance_after, from_region);
+    if (!from_is_platform_wallet) {
+        let from_balance_after = from_balance - amount;
+        if (from_balance_after > 0){
+            rule.validate_min_holdings(from_balance_after, from_region);
+        }
     };
     // ---- RECEIVER ----
     let to_balance_after = to_balance + amount;

@@ -4,8 +4,7 @@
 /// (total, accredited, non-accredited, by region, etc.)
 module securitize::investor_limits;
 
-use securitize::{version::Version};
-use securitize::registry_service::InvestorInfo;
+use securitize::{registry_service::InvestorInfo, version::Version};
 use std::string::String;
 
 // ==== Error Codes ====
@@ -139,7 +138,6 @@ public fun validate_investor_limits_for_transfer<T>(
     to_is_new_investor: bool,
     equal_country: bool,
 ) {
-
     let total_investors = registry.get_total_investors_count();
     limits_rule.validate_transfer_total_investors(
         total_investors,
@@ -398,10 +396,10 @@ public fun validate_issuance_non_accredited(
     current_count: u64,
     to_is_new_investor: bool,
 ) {
-    if (rule.us_accredited_limit == 0) return;
+    if (rule.non_accredited_limit == 0) return;
 
     if (to_is_new_investor) {
-        assert!(current_count < rule.non_accredited_limit, EMaxUSAccreditedExceeded);
+        assert!(current_count < rule.non_accredited_limit, EMaxNonAccreditedExceeded);
     }
 }
 
