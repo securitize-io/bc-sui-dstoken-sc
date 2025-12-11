@@ -149,7 +149,6 @@ export class SuiClient {
         typeArgs = [],
         args = [],
         argTypes = [],
-        errorHandler = (e) => e,
         ptb,
         withTransfer = false,
         gasOwner,
@@ -205,17 +204,12 @@ export class SuiClient {
                 gasOwnerSignature = await this.getSignature(gasOwnerSignature, transactionBlock)
                 signature.push(gasOwnerSignature)
             }
-            
-            console.log(bytes)
-            console.log(toBase64(transactionBlock))
-            console.log(signature)
-
             const resp = await SuiClient.client.executeTransactionBlock({
                 transactionBlock: toBase64(transactionBlock),
                 signature,
                 options: txOptions
             })
-            const ptb = Transaction.from(bytes)
+            const ptb = Transaction.from(toBase64(transactionBlock))
             return SuiClient.waitForTransaction(ptb, resp, errorHandler)
         } catch (e) {
             throw e

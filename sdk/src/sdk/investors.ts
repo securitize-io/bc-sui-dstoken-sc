@@ -4,7 +4,6 @@ import {getTokenDetails} from "./token";
 
 export async  function registerInvestor(signer: string, tokenAddress: string, investorId: string) {
     const tokenDetails = getTokenDetails(tokenAddress)
-    console.log(tokenDetails);
     return SuiClient.getMoveCallBytes({
         signer,
         target: `${Config.vars.PACKAGE_ID}::registry_service::register_investor`,

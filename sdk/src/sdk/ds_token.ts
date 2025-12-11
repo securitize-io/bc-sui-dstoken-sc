@@ -47,9 +47,6 @@ export async function create_ds_token(request: DeploymentRequest) {
     })
 
     const result = await SuiClient.signAndExecute(ptb, ADMIN_KEYPAIR!)
-
-    console.log(result);
-    
     return result
 
     // return {
