@@ -8,7 +8,6 @@ import {
 export enum FORMAT_TYPES {
     hex = 1,
     base64,
-    bytes
 }
 
 export function toFormatType(type: FORMAT_TYPES, bytes: Uint8Array<ArrayBuffer>) {
@@ -17,10 +16,8 @@ export function toFormatType(type: FORMAT_TYPES, bytes: Uint8Array<ArrayBuffer>)
             return toBase64(bytes)
         case FORMAT_TYPES.hex:
             return toHex(bytes)
-        case FORMAT_TYPES.bytes:
-            return bytes
         default:
-            return bytes
+            throw "The FORMAT_TYPES must be one of hex or base64"
     }
 }
 
