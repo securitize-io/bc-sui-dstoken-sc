@@ -50,7 +50,7 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
     }
 
     get env(): Network {
-        let env = process.env.NODE_ENV
+        let env = process.env.NETWORK
         if (!['mainnet', 'testnet', 'devnet', 'localnet'].includes(env || '')) {
             env = 'localnet'
         }
