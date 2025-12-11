@@ -1,7 +1,7 @@
 module voloro::voloro;
 
 use securitize::{
-    setup::{Self, SetupAuth, SetupFinalize},
+    setup::{Self, SetupRegistry, SetupFinalize},
     version::Version,
     trust_service::Auth,
     ds_token::Treasury,
@@ -21,7 +21,7 @@ public fun create_ds_token(
     symbol: String,
     url: String,
     decimals: u8,
-    setup_auth: &SetupAuth,
+    setup_auth: &SetupRegistry,
     rwa_registry: &mut RwaRegistry,
     registry: &mut CoinRegistry,
     version: &Version,

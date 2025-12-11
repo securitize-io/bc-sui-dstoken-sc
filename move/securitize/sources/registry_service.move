@@ -8,8 +8,10 @@ module securitize::registry_service;
 
 use std::string::{Self, String};
 use sui::table::{Self, Table};
+use sui::derived_object;
 use sui::event;
 use securitize::{version::Version, trust_service::{Auth, Master, Issuer}};
+use std::address;
 
 // ==== Error Codes ====
 
@@ -58,6 +60,8 @@ const US: u64 = 1;
 const EU: u64 = 2;
 const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
+
+public struct RegistryServiceKey<phantom T>() has copy, drop, store;
 
 // ==== Structs ====
 
@@ -188,6 +192,7 @@ public struct DSRegistryServiceWalletRemoved<phantom T> has copy, drop {
 ///
 /// Called by the setup module during token deployment.
 public(package) fun new<T: key>(
+    uid: &mut UID,
     auth: &mut Auth<T>,
     version: &Version,
     ctx: &mut TxContext,
@@ -210,7 +215,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Issuer, RemoveWallet>(version,ctx);
 
     let investor_info = InvestorInfo<T> {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, RegistryServiceKey<T>()),
         investors: table::new(ctx),
         investor_wallets: table::new(ctx),
         special_wallets: table::new(ctx),
@@ -408,6 +413,7 @@ public fun remove_wallet<T>(
     investor_info.investor_wallets.remove(wallet_addr);
     let mut wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
+    investor_info.investor_wallets.remove(wallet_addr);
     wallets.remove(idx);
     event::emit( DSRegistryServiceWalletRemoved<T> {
         wallet: wallet_addr,
@@ -503,6 +509,15 @@ public fun is_investor<T>(
     investor_info.investors.contains(investor_id)
 }
 
+/// Returns whether an investor exists in the registry.
+public fun get_investor_id_by_wallet<T>(
+    investor_info: &InvestorInfo<T>,
+    wallet: address,
+): String {
+    assert!(investor_info.is_wallet(wallet), EInvestorNotFound);
+    investor_info.investor_wallets.borrow(wallet).owner
+}
+
 /// Returns whether a wallet is registered in the registry.
 public fun is_wallet<T>(
     investor_info: &InvestorInfo<T>,
@@ -516,12 +531,12 @@ public fun is_special_wallet<T>(
     investor_info: &InvestorInfo<T>,
     wallet: address
 ): bool {
-    let wallet_type = investor_info.get_wallet_type(wallet);
+    let wallet_type = investor_info.get_special_wallet_type(wallet);
     wallet_type != 0
 }
 
-/// Retrieves the wallet type for a wallet address.
-public fun get_wallet_type<T>(
+/// Retrieves the wallet type for a special wallet address.
+public fun get_special_wallet_type<T>(
     investor_info: &InvestorInfo<T>,
     wallet: address
 ): u64 {
@@ -583,6 +598,9 @@ public fun get_country_compliance<T>(
     investor_info: &InvestorInfo<T>,
     country: String,
 ): u64 {
+    if (!investor_info.countries_compliances.contains(country)) {
+        return NONE
+    };
     *investor_info.countries_compliances.borrow(country)
 }
 
@@ -620,6 +638,13 @@ public fun get_attribute_expiration<T>(
         return 0
     };
     investor.attributes.borrow(attribute_id).expiration
+}
+
+/// Returns the total number of investors.
+public fun get_total_investors_count<T>(
+    investor_info: &InvestorInfo<T>,
+): u64 {
+    investor_info.total_investors_count
 }
 
 /// Returns the total number of accredited investors.
@@ -676,6 +701,14 @@ public(package) fun set_special_wallet<T>(
     wallet_type: u64,
 ) {
     investor_info.special_wallets.add(wallet, wallet_type);
+}
+
+/// Removes a special wallet from the registry.
+public(package) fun remove_special_wallet<T>(
+    investor_info: &mut InvestorInfo<T>,
+    wallet: address,
+): u64 {
+    investor_info.special_wallets.remove(wallet)
 }
 
 /// Sets the count of US investors.
