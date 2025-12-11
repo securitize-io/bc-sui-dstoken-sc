@@ -9,6 +9,7 @@ export async function create_ds_token(request: DeploymentRequest) {
 
     const ptb = new Transaction()
     const tokenSymbol = request.tokenDescription.symbol
+    const tokenPackage = `${Config.vars.PACKAGE_ID}::${tokenSymbol.toLowerCase()}`
 
     const [
         auth,
@@ -17,7 +18,7 @@ export async function create_ds_token(request: DeploymentRequest) {
         complianceConfig,
         setupFinalize
     ] = ptb.moveCall({
-        target: `${Config.vars.PACKAGE_ID}::${tokenSymbol}::create_ds_token`,
+        target: `${tokenPackage}::create_ds_token`,
         arguments: [
             ptb.pure.string(tokenSymbol),
             ptb.pure.string(tokenSymbol),
@@ -34,7 +35,7 @@ export async function create_ds_token(request: DeploymentRequest) {
 
     ptb.moveCall({
         target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,
-        typeArguments: [`${Config.vars.PACKAGE_ID}::${tokenSymbol}::${tokenSymbol.toUpperCase()}`],
+        typeArguments: [`${tokenPackage}::${tokenSymbol.toUpperCase()}`],
         arguments: [
             setupFinalize,
             auth,
