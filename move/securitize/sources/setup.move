@@ -1,6 +1,12 @@
 module securitize::setup;
 
-use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
+use sui::{
+    coin::TreasuryCap, 
+    coin_registry::CurrencyInitializer, 
+    event, 
+    vec_set::{Self, VecSet},
+    derived_object
+};
 use securitize::{
     version::Version, 
     ds_token::{Self, Treasury}, 
@@ -21,7 +27,7 @@ const ENotAdmin: u64 = 1;
 // ==== Structs ====
 
 /// Registry that tracks authorized deployers and the admin for new ds token deployments.
-public struct SetupAuth has key {
+public struct SetupRegistry has key {
     id: UID,
     /// Set of addresses authorized to deploy tokens
     deployers: VecSet<address>,
@@ -51,7 +57,7 @@ public struct AdminSwitched has copy, drop {
 /// Initializes the SetupAuth on module publish.
 /// The deployer of this module becomes both the first deployer and the admin.
 fun init(ctx: &mut TxContext) {
-    let registry = SetupAuth {
+    let registry = SetupRegistry {
         id: object::new(ctx),
         deployers: vec_set::singleton(ctx.sender()),
         admin: ctx.sender(),
@@ -68,7 +74,7 @@ fun init(ctx: &mut TxContext) {
 /// # Aborts
 /// * `ENotDeployer` - If the caller is not in the authorized deployers list
 public fun setup<T: key>(
-    setup_auth: &SetupAuth,
+    setup_registry: &mut SetupRegistry,
     rwa_registry: &mut RwaRegistry,
     currency: CurrencyInitializer<T>,
     treasury_cap: TreasuryCap<T>,
@@ -76,12 +82,12 @@ public fun setup<T: key>(
     ctx: &mut TxContext,
 ): (Auth<T>, Treasury<T>, InvestorInfo<T>, ComplianceConfig<T>, SetupFinalize) {
     version.check_is_valid();
-    assert!(setup_auth.deployers.contains(&ctx.sender()), ENotDeployer);
+    assert!(setup_registry.deployers.contains(&ctx.sender()), ENotDeployer);
     let metadata_cap = currency.finalize(ctx);
-    let mut auth = trust_service::new<T>(ctx);
-    let treasury = ds_token::new<T>(&mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
-    let investor_info = registry_service::new<T>(&mut auth, version, ctx);
-    let compliance = compliance_service::new<T>(&mut auth, version, ctx);
+    let mut auth = trust_service::new<T>(setup_registry.uid_mut(), ctx);
+    let treasury = ds_token::new<T>(setup_registry.uid_mut(), &mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
+    let investor_info = registry_service::new<T>(setup_registry.uid_mut(), &mut auth, version, ctx);
+    let compliance = compliance_service::new<T>(setup_registry.uid_mut(), &mut auth, version, ctx);
     wallet_manager::new<T>(&mut auth, version, ctx);
     (auth, treasury, investor_info, compliance, SetupFinalize {})
 }
@@ -111,7 +117,7 @@ public fun finalize_setup<T: key>(
 /// # Aborts
 /// * `ENotAdmin` - If the caller is not the admin
 public fun add_deployer(
-    registry: &mut SetupAuth,
+    registry: &mut SetupRegistry,
     deployer: address,
     version: &Version,
     ctx: &mut TxContext,
@@ -128,7 +134,7 @@ public fun add_deployer(
 /// # Aborts
 /// * `ENotAdmin` - If the caller is not the admin
 public fun remove_deployer(
-    registry: &mut SetupAuth,
+    registry: &mut SetupRegistry,
     deployer: address,
     version: &Version,
     ctx: &mut TxContext,
@@ -145,7 +151,7 @@ public fun remove_deployer(
 /// # Aborts
 /// * `ENotAdmin` - If the caller is not the admin
 public fun switch_admin(
-    registry: &mut SetupAuth,
+    registry: &mut SetupRegistry,
     new_admin: address,
     version: &Version,
     ctx: &mut TxContext,
@@ -164,12 +170,19 @@ public fun switch_admin(
 // ==== View Functions ====
 
 /// Checks if the given address is an authorized deployer.
-public fun is_deployer(registry: &SetupAuth, addr: address): bool {
+public fun is_deployer(registry: &SetupRegistry, addr: address): bool {
     registry.deployers.contains(&addr)
 }
 
-public fun admin(registry: &SetupAuth): address {
+public fun admin(registry: &SetupRegistry): address {
     registry.admin
+}
+
+// ==== Package-Private Functions ====
+
+/// Expose `uid_mut` so we can claim derived objects from other modules.
+public(package) fun uid_mut(registry: &mut SetupRegistry): &mut UID {
+    &mut registry.id
 }
 
 /// Test-only function to initialize the SetupAuth in test environments.

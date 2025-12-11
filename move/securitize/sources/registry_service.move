@@ -8,6 +8,7 @@ module securitize::registry_service;
 
 use std::string::{Self, String};
 use sui::table::{Self, Table};
+use sui::derived_object;
 use sui::event;
 use securitize::{version::Version, trust_service::{Auth, Master, Issuer}};
 use std::address;
@@ -59,6 +60,8 @@ const US: u64 = 1;
 const EU: u64 = 2;
 const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
+
+public struct RegistryServiceKey<phantom T>() has copy, drop, store;
 
 // ==== Structs ====
 
@@ -189,6 +192,7 @@ public struct DSRegistryServiceWalletRemoved<phantom T> has copy, drop {
 ///
 /// Called by the setup module during token deployment.
 public(package) fun new<T: key>(
+    uid: &mut UID,
     auth: &mut Auth<T>,
     version: &Version,
     ctx: &mut TxContext,
@@ -211,7 +215,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Issuer, RemoveWallet>(version,ctx);
 
     let investor_info = InvestorInfo<T> {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, RegistryServiceKey<T>()),
         investors: table::new(ctx),
         investor_wallets: table::new(ctx),
         special_wallets: table::new(ctx),
@@ -595,7 +599,7 @@ public fun get_country_compliance<T>(
     country: String,
 ): u64 {
     if (!investor_info.countries_compliances.contains(country)) {
-        return NONE;
+        return NONE
     };
     *investor_info.countries_compliances.borrow(country)
 }
