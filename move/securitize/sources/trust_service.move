@@ -6,7 +6,7 @@
 module securitize::trust_service;
 
 use std::type_name::{Self, TypeName};
-use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}, vec_set::{Self, VecSet}};
+use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}, vec_set::{Self, VecSet}, derived_object};
 use securitize::version::Version;
 
 // ==== Error Codes ====
@@ -34,6 +34,8 @@ const EAbilityNotFound: u64 = 9;
 const ERoleAlreadyExists: u64 = 10;
 /// Role has active members and cannot be removed.
 const ERoleHasActiveMembers: u64 = 11;
+
+public struct TrustServiceKey<phantom T>() has copy, drop, store;
 
 // ==================== Structs ====================
 
@@ -93,7 +95,7 @@ public struct SetRoleTypes has drop {}
 
 /// Create new Auth shared object for type T
 /// This should be called during initialization and the Auth object should be shared
-public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
+public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
     // Initialize roles VecMap with Master, Issuer, TransferAgent roles
     let mut roles = vec_map::empty();
     roles.insert(type_name::with_defining_ids<Master>(), 0);
@@ -125,7 +127,7 @@ public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
     roles_abilities.insert(type_name::with_defining_ids<Issuer>(), issuer_abilities);
 
     let mut auth = Auth<T> {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, TrustServiceKey<T>()),
         roles,
         roles_abilities,
         roles_owners: bag::new(ctx),

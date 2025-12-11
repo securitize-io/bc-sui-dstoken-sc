@@ -1,8 +1,8 @@
 module securitize::ds_token;
 
-use sui::{coin::TreasuryCap, coin_registry::MetadataCap, dynamic_object_field as dof, event};
-use std::string::{Self, String}
-;use securitize::{version::Version, trust_service::{Auth, Master, Issuer, TransferAgent}};
+use sui::{coin::TreasuryCap, coin_registry::MetadataCap, dynamic_object_field as dof, event, derived_object};
+use std::string::{Self, String};
+use securitize::{version::Version, trust_service::{Auth, Master, Issuer, TransferAgent}};
 use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
 use rwa::rule::{Self, RwaRule};
 use rwa::registry::RwaRegistry;
@@ -23,6 +23,8 @@ const EVaultOwnerMismatch: u64 = 4;
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
 public struct DsProtocol() has drop;
+
+public struct DsTokenKey<phantom T>() has copy, drop, store;
 
 // ==== Structs ====
 
@@ -85,6 +87,7 @@ public struct Pause<phantom T> has copy, drop {
 ///
 /// Called by the setup module during token deployment.
 public(package) fun new<T: key>(
+    uid: &mut UID,
     auth: &mut Auth<T>,
     rwa_registry: &mut RwaRegistry,
     treasury_cap: TreasuryCap<T>,
@@ -107,7 +110,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, TransferAgent, Pauser>(version,ctx);
     // Initialize the Treasury
     let mut treasury = Treasury {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, DsTokenKey<T>()),
         metadata_cap,
         paused: false,
     };
