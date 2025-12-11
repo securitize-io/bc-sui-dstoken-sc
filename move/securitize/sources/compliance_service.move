@@ -6,10 +6,10 @@ use securitize::{
     holding_limits::HoldingLimits,
     investor_limits::InvestorLimits,
     trust_service::{Auth, TransferAgent, Master},
-    version::Version
+    version::Version,
 };
 use std::{type_name::{Self, TypeName}};
-use sui::{bag::{Self, Bag}, event};
+use sui::{bag::{Self, Bag}, event, derived_object};
 use securitize::registry_service::InvestorInfo;
 use std::string::String;
 
@@ -22,6 +22,8 @@ const ERuleAlreadyExists: u64 = 1;
 const EDestinationRestricted: u64 = 2;
 const ENotWhitelisted: u64 = 3;
 const ENotEnoughTokens: u64 = 4;
+
+public struct ComplianceServiceKey<phantom T>() has copy, drop, store;
 
 // ==== Events ====
 
@@ -63,6 +65,7 @@ public struct ManageRules() has drop;
 
 /// Create a new ComplianceConfig for token type T
 public(package) fun new<T>(
+    uid: &mut UID,
     auth: &mut Auth<T>,
     version: &Version,
     ctx: &mut TxContext,
@@ -78,7 +81,7 @@ public(package) fun new<T>(
     auth.add_role_ability<T, TransferAgent, ManageRules>(version, ctx);
 
     ComplianceConfig<T> {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, ComplianceServiceKey<T>()),
         rules_bag: bag::new(ctx),
         rules: vector[],
     }
