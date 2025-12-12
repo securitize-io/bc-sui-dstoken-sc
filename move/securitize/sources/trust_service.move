@@ -158,6 +158,21 @@ public fun get_role<T>(self: &Auth<T>, owner: address): TypeName {
     *self.roles_owners.borrow(owner_key)
 }
 
+/// Set/grant a role Exchange to an owner address
+/// Creates an AddressKey and stores it in the roles Bag
+public fun set_exchange<T>(self: &mut Auth<T>, owner: address, version: &Version, ctx: &mut TxContext) {
+    version.check_is_valid();
+    assert!(owner_has_ability<T, SetExchange>(self, ctx.sender()), ENotEnoughPermissions);
+    internal_assign_role<T, Exchange>(self, owner, ctx);
+}
+
+/// Remove a role Exchange from an owner address
+public fun remove_exchange<T>(self: &mut Auth<T>, owner: address, version: &Version, ctx: &mut TxContext) {
+    version.check_is_valid();
+    assert!(owner_has_ability<T, SetExchange>(self, ctx.sender()), ENotEnoughPermissions);
+    internal_remove_role<T, Exchange>(self, owner, ctx);
+}
+
 /// Set/grant a role TransferAgent to an owner address
 /// Creates an AddressKey and stores it in the roles Bag
 public fun set_transfer_agent<T>(self: &mut Auth<T>, owner: address, version: &Version, ctx: &mut TxContext) {
