@@ -12,6 +12,8 @@ use sui::derived_object;
 use sui::event;
 use securitize::{version::Version, trust_service::{Auth, Master, Issuer, Exchange}};
 use std::address;
+use rwa::registry::RwaRegistry;
+use rwa::vault;
 
 // ==== Error Codes ====
 
@@ -311,6 +313,7 @@ public fun remove_investor<T: key>(
 public fun update_investor<T: key>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
+    registry: &mut RwaRegistry,
     investor_id: String,
     country: String,
     wallets: vector<address>,
@@ -338,6 +341,7 @@ public fun update_investor<T: key>(
         } else {
             investor_info.add_wallet<T>(
                 auth,
+                registry,
                 investor_id,
                 wallet,
                 version,
@@ -373,6 +377,7 @@ public fun update_investor<T: key>(
 public fun add_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
+    registry: &mut RwaRegistry,
     investor_id: String,
     wallet_addr: address,
     version: &Version,
@@ -383,7 +388,9 @@ public fun add_wallet<T>(
     assert!(!investor_info.is_special_wallet(wallet_addr), ESpecialWallet);
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     assert!(!investor_info.is_wallet(wallet_addr), EWalletAlreadyExists);
-
+    if (!vault::vault_exists(registry, wallet_addr)) {
+        vault::claim(registry, vault::owner_from_address(wallet_addr));
+    };
     let wallet = Wallet {
         owner: investor_id,
         creator: ctx.sender(),
