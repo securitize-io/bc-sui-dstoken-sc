@@ -21,6 +21,11 @@ public(package) fun uid_mut(registry: &mut RwaRegistry): &mut UID {
     &mut registry.id
 }
 
+/// Expose `uid` so we can use it to check if the ID exists.
+public fun uid(registry: &RwaRegistry): &UID {
+    &registry.id
+}
+
 #[test_only]
 public fun create_for_testing(ctx: &mut TxContext): RwaRegistry {
     RwaRegistry {
