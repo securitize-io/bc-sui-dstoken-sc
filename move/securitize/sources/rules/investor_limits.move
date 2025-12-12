@@ -175,7 +175,7 @@ public fun validate_investor_limits_for_transfer<T>(
         );
     } else if (to_region == EU && !to_is_qualified) {
         // TODO EU retail = EU region && not qualified (Retail)
-        let eu_retail_count = registry.get_eu_retail_investor_count(to_country);
+        let mut eu_retail_count = registry.get_eu_retail_investor_count(to_country);
         if (eu_retail_count.is_some()) {
             limits_rule.validate_transfer_eu_retail(
                 eu_retail_count.extract(),
@@ -236,7 +236,7 @@ public fun validate_investor_limits_for_issuance<T>(
         }
     } else if (to_region == EU && !to_is_qualified) {
         // EU retail = EU && not qualified
-        let retail_count = registry.get_eu_retail_investor_count(to_country);
+        let mut retail_count = registry.get_eu_retail_investor_count(to_country);
         if (retail_count.is_some()) {
             limits_rule.validate_issuance_eu_retail(retail_count.extract(), to_is_new_investor);
         }
