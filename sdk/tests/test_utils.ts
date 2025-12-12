@@ -1,4 +1,5 @@
 import {ADMIN_KEYPAIR, createDSToken, DeploymentRequest, SuiClient} from "../src";
+import {Keypair} from "@mysten/sui/cryptography";
 
 export const testTokenRequest: DeploymentRequest = {
     tokenDescription: {
@@ -18,7 +19,8 @@ export async function createTestToken() {
     return res.id
 }
 
-export async function executeTxFunc(promise: Promise<string>) {
+export async function executeTxFunc(promise: Promise<string>, signer?: Keypair) {
+    signer ??= ADMIN_KEYPAIR!
     const bytes = await promise
-    await SuiClient.executeMoveCallBytes(bytes, ADMIN_KEYPAIR!)
+    await SuiClient.executeMoveCallBytes(bytes, signer)
 }

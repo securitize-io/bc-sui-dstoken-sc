@@ -99,6 +99,8 @@ describe('Investors', () => {
         await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
 
         await executeTxFunc(investors.removeWallet(testInvestor1, testWallet1, sender));
+        await expect(investors.isWallet(testWallet1, sender)).resolves.toBeFalsy()
+        await expect(investors.isWallet(testWallet2, sender)).resolves.toBeFalsy()
         await executeTxFunc(investors.removeInvestor(testInvestor1, sender));
 
         await expect(investors.isInvestor(testInvestor1, sender)).resolves.toBe(false)

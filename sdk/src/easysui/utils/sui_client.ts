@@ -168,10 +168,14 @@ export class SuiClient {
         format?: FORMAT_TYPES
     }) {
         ptb = this.getPTB(target, typeArgs, args, argTypes, signer, withTransfer, ptb);
+        return await this.getMoveCallBytesFromPTB(ptb, signer, gasOwner, format);
+    }
+
+    public static async getMoveCallBytesFromPTB(ptb: Transaction, signer: string, gasOwner?: string, format: FORMAT_TYPES = FORMAT_TYPES.hex) {
         ptb.setSender(signer)
         gasOwner ??= signer
         ptb.setGasOwner(gasOwner || signer)
-        const bytes = await ptb.build({ client: SuiClient.client, onlyTransactionKind: false });
+        const bytes = await ptb.build({client: SuiClient.client, onlyTransactionKind: false});
         return toFormatType(format, bytes)
     }
 
