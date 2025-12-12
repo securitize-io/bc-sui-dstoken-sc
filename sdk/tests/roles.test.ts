@@ -152,4 +152,130 @@ describe('Roles', () => {
             await executeTxFunc(roles.removeTransferAgent(testWallet, sender))
         })
     })
+
+    describe('updateRole Function', () => {
+        it('should update role from issuer to transfer_agent in one transaction', async () => {
+            const testWallet = createWallet().toSuiAddress()
+
+            // First assign issuer role
+            await executeTxFunc(roles.setIssuer(testWallet, sender))
+            let role = await roles.getRole(testWallet)
+            expect(role).toBe('issuer')
+
+            // Update from issuer to transfer_agent using updateRole
+            await executeTxFunc(roles.updateRole(testWallet, 'transfer_agent', sender))
+
+            // Verify role has been updated
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('transfer_agent')
+
+            // Clean up
+            await executeTxFunc(roles.removeTransferAgent(testWallet, sender))
+        })
+
+        it('should update role from transfer_agent to exchange in one transaction', async () => {
+            const testWallet = createWallet().toSuiAddress()
+
+            // First assign transfer_agent role
+            await executeTxFunc(roles.setTransferAgent(testWallet, sender))
+            let role = await roles.getRole(testWallet)
+            expect(role).toBe('transfer_agent')
+
+            // Update from transfer_agent to exchange using updateRole
+            await executeTxFunc(roles.updateRole(testWallet, 'exchange', sender))
+
+            // Verify role has been updated
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('exchange')
+
+            // Clean up
+            await executeTxFunc(roles.removeExchange(testWallet, sender))
+        })
+
+        it('should update role from exchange to issuer in one transaction', async () => {
+            const testWallet = createWallet().toSuiAddress()
+
+            // First assign exchange role
+            await executeTxFunc(roles.setExchange(testWallet, sender))
+            let role = await roles.getRole(testWallet)
+            expect(role).toBe('exchange')
+
+            // Update from exchange to issuer using updateRole
+            await executeTxFunc(roles.updateRole(testWallet, 'issuer', sender))
+
+            // Verify role has been updated
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('issuer')
+
+            // Clean up
+            await executeTxFunc(roles.removeIssuer(testWallet, sender))
+        })
+
+        it('should assign initial role from none to issuer', async () => {
+            const testWallet = createWallet().toSuiAddress()
+
+            // Verify wallet has no role initially
+            let role = await roles.getRole(testWallet)
+            expect(role).toBe('none')
+
+            // Assign issuer role using updateRole
+            await executeTxFunc(roles.updateRole(testWallet, 'issuer', sender))
+
+            // Verify role has been assigned
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('issuer')
+
+            // Clean up
+            await executeTxFunc(roles.removeIssuer(testWallet, sender))
+        })
+
+        it('should throw error when trying to update to same role', async () => {
+            const testWallet = createWallet().toSuiAddress()
+
+            // Assign issuer role
+            await executeTxFunc(roles.setIssuer(testWallet, sender))
+
+            // Try to update to the same role
+            await expect(
+                roles.updateRole(testWallet, 'issuer', sender)
+            ).rejects.toThrow('No direct role-to-role change')
+
+            // Clean up
+            await executeTxFunc(roles.removeIssuer(testWallet, sender))
+        })
+
+        it('should throw error when trying to change master role', async () => {
+            // Try to update master role (should fail)
+            await expect(
+                roles.updateRole(sender, 'issuer', sender)
+            ).rejects.toThrow('No direct role-to-role change')
+        })
+
+        it('should handle multiple role updates sequentially', async () => {
+            const testWallet = createWallet().toSuiAddress()
+
+            // Start with issuer
+            await executeTxFunc(roles.updateRole(testWallet, 'issuer', sender))
+            let role = await roles.getRole(testWallet)
+            expect(role).toBe('issuer')
+
+            // Update to transfer_agent
+            await executeTxFunc(roles.updateRole(testWallet, 'transfer_agent', sender))
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('transfer_agent')
+
+            // Update to exchange
+            await executeTxFunc(roles.updateRole(testWallet, 'exchange', sender))
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('exchange')
+
+            // Update back to issuer
+            await executeTxFunc(roles.updateRole(testWallet, 'issuer', sender))
+            role = await roles.getRole(testWallet)
+            expect(role).toBe('issuer')
+
+            // Clean up
+            await executeTxFunc(roles.removeIssuer(testWallet, sender))
+        })
+    })
 })

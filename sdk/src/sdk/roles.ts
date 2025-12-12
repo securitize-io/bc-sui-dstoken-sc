@@ -71,7 +71,7 @@ export class Roles {
         const errorMessage = "No direct role-to-role change";
 
         if (currentRole === role || currentRole === "master") {
-            throw errorMessage
+            throw new Error(errorMessage)
         }
 
         const REMOVE_MAPPING: Record<string, (owner: string, ptb?: Transaction) => Transaction> = {
@@ -98,49 +98,49 @@ export class Roles {
         }
 
         if (!ptb) {
-            throw errorMessage
+            throw new Error(errorMessage)
         }
 
         return this.buildSetBytes(ptb, signer)
     }
 
-    setTransferAgentPTB = (owner: string)  => this.buildSetPTB('set_transfer_agent', [owner])
+    setTransferAgentPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('set_transfer_agent', [owner], ptb)
     async setTransferAgent(owner: string, signer: string) {
         const ptb = this.setTransferAgentPTB(owner);
         return this.buildSetBytes(ptb, signer)
     }
 
-    removeTransferAgentPTB = (owner: string)  => this.buildSetPTB('remove_transfer_agent', [owner])
+    removeTransferAgentPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('remove_transfer_agent', [owner], ptb)
     async removeTransferAgent(owner: string, signer: string) {
         const ptb = this.removeTransferAgentPTB(owner);
         return this.buildSetBytes(ptb, signer)
     }
 
-    setIssuerPTB = (owner: string) => this.buildSetPTB('set_issuer', [owner])
+    setIssuerPTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('set_issuer', [owner], ptb)
     async setIssuer(owner: string, signer: string) {
         const ptb = this.setIssuerPTB(owner);
         return this.buildSetBytes(ptb, signer)
     }
 
-    removeIssuerPTB = (owner: string) => this.buildSetPTB('remove_issuer', [owner])
+    removeIssuerPTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('remove_issuer', [owner], ptb)
     async removeIssuer(owner: string, signer: string) {
         const ptb = this.removeIssuerPTB(owner);
         return this.buildSetBytes(ptb, signer)
     }
 
-    setServiceOwnerPTB = (owner: string)  => this.buildSetPTB('set_service_owner', [owner])
+    setServiceOwnerPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('set_service_owner', [owner], ptb)
     async setServiceOwner(owner: string, signer: string) {
         const ptb = this.setServiceOwnerPTB(owner);
         return this.buildSetBytes(ptb, signer)
     }
 
-    removeExchangePTB = (owner: string) => this.buildSetPTB('remove_exchange', [owner])
+    removeExchangePTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('remove_exchange', [owner], ptb)
     async removeExchange(owner: string, signer: string) {
         const ptb = this.removeExchangePTB(owner);
         return this.buildSetBytes(ptb, signer)
     }
 
-    setExchangePTB = (owner: string) => this.buildSetPTB('set_exchange', [owner])
+    setExchangePTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('set_exchange', [owner], ptb)
     async setExchange(owner: string, signer: string) {
         const ptb = this.setExchangePTB(owner);
         return this.buildSetBytes(ptb, signer)
