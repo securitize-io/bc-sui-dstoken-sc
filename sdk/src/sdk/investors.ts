@@ -1,6 +1,8 @@
 import {MoveType, SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
+import {AttributeStatus, AttributeType} from "./domains";
+import {Country} from "./domains/Country";
 
 export class Investors {
     private readonly tokenAddress: string;
@@ -15,7 +17,7 @@ export class Investors {
         return `${Config.vars.PACKAGE_ID}::registry_service::${func}`
     }
 
-    private getPTB(func: string, args: any[]) {
+    private buildGetPTB(func: string, args: any[]) {
         return SuiClient.getPTB(
             this.getTarget(func),
             [this.tokenAddress],
@@ -23,75 +25,90 @@ export class Investors {
         )
     }
 
+    private buildSetPTB(signer: string, func: string, args: any[], argTypes?: any[]) {
+        return SuiClient.getMoveCallBytes({
+            signer,
+            target: this.getTarget(func),
+            typeArgs: [this.tokenAddress],
+            args: [
+                this.tokenDetails.investorInfo,
+                this.tokenDetails.auth,
+                ...args,
+                Config.vars.VERSION
+            ],
+            argTypes
+        })
+    }
+
     // ==== View Functions ====
 
     async isInvestor(investorId: string, sender: string) {
-        const ptb = this.getPTB('is_investor', [investorId])
+        const ptb = this.buildGetPTB('is_investor', [investorId])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async getInvestorIdByWallet(wallet: string, sender: string) {
-        const ptb = this.getPTB('get_investor_id_by_wallet', [wallet])
+        const ptb = this.buildGetPTB('get_investor_id_by_wallet', [wallet])
         return SuiClient.devInspectString(ptb, sender)
     }
 
     async isWallet(wallet: string, sender: string) {
-        const ptb = this.getPTB('is_wallet', [wallet])
+        const ptb = this.buildGetPTB('is_wallet', [wallet])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async isSpecialWallet(wallet: string, sender: string) {
-        const ptb = this.getPTB('is_special_wallet', [wallet])
+        const ptb = this.buildGetPTB('is_special_wallet', [wallet])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async getSpecialWalletType(wallet: string, sender: string) {
-        const ptb = this.getPTB('get_special_wallet_type', [wallet])
+        const ptb = this.buildGetPTB('get_special_wallet_type', [wallet])
         return SuiClient.devInspectU64(ptb, sender)
     }
 
     async investorWalletBalanceTotal(investorId: string, sender: string) {
-        const ptb = this.getPTB('investor_wallet_balance_total', [investorId])
+        const ptb = this.buildGetPTB('investor_wallet_balance_total', [investorId])
         return SuiClient.devInspectU64(ptb, sender)
     }
 
     async isAccreditedInvestorById(investorId: string, sender: string) {
-        const ptb = this.getPTB('is_accredited_investor_by_id', [investorId])
+        const ptb = this.buildGetPTB('is_accredited_investor_by_id', [investorId])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async isAccreditedInvestor(wallet: string, sender: string) {
-        const ptb = this.getPTB('is_accredited_investor', [wallet])
+        const ptb = this.buildGetPTB('is_accredited_investor', [wallet])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async isQualifiedInvestorById(investorId: string, sender: string) {
-        const ptb = this.getPTB('is_qualified_investor_by_id', [investorId])
+        const ptb = this.buildGetPTB('is_qualified_investor_by_id', [investorId])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async isQualifiedInvestor(wallet: string, sender: string) {
-        const ptb = this.getPTB('is_qualified_investor', [wallet])
+        const ptb = this.buildGetPTB('is_qualified_investor', [wallet])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
-    async getCountryCompliance(country: string, sender: string) {
-        const ptb = this.getPTB('get_country_compliance', [country])
+    async getCountryCompliance(country: Country, sender: string) {
+        const ptb = this.buildGetPTB('get_country_compliance', [country])
         return SuiClient.devInspectU64(ptb, sender)
     }
 
     async getCountry(investorId: string, sender: string) {
-        const ptb = this.getPTB('get_country', [investorId])
+        const ptb = this.buildGetPTB('get_country', [investorId])
         return SuiClient.devInspectString(ptb, sender)
     }
 
-    async getAttributeValue(investorId: string, attributeId: number, sender: string) {
-        const ptb = this.getPTB('get_attribute_value', [investorId, attributeId])
-        return SuiClient.devInspectU64(ptb, sender)
+    async getAttributeValue(investorId: string, attributeId: AttributeType, sender: string) {
+        const ptb = this.buildGetPTB('get_attribute_value', [investorId, attributeId])
+        return Number(await SuiClient.devInspectU64(ptb, sender))
     }
 
-    async getAttributeExpiration(investorId: string, attributeId: number, sender: string) {
-        const ptb = this.getPTB('get_attribute_expiration', [investorId, attributeId])
+    async getAttributeExpiration(investorId: string, attributeId: AttributeType, sender: string) {
+        const ptb = this.buildGetPTB('get_attribute_expiration', [investorId, attributeId])
         return SuiClient.devInspectU64(ptb, sender)
     }
 
@@ -120,118 +137,88 @@ export class Investors {
         return SuiClient.devInspectU64(ptb, sender)
     }
 
-    async getEuRetailInvestorCount(toCountry: string, sender: string) {
-        const ptb = this.getPTB('get_eu_retail_investor_count', [toCountry])
+    async getEuRetailInvestorCount(toCountry: Country, sender: string) {
+        const ptb = this.buildGetPTB('get_eu_retail_investor_count', [toCountry])
         return SuiClient.devInspectU64(ptb, sender)
     }
 
     // ==== Setters ====
 
     async registerInvestor(investorId: string, signer: string) {
-        return SuiClient.getMoveCallBytes({
-            signer,
-            target: this.getTarget('register_investor'),
-            typeArgs: [this.tokenAddress],
-            args: [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                investorId,
-                Config.vars.VERSION
-            ],
-        })
+        return this.buildSetPTB(signer, 'register_investor', [investorId])
     }
 
     async removeInvestor(investorId: string, signer: string) {
-        return SuiClient.getMoveCallBytes({
-            signer,
-            target: this.getTarget('remove_investor'),
-            typeArgs: [this.tokenAddress],
-            args: [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                investorId,
-                Config.vars.VERSION
-            ],
-        })
+        return this.buildSetPTB(signer, 'remove_investor', [investorId])
     }
 
     async updateInvestor(
         investorId: string,
-        country: string,
+        country: Country,
         wallets: string[],
-        attributeIds: number[],
-        attributeValues: number[],
+        attributeIds: AttributeType[],
+        attributeValues: AttributeStatus[],
         attributeExpirations: number[],
         signer: string,
     ) {
-        return SuiClient.getMoveCallBytes({
-            signer,
-            target: this.getTarget('update_investor'),
-            typeArgs: [this.tokenAddress],
-            args: [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                investorId,
-                country,
-                wallets,
-                attributeIds,
-                attributeValues,
-                attributeExpirations,
-                Config.vars.VERSION
-            ],
-            argTypes: [
-                MoveType.object,
-                MoveType.object,
-                MoveType.string,
-                MoveType.string,
-                MoveType.vec_address,
-                MoveType.vec_u64,
-                MoveType.vec_u64,
-                MoveType.vec_u64,
-                MoveType.object,
-            ]
-        })
+        const args = [
+            investorId,
+            country,
+            wallets,
+            attributeIds,
+            attributeValues,
+            attributeExpirations,
+        ];
+        const argTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.string,
+            MoveType.string,
+            MoveType.vec_address,
+            MoveType.vec_u64,
+            MoveType.vec_u64,
+            MoveType.vec_u64,
+            MoveType.object,
+        ];
+        return this.buildSetPTB(signer, 'update_investor', args, argTypes)
+    }
+
+    async addWallet(
+        investorId: string,
+        walletAddr: string,
+        signer: string
+    ) {
+        return this.buildSetPTB(signer, 'add_wallet', [investorId, walletAddr])
     }
 
     async removeWallet(
         investorId: string,
-        wallet: string,
+        walletAddr: string,
         signer: string
     ) {
-        return SuiClient.getMoveCallBytes({
-            signer,
-            target: this.getTarget('remove_wallet'),
-            typeArgs: [this.tokenAddress],
-            args: [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                investorId,
-                wallet,
-                Config.vars.VERSION
-            ],
-        })
+        return this.buildSetPTB(signer, 'remove_wallet', [investorId, walletAddr])
+    }
+
+    async setCountry(
+        investorId: string,
+        country: Country,
+        signer: string
+    ) {
+        return this.buildSetPTB(signer, 'set_country', [investorId, country])
     }
 
     async setAttribute(
         investorId: string,
-        attributeId: number,
-        attributeValue: number,
+        attributeId: AttributeType,
+        attributeValue: AttributeStatus,
         attributeExpiration: number,
         signer: string,
     ) {
-        return SuiClient.getMoveCallBytes({
-            signer,
-            target: this.getTarget('set_attribute'),
-            typeArgs: [this.tokenAddress],
-            args: [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                investorId,
-                attributeId,
-                attributeValue,
-                attributeExpiration,
-                Config.vars.VERSION
-            ],
-        })
+        return this.buildSetPTB(signer, 'set_attribute', [
+            investorId,
+            attributeId,
+            attributeValue,
+            attributeExpiration
+        ])
     }
 }
