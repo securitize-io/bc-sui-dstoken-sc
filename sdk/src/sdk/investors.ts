@@ -2,7 +2,6 @@ import {MoveType, SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {AttributeStatus, AttributeType} from "./domains";
-import {Country} from "./domains/Country";
 
 export class Investors {
     private readonly tokenAddress: string;
@@ -92,7 +91,7 @@ export class Investors {
         return SuiClient.devInspectBool(ptb, sender)
     }
 
-    async getCountryCompliance(country: Country, sender: string) {
+    async getCountryCompliance(country: string, sender: string) {
         const ptb = this.buildGetPTB('get_country_compliance', [country])
         return SuiClient.devInspectU64(ptb, sender)
     }
@@ -137,7 +136,7 @@ export class Investors {
         return SuiClient.devInspectU64(ptb, sender)
     }
 
-    async getEuRetailInvestorCount(toCountry: Country, sender: string) {
+    async getEuRetailInvestorCount(toCountry: string, sender: string) {
         const ptb = this.buildGetPTB('get_eu_retail_investor_count', [toCountry])
         return SuiClient.devInspectU64(ptb, sender)
     }
@@ -154,7 +153,7 @@ export class Investors {
 
     async updateInvestor(
         investorId: string,
-        country: Country,
+        country: string,
         wallets: string[],
         attributeIds: AttributeType[],
         attributeValues: AttributeStatus[],
@@ -201,7 +200,7 @@ export class Investors {
 
     async setCountry(
         investorId: string,
-        country: Country,
+        country: string,
         signer: string
     ) {
         return this.buildSetPTB(signer, 'set_country', [investorId, country])
