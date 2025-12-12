@@ -5,7 +5,7 @@ import { Keypair } from '@mysten/sui/cryptography'
 import { getFullnodeUrl } from '@mysten/sui/client'
 import { getKeypair } from '../utils/keypair'
 import { STATIC_CONFIGS } from './static'
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), quiet: true })
 
 export const DENY_LIST_ID = '0x403'
 export const CLOCK_ID = '0x6'
@@ -68,7 +68,7 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
     static get vars(): BaseConfigVars {
         const instance = this.getInstance()
         const NETWORK = instance.env
-        dotenv.config({ path: path.resolve(process.cwd(), `.env.${NETWORK}`), override: true })
+        dotenv.config({ path: path.resolve(process.cwd(), `.env.${NETWORK}`), override: true, quiet: true })
 
         const envVars = {
             NETWORK,
