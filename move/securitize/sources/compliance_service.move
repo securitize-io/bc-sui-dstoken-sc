@@ -16,6 +16,10 @@ use securitize::force_full_transfer::ForceFullTransfer;
 use securitize::flowback_restriction::FlowbackRestriction;
 use sui::clock::Clock;
 use securitize::wallet_manager::is_platform_wallet;
+use std::address;
+use rwa::registry;
+use securitize::registry_service::apply_change;
+use securitize::registry_service::is_special_wallet;
 
 // ==== Error Codes ====
 
@@ -23,6 +27,7 @@ const ERuleNotFound: u64 = 0;
 const ERuleAlreadyExists: u64 = 1;
 const EDestinationRestricted: u64 = 2;
 const ENotWhitelisted: u64 = 3;
+const ETotalInvestorsUnderflow: u64 = 4;
 
 // ==== TEMP Compliance Region Constants ====
 
@@ -55,11 +60,14 @@ public struct ComplianceConfig<phantom T> has key {
     rules: vector<TypeName>,
 }
 
-// Compliance Abilities
+// ==== Compliance Abilities ====
 
 public struct RegisterRule() has drop;
+
 public struct UnregisterRule() has drop;
+
 public struct SetCountry() has drop;
+
 public struct ManageRules() has drop;
 
 // ==================== Initialization Functions ====================
@@ -99,7 +107,7 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 /// Validate transfer action against all configured rules
 public fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
-    registry: &InvestorInfo<T>,
+    registry: &mut InvestorInfo<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
     // lock_manager: &LockManager<T>,
@@ -114,6 +122,8 @@ public fun validate_transfer<T>(
 
     let to_is_platform_wallet = is_platform_wallet(registry, to_address);
     let from_is_platform_wallet = is_platform_wallet(registry, from_address);
+    let to_is_special_wallet = is_special_wallet(registry, to_address);
+    let from_is_special_wallet = is_special_wallet(registry, from_address);
 
     let amount = request.request_amount();
     // ---- FROM ----
@@ -174,13 +184,15 @@ public fun validate_transfer<T>(
             clock
         );
     });
+
+    record_transfer(registry, from_address, to_address, amount, from_is_special_wallet, to_is_special_wallet, to_is_new_investor, from_is_exit_investor);
     request
 }
 
 /// Validate issuance action against all configured rules
 public fun validate_issue<T>(
     config: &ComplianceConfig<T>,
-    registry: &InvestorInfo<T>,
+    registry: &mut InvestorInfo<T>,
     to: address,
     // lock_manager: &LockManager<T>,
     amount: u64,
@@ -224,6 +236,8 @@ public fun validate_issue<T>(
             to_is_new_investor
         );
     });
+
+    record_issuance(registry, to, amount, is_platform_wallet, to_is_new_investor);
 }
 
 /// Validate burn action against all configured rules
@@ -426,6 +440,127 @@ public fun unregister_rule<T, R: store + drop>(
 public fun has_rule<T, R: store>(config: &ComplianceConfig<T>): bool {
     let rule_type = type_name::with_defining_ids<R>();
     config.rules.contains(&rule_type)
+}
+
+// ==================== Recorders ====================
+
+public(package) fun record_issuance<T>(
+    registry: &mut InvestorInfo<T>,
+    to: address,
+    amount: u64,
+    to_is_special_wallet: bool,
+    to_is_new_investor: bool,
+) {
+    if (amount == 0) return;
+
+    // === TO side ===
+    if (to_is_new_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            to,
+            to_is_special_wallet,
+            true,
+        );
+    };
+}
+
+public(package) fun record_transfer<T>(
+    registry: &mut InvestorInfo<T>,
+    from: address,
+    to: address,
+    amount: u64,
+    from_is_special_wallet: bool,
+    to_is_special_wallet: bool,
+    to_is_new_investor: bool,
+    from_is_exit_investor: bool,
+) {
+    if (amount == 0) return;
+
+    let same_investor = false;
+
+    if (!from_is_special_wallet && !to_is_special_wallet) {
+        let from_id = registry.get_investor_id_by_wallet(from);
+        let to_id = registry.get_investor_id_by_wallet(to);
+        same_investor = from_id == to_id;
+    };
+
+    // === TO side ===
+    if (to_is_new_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            to,
+            to_is_special_wallet,
+            true,
+        );
+    };
+
+    // === FROM side ===
+    if (!same_investor && from_is_exit_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            from,
+            from_is_special_wallet,
+            false,
+        );
+    };
+}
+
+public(package) fun record_burn<T>(
+    registry: &mut InvestorInfo<T>,
+    from: address,
+    amount: u64,
+    from_is_special_wallet: bool,
+    from_is_exit_investor: bool,
+) {
+    if (amount == 0) return;
+
+    // === FROM side ===
+    if (from_is_exit_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            from,
+            from_is_special_wallet,
+            false,
+        );
+    };
+}
+
+public(package) fun record_seize<T>(
+    registry: &mut InvestorInfo<T>,
+    from: address,
+    amount: u64,
+    from_is_special_wallet: bool,
+    from_is_exit_investor: bool,
+) {
+    record_burn(registry, from, amount, from_is_special_wallet, from_is_exit_investor);
+}
+
+public(package) fun adjust_total_investors_counts<T>(
+    registry: &mut InvestorInfo<T>,
+    wallet: address,
+    is_special_wallet: bool,
+    increase: bool,
+) {
+    if (is_special_wallet) return;
+
+    let total = registry.get_total_investors_count();
+
+    if (increase) {
+        registry.set_total_investors_count(total + 1);
+    } else {
+        assert!(total > 0, ETotalInvestorsUnderflow);
+        registry.set_total_investors_count(total - 1);
+    };
+
+    // country + accreditation breakdown
+    let investor_id = registry.get_investor_id_by_wallet(wallet);
+    let country = registry.get_country(investor_id);
+
+    registry.adjust_investors_counts_by_country<T>(
+        investor_id,
+        country,
+        increase,
+    );
 }
 
 // ==================== Accessor Functions ====================

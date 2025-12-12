@@ -26,22 +26,8 @@ public struct HoldingLimits has drop, store {
 }
 // ==================== Initialization ====================
 
-/// Create a new HoldingLimits rule
-public fun new(
-    min_holdings_per_investor: u64,
-    max_holdings_per_investor: u64,
-    version: &Version,
-): HoldingLimits {
-    version.check_is_valid();
-    HoldingLimits {
-        min_holdings_per_investor,
-        max_holdings_per_investor,
-        region_min_tokens: vec_map::empty(),
-    }
-}
-
 /// Create with region-specific minimums
-public fun new_with_regions(
+public fun new(
     min_holdings_per_investor: u64,
     max_holdings_per_investor: u64,
     regions: vector<u64>,
