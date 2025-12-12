@@ -330,15 +330,9 @@ public fun transfer<T>(
     let to_address = request.request_to_address();
     let value = request.request_amount();
     assert!(value > 0, EValueZero);
-    // If the treasury is paused, allow investor to investor transfers only within same investor
+    // If the treasury is paused, don't allow investor-to-investor transfers
     if (treasury.is_paused()) {
-        let investors_transfer: bool = investors.is_wallet(from_address) && investors.is_wallet(to_address);
-        assert!(
-            !(investors_transfer && (
-                investors.get_investor_id_by_wallet(from_address) !=
-                investors.get_investor_id_by_wallet(to_address)
-            )), ETreasuryPaused
-        );
+        assert!(!(investors.is_wallet(from_address) && investors.is_wallet(to_address)), ETreasuryPaused);
     };
     assert!(
         !(investors.is_wallet(from_address) && 
