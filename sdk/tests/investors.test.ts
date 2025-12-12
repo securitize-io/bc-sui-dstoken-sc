@@ -1,7 +1,7 @@
 import {ADMIN_KEYPAIR, AttributeStatus, AttributeType, Investors} from '../src'
 import {deploy} from "../src/sdk/utils/deploy";
 import {createTestToken, executeTxFunc} from "./test_utils";
-import {Country} from "../src/sdk/domains/Country";
+import {Country} from "../src";
 
 const testInvestor1 = "InvestorId1"
 const testWallet1 = "0xABB"
