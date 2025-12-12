@@ -70,16 +70,16 @@ describe('Rules (Compliance)', () => {
     })
 
     describe('HoldingLimits Rule', () => {
-        it('should register HoldingLimits rule', async () => {
+        it('should register HoldingLimits rule with US and EU regions', async () => {
             await expect(rules.hasRule('HoldingLimits', sender)).resolves.toBe(false)
 
             await executeTxFunc(
                 rules.registerHoldingLimitsRule(
                     sender,
-                    100,        // min holdings
-                    1000000,    // max holdings
-                    [500, 300], // region mins [US, EU]
-                    [Regions.US, Regions.EU]
+                    100,        // min holdings per investor
+                    1000000,    // max holdings per investor
+                    500,        // minUSTokens
+                    300         // minEUTokens
                 )
             )
 
@@ -96,9 +96,9 @@ describe('Rules (Compliance)', () => {
 
         it('should register HoldingLimits with different configurations', async () => {
             const configs = [
-                { min: 0, max: 500000, regionMins: [100, 200] },
-                { min: 1000, max: 2000000, regionMins: [1000, 1500] },
-                { min: 50, max: 100000, regionMins: [50, 75] },
+                { min: 0, max: 500000, minUS: 100, minEU: 200 },
+                { min: 1000, max: 2000000, minUS: 1000, minEU: 1500 },
+                { min: 50, max: 100000, minUS: 50, minEU: 75 },
             ]
 
             for (const config of configs) {
@@ -107,8 +107,8 @@ describe('Rules (Compliance)', () => {
                         sender,
                         config.min,
                         config.max,
-                        config.regionMins,
-                        [Regions.US, Regions.EU]
+                        config.minUS,
+                        config.minEU
                     )
                 )
                 await expect(rules.hasRule('HoldingLimits', sender)).resolves.toBe(true)
@@ -123,8 +123,21 @@ describe('Rules (Compliance)', () => {
                     sender,
                     100,
                     500000,
-                    [1000],        // only US min
-                    [Regions.US]   // only US region
+                    1000        // only US min (no EU min)
+                )
+            )
+            await expect(rules.hasRule('HoldingLimits', sender)).resolves.toBe(true)
+            await executeTxFunc(rules.unregisterRule('HoldingLimits', sender))
+        })
+
+        it('should register HoldingLimits with only EU region', async () => {
+            await executeTxFunc(
+                rules.registerHoldingLimitsRule(
+                    sender,
+                    100,
+                    500000,
+                    undefined,  // no US min
+                    2000        // only EU min
                 )
             )
             await expect(rules.hasRule('HoldingLimits', sender)).resolves.toBe(true)
@@ -294,7 +307,7 @@ describe('Rules (Compliance)', () => {
             // Register all 5 rule types
             await executeTxFunc(rules.registerAccreditedOnlyRule(sender, true, true))
             await executeTxFunc(
-                rules.registerHoldingLimitsRule(sender, 100, 1000000, [500, 300], [Regions.US, Regions.EU])
+                rules.registerHoldingLimitsRule(sender, 100, 1000000, 500, 300)
             )
             await executeTxFunc(
                 rules.registerInvestorLimitsRule(sender, 2000, 100, 500, 300, 150, 100, 200, 25)
@@ -355,10 +368,10 @@ describe('Rules (Compliance)', () => {
             await executeTxFunc(
                 rules.registerHoldingLimitsRule(
                     sender,
-                    0,          // zero min
-                    1000000,
-                    [0, 0],     // zero region mins
-                    [Regions.US, Regions.EU]
+                    0,          // zero min holdings
+                    1000000,    // max holdings
+                    0,          // zero US min
+                    0           // zero EU min
                 )
             )
             await expect(rules.hasRule('HoldingLimits', sender)).resolves.toBe(true)
@@ -391,15 +404,13 @@ describe('Rules (Compliance)', () => {
             await executeTxFunc(rules.unregisterRule('InvestorLimits', sender))
         })
 
-        it('should handle multiple region configurations for HoldingLimits', async () => {
-            // Test with 3 regions
+        it('should handle HoldingLimits with no region minimums', async () => {
             await executeTxFunc(
                 rules.registerHoldingLimitsRule(
                     sender,
                     100,
-                    500000,
-                    [1000, 2000, 3000],
-                    [Regions.US, Regions.EU, Regions.JP]
+                    500000
+                    // no US or EU minimums specified
                 )
             )
             await expect(rules.hasRule('HoldingLimits', sender)).resolves.toBe(true)

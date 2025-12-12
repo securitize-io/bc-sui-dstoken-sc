@@ -170,23 +170,35 @@ export class Rules {
     }
 
     registerHoldingLimitsRulePTB(
-        min_holdings_per_investor: number, // minimumHoldingsPerInvestor
-        max_holdings_per_investor: number, // maximumHoldingsPerInvestor
-        region_mins: number[], // minUSTokens | minEUTokens
-        regions: Regions[] = [Regions.US, Regions.EU],
+        min_holdings_per_investor?: number, // minimumHoldingsPerInvestor
+        max_holdings_per_investor?: number, // maximumHoldingsPerInvestor
+        minUSTokens?: number,
+        minEUTokens?: number,
     ) {
         const ruleType = 'HoldingLimits';
         const ruleModule = this.getRuleModuleName(ruleType)
+        const regions: Regions[] = []
+        const regionMins: number[] = []
+
+        if (minUSTokens) {
+            regions.push(Regions.US)
+            regionMins.push(minUSTokens)
+        }
+
+        if (minEUTokens) {
+            regions.push(Regions.EU)
+            regionMins.push(minEUTokens)
+        }
 
         const ptb = new Transaction()
 
         const rule = ptb.moveCall({
             target: this.getRuleTarget(ruleModule, 'new'),
             arguments: [
-                ptb.pure.u64(min_holdings_per_investor),
-                ptb.pure.u64(max_holdings_per_investor),
+                ptb.pure.u64(min_holdings_per_investor || 0),
+                ptb.pure.u64(max_holdings_per_investor || 0),
                 ptb.pure.vector('u64', regions),
-                ptb.pure.vector('u64', region_mins),
+                ptb.pure.vector('u64', regionMins),
                 ptb.object(Config.vars.VERSION)
             ],
         })
@@ -198,10 +210,10 @@ export class Rules {
         signer: string,
         min_holdings_per_investor: number, // minimumHoldingsPerInvestor
         max_holdings_per_investor: number, // maximumHoldingsPerInvestor
-        region_mins: number[], // minUSTokens | minEUTokens
-        regions: Regions[] = [Regions.US, Regions.EU],
+        minUSTokens?: number,
+        minEUTokens?: number,
     ) {
-        const ptb = this.registerHoldingLimitsRulePTB(min_holdings_per_investor, max_holdings_per_investor, region_mins, regions)
+        const ptb = this.registerHoldingLimitsRulePTB(min_holdings_per_investor, max_holdings_per_investor, minUSTokens, minEUTokens)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
