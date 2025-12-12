@@ -5,6 +5,7 @@ import {bcs} from "@mysten/sui/bcs";
 export interface TokenDetails {
     investorInfo: string
     auth: string
+    complianceConfig: string
 }
 
 export function getDerivedObjectId(
@@ -21,9 +22,11 @@ export function getTokenDetails(tokenAddress: string): TokenDetails {
     const parentId = Config.vars.SETUP_REGISTRY;
     const investorInfo = getDerivedObjectId(parentId, "registry_service", "RegistryServiceKey", tokenAddress)
     const auth = getDerivedObjectId(parentId, "trust_service", "TrustServiceKey", tokenAddress)
+    const complianceConfig = getDerivedObjectId(parentId, "compliance_service", "ComplianceServiceKey", tokenAddress)
 
     return {
         investorInfo,
-        auth
+        auth,
+        complianceConfig
     }
 }
