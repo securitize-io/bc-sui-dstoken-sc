@@ -418,9 +418,9 @@ public fun remove_wallet<T>(
     assert!(investor_info.investor_wallets.borrow(wallet_addr).owner == investor_id, EWalletDoesNotBelongToInvestor);
 
     investor_info.investor_wallets.remove(wallet_addr);
-    let mut wallets = investor_info.investors.borrow_mut(investor_id).wallets;
+    let wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
-    wallets.remove(idx);
+    investor_info.investors.borrow_mut(investor_id).wallets.remove(idx);
     event::emit( DSRegistryServiceWalletRemoved<T> {
         wallet: wallet_addr,
         investor_id,
