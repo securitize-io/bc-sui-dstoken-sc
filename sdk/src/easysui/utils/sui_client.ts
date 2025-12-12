@@ -21,6 +21,7 @@ export enum MoveType {
     address,
     address_opt,
     vec_address,
+    vec_u64,
 }
 
 const txOptions = {
@@ -114,6 +115,7 @@ export class SuiClient {
             [MoveType.address]: (v: any) => ptb.pure.address(v),
             [MoveType.address_opt]: (v: any) => ptb.pure.option('address', v),
             [MoveType.vec_address]: (v: any) => ptb.pure.vector('address', v),
+            [MoveType.vec_u64]: (v: any) => ptb.pure.vector('u64', v),
         }
 
         return factory[type!](value)
@@ -138,7 +140,7 @@ export class SuiClient {
         ptb?: Transaction
         withTransfer?: boolean
     }) {
-        ptb = this.getPTB(target, typeArgs, args, argTypes, withTransfer, signer.toSuiAddress(), ptb);
+        ptb = this.getPTB(target, signer.toSuiAddress(), typeArgs, args, argTypes, withTransfer, ptb);
 
         return SuiClient.signAndExecute(ptb, signer, errorHandler)
     }
@@ -165,7 +167,7 @@ export class SuiClient {
         gasOwner?: string
         format?: FORMAT_TYPES
     }) {
-        ptb = this.getPTB(target, typeArgs, args, argTypes, withTransfer, signer, ptb);
+        ptb = this.getPTB(target, signer, typeArgs, args, argTypes, withTransfer, ptb);
         ptb.setSender(signer)
         gasOwner ??= signer
         ptb.setGasOwner(gasOwner || signer)
@@ -217,7 +219,15 @@ export class SuiClient {
         }
     }
 
-    private static getPTB(target: string, typeArgs: string[], args: any[], argTypes: MoveType[], withTransfer: boolean, signer: string, ptb?: Transaction) {
+    public static getPTB(
+        target: string,
+        signer: string,
+        typeArgs: string[] = [],
+        args: any[] = [],
+        argTypes: MoveType[] = [],
+        withTransfer: boolean = false,
+        ptb?: Transaction
+    ) {
         ptb = ptb || new Transaction()
         const obj = ptb.moveCall({
             target,

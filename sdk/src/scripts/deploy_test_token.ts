@@ -1,4 +1,4 @@
-import {create_ds_token} from "../sdk/ds_token";
+import {createDSToken} from "../sdk/ds_token";
 import {DeploymentRequest} from "../sdk/domains";
 
 const request: DeploymentRequest = {
@@ -15,7 +15,7 @@ const request: DeploymentRequest = {
 }
 
 export async function deployToken() {
-    await create_ds_token(request)
+    await createDSToken(request)
 }
 
 deployToken().then()

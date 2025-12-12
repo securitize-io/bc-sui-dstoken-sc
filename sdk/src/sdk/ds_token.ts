@@ -4,7 +4,7 @@ import {Config} from "./utils/config";
 import {DeploymentRequest} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 
-export async function create_ds_token(request: DeploymentRequest) {
+export async function createDSToken(request: DeploymentRequest) {
     //TODO: deploy token contract first
 
     const ptb = new Transaction()
@@ -47,9 +47,11 @@ export async function create_ds_token(request: DeploymentRequest) {
     })
 
     const result = await SuiClient.signAndExecute(ptb, ADMIN_KEYPAIR!)
-    return result
 
-    // return {
-    //     id: "", //TODO: get token id / address
-    // }
+    const currencyObj: any = result.objectChanges?.find((o: any) => o.objectType.startsWith("0x2::coin_registry::Currency<"))
+    const tokenAddress = currencyObj.objectType.replaceAll("0x2::coin_registry::Currency<", "").slice(0, -1)
+
+    return {
+        id: tokenAddress,
+    }
 }
