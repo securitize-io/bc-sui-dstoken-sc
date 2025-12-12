@@ -1,8 +1,19 @@
 module securitize::ds_token;
 
-use sui::{coin::TreasuryCap, coin_registry::MetadataCap, dynamic_object_field as dof, event};
-use std::string::{Self, String}
-;use securitize::{version::Version, trust_service::{Auth, Master, Issuer, TransferAgent}};
+use sui::{
+    coin::TreasuryCap, 
+    coin_registry::MetadataCap,
+    dynamic_object_field as dof,
+    clock::Clock, 
+    event
+};
+use std::string::{Self, String};
+use securitize::{
+    version::Version, 
+    trust_service::{Auth, Master, Issuer, TransferAgent},
+    registry_service::InvestorInfo,
+    compliance_service::{Self, ComplianceConfig},
+};
 use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
 use rwa::rule::{Self, RwaRule};
 use rwa::registry::RwaRegistry;
@@ -19,6 +30,14 @@ const ENotAuthorized: u64 = 2;
 const ETreasuryPaused: u64 = 3;
 /// Error code when the vault owner does not match the expected address
 const EVaultOwnerMismatch: u64 = 4;
+/// Error code when the value to issue/transfer is zero
+const EValueZero: u64 = 5;
+/// Error code when the lengths of locked values and release times do not match
+const EInvalidLengthOfParameters: u64 = 6;
+/// Error code when the total locked value exceeds the issued value
+const EValueLockedLargerThanValue: u64 = 7;
+/// Error code when the specified address is not recognized as a wallet
+const ENotWallet: u64 = 8;
 
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
@@ -134,22 +153,35 @@ public(package) fun share<T>(treasury: Treasury<T>) {
 public fun issue_tokens<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
-    // investors: &InvestorRegistry,
+    investors: &mut InvestorInfo<T>,
+    compliance_config: &ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
     to: &mut RwaVault,
     to_address: address,
-    amount: u64,
+    value: u64,
     version: &Version,
+    values_locked: vector<u64>,
+    release_times: vector<u64>,
+    reason: String,
+    clock: &Clock,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, IssueTokens>(ctx.sender()), ENotAuthorized);
     assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
-    // TODO: Call the validation from compliance
+    assert!(value > 0, EValueZero);
+    assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
+    compliance_service::validate_issue(
+        compliance_config,
+        investors,
+        to_address,
+        value,
+        version,
+    );
     let balance = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
         TreasuryCapKey(),
-    ).mint_balance(amount);
+    ).mint_balance(value);
     // Deposit to the investor's vault
     rule::deposit_to_vault(
         rwa_rule,
@@ -157,11 +189,26 @@ public fun issue_tokens<T>(
         balance,
         DsProtocol(),
     );
+    let mut total_locked = 0;
+    let mut i = 0;
+    while (i < values_locked.length()) {
+        total_locked = total_locked + values_locked[i];
+        // lock_manager::add_manual_lock_record();
+        i = i + 1;
+    };
+    assert!(total_locked <= value, EValueLockedLargerThanValue);
     event::emit(
         Issue<T> {
             to: to_address,
-            value: amount,
-            value_locked: 0, //placeholder
+            value,
+            value_locked: total_locked,
+        }
+    );
+    event::emit(
+        Transfer<T> {
+            from: @0x0,
+            to: to_address,
+            value
         }
     );
 }
@@ -174,24 +221,24 @@ public fun issue_tokens<T>(
 public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
-    // investors: &InvestorRegistry,
+    investors: &mut InvestorInfo<T>,
+    compliance_config: &ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
-    owner_proof: &VaultOwnerProof,
     from: &mut RwaVault,
     from_address: address,
-    amount: u64,
+    value: u64,
+    reason: String,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     assert!(from.owner_address() == from_address, EVaultOwnerMismatch);
-    // TODO: Call the validation from compliance
-    let balance = rule::unlock_from_vault(
+    //compliance_service::validate_burn();
+    let balance = rule::clawback(
         rwa_rule,
         from,
-        owner_proof,
-        amount,
+        value,
         DsProtocol(),
     );
     // Burn the balance
@@ -201,9 +248,16 @@ public fun burn<T>(
     ).burn(balance.into_coin(ctx));
     event::emit(
         Burn<T> {
-            burner: ctx.sender(),
-            value: amount,
-            reason: string::utf8(b""), // Placeholder
+            burner: from_address,
+            value: value,
+            reason: reason,
+        }
+    );
+    event::emit(
+        Transfer<T> {
+            from: from_address,
+            to: @0x0,
+            value
         }
     );
 }
@@ -215,33 +269,44 @@ public fun burn<T>(
 /// * `ENotAuthorized` - If the sender does not have the SeizeTokens ability
 public fun seize<T>(
     auth: &Auth<T>,
-    // investors: &InvestorRegistry,
+    investors: &mut InvestorInfo<T>,
+    compliance_config: &ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
     from: &mut RwaVault,
     from_address: address,
-    to: &mut RwaVault, // TODO: determine if we want to store the address in the treasury
-    amount: u64,
+    to: &mut RwaVault,
+    to_address: address,
+    value: u64,
+    reason: String,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
     assert!(from.owner_address() == from_address, EVaultOwnerMismatch);
-    // TODO: Call the validation from compliance
+    assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
+    //compliance_service::validate_seize();
     // Withdraw from the investor's vault and deposit to the treasury's vault
     rule::clawback_to_vault(
         rwa_rule,
         from,
         to,
-        amount,
+        value,
         DsProtocol(),
     );
     event::emit(
         Seize<T> {
             from: from_address,
-            to: @0x0, // Placeholder
-            value: amount,
-            reason: string::utf8(b""), // Placeholder
+            to: to_address,
+            value,
+            reason: reason,
+        }
+    );
+    event::emit(
+        Transfer<T> {
+            from: from_address,
+            to: to_address,
+            value,
         }
     );
 }
@@ -253,33 +318,46 @@ public fun seize<T>(
 /// * `ETreasuryPaused` - If the treasury is currently paused
 public fun transfer<T>(
     treasury: &Treasury<T>,
-    // investors: &InvestorRegistry,
+    investors: &mut InvestorInfo<T>,
+    compliance_config: &ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    assert!(!treasury.is_paused(), ETreasuryPaused);
-    // TODO: Call the validation from compliance
+    let from_address = request.request_from_address();
+    let to_address = request.request_to_address();
+    let value = request.request_amount();
+    assert!(value > 0, EValueZero);
+    // If the treasury is paused, allow investor to investor transfers only within same investor
+    if (treasury.is_paused()) {
+        let investors_transfer: bool = investors.is_wallet(from_address) && investors.is_wallet(to_address);
+        assert!(
+            !(investors_transfer && (
+                investors.get_investor_id_by_wallet(from_address) !=
+                investors.get_investor_id_by_wallet(to_address)
+            )), ETreasuryPaused
+        );
+    };
+    assert!(
+        !(investors.is_wallet(from_address) && 
+        investors.is_wallet(to_address) &&
+        treasury.is_paused()), ETreasuryPaused
+    );
+    // compliance_service::validate_transfer()
     // Resolve the request
     rule::resolve_transfer(rwa_rule, request, DsProtocol());
     event::emit(
         Transfer<T> {
-            from: /* request.from_address */ ctx.sender(), // Placeholder
-            to: /* request.to_address */ ctx.sender(), // Placeholder
-            value: /* request.amount */ 0, // Placeholder
+            from: from_address,
+            to: to_address,
+            value,
         }
     );
 }
 
-/// Returns a reference to the MetadataCap for the treasury.
-/// This allows authorized parties to update the token's metadata
-/// (name, description, icon_url) in a PTB.
-///
-/// TODO: Decide if we want to return the metadata so that it can be used in a PTB to
-///       update name, description and icon_url or if we want to call the update functions here directly
-///       with event emitting
+// Set everything
 public fun metadata_cap<T>(
     treasury: &Treasury<T>,
     auth: &Auth<T>,
