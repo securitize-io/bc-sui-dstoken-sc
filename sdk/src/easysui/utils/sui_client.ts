@@ -140,7 +140,7 @@ export class SuiClient {
         ptb?: Transaction
         withTransfer?: boolean
     }) {
-        ptb = this.getPTB(target, signer.toSuiAddress(), typeArgs, args, argTypes, withTransfer, ptb);
+        ptb = this.getPTB(target, typeArgs, args, argTypes, signer.toSuiAddress(), withTransfer, ptb);
 
         return SuiClient.signAndExecute(ptb, signer, errorHandler)
     }
@@ -167,7 +167,7 @@ export class SuiClient {
         gasOwner?: string
         format?: FORMAT_TYPES
     }) {
-        ptb = this.getPTB(target, signer, typeArgs, args, argTypes, withTransfer, ptb);
+        ptb = this.getPTB(target, typeArgs, args, argTypes, signer, withTransfer, ptb);
         ptb.setSender(signer)
         gasOwner ??= signer
         ptb.setGasOwner(gasOwner || signer)
@@ -221,10 +221,10 @@ export class SuiClient {
 
     public static getPTB(
         target: string,
-        signer: string,
         typeArgs: string[] = [],
         args: any[] = [],
         argTypes: MoveType[] = [],
+        signer?: string,
         withTransfer: boolean = false,
         ptb?: Transaction
     ) {
@@ -235,7 +235,7 @@ export class SuiClient {
             arguments: args.map((arg, i) => SuiClient.toMoveArg(ptb, arg, argTypes[i])),
         })
 
-        if (withTransfer) {
+        if (withTransfer && signer) {
             ptb.transferObjects([obj], signer)
         }
         return ptb;
@@ -276,6 +276,14 @@ export class SuiClient {
         }
         const bytes = Uint8Array.from(value)
         return '0x' + Buffer.from(bytes).toString('hex')
+    }
+
+    public static async devInspectString(ptb: Transaction, sender: string) {
+        const value = await this.devInspectRaw(ptb, sender)
+        if (!value) {
+            return ''
+        }
+        return bcs.string().parse(new Uint8Array(value!))
     }
 
     public static async getObject(id: string) {

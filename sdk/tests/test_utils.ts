@@ -1,4 +1,4 @@
-import {ADMIN_KEYPAIR, createDSToken, DeploymentRequest, registerInvestor, SuiClient} from "../src";
+import {ADMIN_KEYPAIR, createDSToken, DeploymentRequest, SuiClient} from "../src";
 
 export const testTokenRequest: DeploymentRequest = {
     tokenDescription: {
