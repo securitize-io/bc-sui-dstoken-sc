@@ -7,3 +7,5 @@ export type { CountryComplianceStatus } from './CountryComplianceStatus';
 export type { SwapContract } from './SwapContract';
 export type { DeploymentRequest } from './DeploymentRequest';
 export * from './Attributes';
+export * from './Region';
+export * from './Country';
