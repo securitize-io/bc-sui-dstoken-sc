@@ -685,8 +685,11 @@ public fun get_jp_investor_count<T>(
 public fun get_eu_retail_investor_count<T>(
     investor_info: &InvestorInfo<T>,
     to_country: String,
-): u64 {
-    *investor_info.eu_retail_investors_count.borrow(to_country)
+): Option<u64> {
+    if (investor_info.eu_retail_investors_count.contains(to_country)) {
+        return option::some(*investor_info.eu_retail_investors_count.borrow(to_country));
+    };
+    option::none()
 }
 
 // ==== Public Package Functions ====
@@ -715,6 +718,14 @@ public(package) fun remove_special_wallet<T>(
     wallet: address,
 ): u64 {
     investor_info.special_wallets.remove(wallet)
+}
+
+/// Sets the count of Japanese investors.
+public(package) fun set_total_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
+    investor_info.jp_investors_count = count;
 }
 
 /// Sets the count of US investors.
@@ -758,6 +769,44 @@ public(package) fun set_eu_retail_investors_count<T>(
     *count_ref = count;
 }
 
+// Adjusts compliance counters for a specific country.
+// Updates accredited, US, EU retail, and JP investor counts based on
+// the investor's accreditation/qualification status and country compliance region.
+public(package) fun adjust_investors_counts_by_country<T>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+    country: String,
+    increase: bool,
+) {
+    let country_compliance = investor_info.get_country_compliance(country);
+    if (investor_info.is_accredited_investor_by_id(investor_id)) {
+        apply_change(&mut investor_info.accredited_investors_count, increase);
+        if (country_compliance == US) {
+            apply_change(&mut investor_info.us_accredited_investors_count, increase);
+        };
+    };
+    if (country_compliance == US) {
+        apply_change(&mut investor_info.us_investors_count, increase);
+    } else if (country_compliance == EU && !investor_info.is_qualified_investor_by_id(investor_id)) {
+        if (investor_info.get_eu_retail_investor_count(country).is_some()) {
+            let count = investor_info.eu_retail_investors_count.borrow_mut(country);
+            apply_change(count, increase);
+        }
+    } else if (country_compliance == JP) {
+        apply_change(&mut investor_info.jp_investors_count, increase);
+    };
+}
+
+/// Increase or decrease a counter by 1
+public(package) fun apply_change(counter: &mut u64, increase: bool) {
+    if (increase) {
+        *counter = *counter + 1;
+    } else {
+        assert!(*counter > 0, 0);
+        *counter = *counter - 1;
+    };
+}
+
 // ==== Internal Functions ====
 
 // Adjusts compliance counters when an investor's country changes.
@@ -774,48 +823,3 @@ fun adjust_investor_counts_after_country_change<T>(
     };
 }
 
-// Adjusts compliance counters for a specific country.
-// Updates accredited, US, EU retail, and JP investor counts based on
-// the investor's accreditation/qualification status and country compliance region.
-fun adjust_investors_counts_by_country<T>(
-    investor_info: &mut InvestorInfo<T>,
-    investor_id: String,
-    country: String,
-    increase: bool,
-) {
-    let country_compliance = investor_info.get_country_compliance(country);
-    if (investor_info.is_accredited_investor_by_id(investor_id)) {
-        if (increase) {
-            investor_info.accredited_investors_count = investor_info.accredited_investors_count + 1;
-        } else {
-            investor_info.accredited_investors_count = investor_info.accredited_investors_count - 1;
-        };
-        if (country_compliance == US) {
-            if (increase) {
-                investor_info.us_accredited_investors_count = investor_info.us_accredited_investors_count + 1;
-            } else {
-                investor_info.us_accredited_investors_count = investor_info.us_accredited_investors_count - 1;
-            };
-        };
-    };
-    if (country_compliance == US) {
-        if (increase) {
-            investor_info.us_investors_count = investor_info.us_investors_count + 1;
-        } else {
-            investor_info.us_investors_count = investor_info.us_investors_count - 1;
-        };
-    } else if (country_compliance == EU && !investor_info.is_qualified_investor_by_id(investor_id)) {
-        let count = investor_info.eu_retail_investors_count.borrow_mut(country);
-        if (increase) {
-            *count = *count + 1;
-        } else {
-            *count = *count - 1;
-        };
-    } else if (country_compliance == JP) {
-        if (increase) {
-            investor_info.jp_investors_count = investor_info.jp_investors_count + 1;
-        } else {
-            investor_info.jp_investors_count = investor_info.jp_investors_count - 1;
-        };
-    };
-}

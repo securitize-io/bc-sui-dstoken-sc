@@ -4,7 +4,8 @@
 /// (total, accredited, non-accredited, by region, etc.)
 module securitize::investor_limits;
 
-use securitize::{registry_service::InvestorInfo, version::Version};
+use securitize::{version::Version};
+use securitize::registry_service::InvestorInfo;
 use std::string::String;
 
 // ==== Error Codes ====
@@ -138,6 +139,7 @@ public fun validate_investor_limits_for_transfer<T>(
     to_is_new_investor: bool,
     equal_country: bool,
 ) {
+
     let total_investors = registry.get_total_investors_count();
     limits_rule.validate_transfer_total_investors(
         total_investors,
@@ -174,12 +176,14 @@ public fun validate_investor_limits_for_transfer<T>(
     } else if (to_region == EU && !to_is_qualified) {
         // TODO EU retail = EU region && not qualified (Retail)
         let eu_retail_count = registry.get_eu_retail_investor_count(to_country);
-        limits_rule.validate_transfer_eu_retail(
-            eu_retail_count,
-            from_is_exit_investor,
-            to_is_new_investor,
-            equal_country,
-        );
+        if (eu_retail_count.is_some()) {
+            limits_rule.validate_transfer_eu_retail(
+                eu_retail_count.extract(),
+                from_is_exit_investor,
+                to_is_new_investor,
+                equal_country,
+            );
+        }
     };
 
     // Validate non-accredited limits
@@ -233,7 +237,9 @@ public fun validate_investor_limits_for_issuance<T>(
     } else if (to_region == EU && !to_is_qualified) {
         // EU retail = EU && not qualified
         let retail_count = registry.get_eu_retail_investor_count(to_country);
-        limits_rule.validate_issuance_eu_retail(retail_count, to_is_new_investor);
+        if (retail_count.is_some()) {
+            limits_rule.validate_issuance_eu_retail(retail_count.extract(), to_is_new_investor);
+        }
     } else if (to_region == JP) {
         // JP investor limit
         limits_rule.validate_issuance_jp_investors(jp_count, to_is_new_investor);
