@@ -476,7 +476,7 @@ public(package) fun record_transfer<T>(
 ) {
     if (amount == 0) return;
 
-    let same_investor = false;
+    let mut same_investor = false;
 
     if (!from_is_special_wallet && !to_is_special_wallet) {
         let from_id = registry.get_investor_id_by_wallet(from);
