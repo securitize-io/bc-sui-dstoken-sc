@@ -56,12 +56,12 @@ export class Wallets {
 
     /// Adds a wallet address as an issuer wallet
     async addIssuerWallet(wallet: string, signer: string) {
-        return this.buildSetPTB(signer, 'add_issuer_wallet', [wallet])
+        return this.buildSetPTB(signer, 'add_issuer_wallet', [Config.vars.RWA_REGISTRY, wallet])
     }
 
     /// Adds a wallet address as a platform wallet
     async addPlatformWallet(wallet: string, signer: string) {
-        return this.buildSetPTB(signer, 'add_platform_wallet', [wallet])
+        return this.buildSetPTB(signer, 'add_platform_wallet', [Config.vars.RWA_REGISTRY, wallet])
     }
 
     /// Removes a special wallet from the registry

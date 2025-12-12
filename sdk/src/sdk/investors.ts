@@ -161,6 +161,7 @@ export class Investors {
         signer: string,
     ) {
         const args = [
+            Config.vars.RWA_REGISTRY,
             investorId,
             country,
             wallets,
@@ -169,6 +170,7 @@ export class Investors {
             attributeExpirations,
         ];
         const argTypes = [
+            MoveType.object,
             MoveType.object,
             MoveType.object,
             MoveType.string,
@@ -187,7 +189,7 @@ export class Investors {
         walletAddr: string,
         signer: string
     ) {
-        return this.buildSetPTB(signer, 'add_wallet', [investorId, walletAddr])
+        return this.buildSetPTB(signer, 'add_wallet', [Config.vars.RWA_REGISTRY, investorId, walletAddr])
     }
 
     async removeWallet(
