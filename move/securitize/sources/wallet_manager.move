@@ -11,6 +11,8 @@ use securitize::{
     trust_service::{Auth, Master, Issuer},
     registry_service::{InvestorInfo},
 };
+use rwa::registry::RwaRegistry;
+use rwa::vault;
 
 // ==== Constants ====
 
@@ -82,13 +84,14 @@ public(package) fun new<T: key>(
 public fun add_issuer_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
+    registry: &mut RwaRegistry,
     wallet: address,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetIssuerWallet>(ctx.sender());
-    set_special_wallet(investor_info, wallet, ISSUER, ctx);
+    set_special_wallet(investor_info, registry, wallet, ISSUER, ctx);
 }
 
 /// Adds a wallet address as a platform wallet.
@@ -100,13 +103,14 @@ public fun add_issuer_wallet<T>(
 public fun add_platform_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
+    registry: &mut RwaRegistry,
     wallet: address,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetPlatformWallet>(ctx.sender());
-    set_special_wallet(investor_info, wallet, PLATFORM, ctx);
+    set_special_wallet(investor_info, registry, wallet, PLATFORM, ctx);
 }
 
 /// Removes a special wallet from the registry.
@@ -138,12 +142,16 @@ public fun remove_special_wallet<T>(
 /// Validates that the wallet is not already an investor wallet or special wallet.
 fun set_special_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
+    registry: &mut RwaRegistry,
     wallet: address,
     wallet_type: u64,
     ctx: &mut TxContext,
 ) {
     assert!(!investor_info.is_wallet(wallet), EWalletBelongsToInvestor);
     assert!(!investor_info.is_special_wallet(wallet), EDirectWalletChange);
+    if (!vault::vault_exists(registry, wallet)) {
+        vault::claim(registry, vault::owner_from_address(wallet));
+    };
     investor_info.set_special_wallet(wallet, wallet_type);
     event::emit(
         DSWalletManagerSpecialWalletAdded<T> {
