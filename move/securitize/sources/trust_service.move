@@ -77,6 +77,8 @@ public struct Master has drop {}
 public struct Issuer has drop {}
 /// TransferAgent role witness
 public struct TransferAgent has drop {}
+/// Exchange role Witness
+public struct Exchange has drop {}
 
 // ==================== Trust Service Abilities ====================
 
@@ -86,6 +88,8 @@ public struct SetServiceOwner has drop {}
 public struct SetTransferAgent has drop {}
 /// Add/Remove Issuer role
 public struct SetIssuer has drop {}
+/// Add/Remove Exchange role
+public struct SetExchange has drop {}
 /// Add/Remove abilities from roles
 public struct SetAbilities has drop {}
 /// Add/Remove role types dynamically
@@ -101,6 +105,7 @@ public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
     roles.insert(type_name::with_defining_ids<Master>(), 0);
     roles.insert(type_name::with_defining_ids<Issuer>(), 0);
     roles.insert(type_name::with_defining_ids<TransferAgent>(), 0);
+    roles.insert(type_name::with_defining_ids<Exchange>(), 0);
 
     // Initialize roles_abilities VecMap
     let mut roles_abilities = vec_map::empty();
@@ -114,6 +119,7 @@ public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
     master_abilities.insert(type_name::with_defining_ids<SetServiceOwner>());
     master_abilities.insert(type_name::with_defining_ids<SetIssuer>());
     master_abilities.insert(type_name::with_defining_ids<SetTransferAgent>());
+    master_abilities.insert(type_name::with_defining_ids<SetExchange>());
     roles_abilities.insert(type_name::with_defining_ids<Master>(), master_abilities);
 
     // Add TransferAgent role TypeName as ability to TransferAgent role
@@ -124,7 +130,12 @@ public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
     // Add Issuer role TypeName as ability to Issuer role
     let mut issuer_abilities = vec_set::empty();
     issuer_abilities.insert(type_name::with_defining_ids<SetIssuer>());
+    issuer_abilities.insert(type_name::with_defining_ids<SetExchange>());
     roles_abilities.insert(type_name::with_defining_ids<Issuer>(), issuer_abilities);
+
+    // Add Exchange abilities set
+    let mut exchange_abilities = vec_set::empty();
+    roles_abilities.insert(type_name::with_defining_ids<Exchange>(), exchange_abilities);
 
     let mut auth = Auth<T> {
         id: derived_object::claim(uid, TrustServiceKey<T>()),

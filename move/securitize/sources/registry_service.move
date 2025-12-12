@@ -10,7 +10,7 @@ use std::string::{Self, String};
 use sui::table::{Self, Table};
 use sui::derived_object;
 use sui::event;
-use securitize::{version::Version, trust_service::{Auth, Master, Issuer}};
+use securitize::{version::Version, trust_service::{Auth, Master, Issuer, Exchange}};
 use std::address;
 
 // ==== Error Codes ====
@@ -214,6 +214,13 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Issuer, AddWallet>(version,ctx);
     auth.add_role_ability<T, Issuer, RemoveWallet>(version,ctx);
 
+    auth.add_role_ability<T, Exchange, RegisterInvestor>(version,ctx);
+    auth.add_role_ability<T, Exchange, RemoveInvestor>(version,ctx);
+    auth.add_role_ability<T, Exchange, SetCountry>(version,ctx);
+    auth.add_role_ability<T, Exchange, SetAttribute>(version,ctx);
+    auth.add_role_ability<T, Exchange, AddWallet>(version,ctx);
+    auth.add_role_ability<T, Exchange, RemoveWallet>(version,ctx);
+
     let investor_info = InvestorInfo<T> {
         id: derived_object::claim(uid, RegistryServiceKey<T>()),
         investors: table::new(ctx),
@@ -413,7 +420,6 @@ public fun remove_wallet<T>(
     investor_info.investor_wallets.remove(wallet_addr);
     let mut wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
-    investor_info.investor_wallets.remove(wallet_addr);
     wallets.remove(idx);
     event::emit( DSRegistryServiceWalletRemoved<T> {
         wallet: wallet_addr,
