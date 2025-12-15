@@ -1,6 +1,12 @@
 module securitize::ds_token;
 
-use sui::{coin::TreasuryCap, coin_registry::MetadataCap, dynamic_object_field as dof, event, derived_object};
+use sui::{
+    coin::TreasuryCap, 
+    coin_registry::{Currency, MetadataCap}, 
+    dynamic_object_field as dof, 
+    event, 
+    derived_object
+};
 use std::string::{Self, String};
 use securitize::{version::Version, trust_service::{Auth, Master, Issuer, TransferAgent}};
 use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
@@ -276,22 +282,28 @@ public fun transfer<T>(
     );
 }
 
-/// Returns a reference to the MetadataCap for the treasury.
-/// This allows authorized parties to update the token's metadata
-/// (name, description, icon_url) in a PTB.
+/// Updates the token's metadata (name, description, and/or icon URL).
+/// Only authorized addresses with the MetadataUpdate ability can call this function.
+/// Each metadata field is optional - only provided values will be updated.
 ///
-/// TODO: Decide if we want to return the metadata so that it can be used in a PTB to
-///       update name, description and icon_url or if we want to call the update functions here directly
-///       with event emitting
-public fun metadata_cap<T>(
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the MetadataUpdate ability
+public fun set_metadata<T>(
     treasury: &Treasury<T>,
     auth: &Auth<T>,
+    currency: &mut Currency<T>,
+    name: Option<String>,
+    description: Option<String>,
+    icon_url: Option<String>,
     version: &Version,
     ctx: &mut TxContext,
-): &MetadataCap<T> {
+) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, MetadataUpdate>(ctx.sender()), ENotAuthorized);
-    &treasury.metadata_cap
+    let metadata_cap = &treasury.metadata_cap;
+    name.do!(|n| {currency.set_name<T>(metadata_cap, n);});
+    description.do!(|d| {currency.set_description<T>(metadata_cap, d);});
+    icon_url.do!(|i| {currency.set_icon_url<T>(metadata_cap, i);});
 }
 
 /// Pauses the treasury, preventing token operations.
