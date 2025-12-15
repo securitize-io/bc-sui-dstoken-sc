@@ -79,6 +79,8 @@ public struct Issuer has drop {}
 public struct TransferAgent has drop {}
 /// Exchange role Witness
 public struct Exchange has drop {}
+/// None role Witness
+public struct None has drop {}
 
 // ==================== Trust Service Abilities ====================
 
@@ -151,11 +153,15 @@ public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
 
 // ==================== Role Management Functions ====================
 
-/// Check the role of the address
+/// Returns the role TypeName for the given address.
+/// If no role is assigned, returns the TypeName of `None`.
 public fun get_role<T>(self: &Auth<T>, owner: address): TypeName {
     let owner_key = AddressKey { owner };
-    assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
-    *self.roles_owners.borrow(owner_key)
+    if (self.roles_owners.contains(owner_key)) {
+        *self.roles_owners.borrow(owner_key)
+    } else {
+        type_name::with_defining_ids<None>()
+    }
 }
 
 /// Set/grant a role Exchange to an owner address
