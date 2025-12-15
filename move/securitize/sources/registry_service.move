@@ -606,17 +606,6 @@ public fun is_qualified_investor<T>(
     investor_info.is_qualified_investor_by_id(id)
 }
 
-/// Returns the compliance region for a given country code.
-public fun get_country_compliance<T>(
-    investor_info: &InvestorInfo<T>,
-    country: String,
-): u64 {
-    if (!investor_info.countries_compliances.contains(country)) {
-        return NONE
-    };
-    *investor_info.countries_compliances.borrow(country)
-}
-
 /// Returns the country of the investor.
 public fun get_country<T>(
     investor_info: &InvestorInfo<T>,
@@ -701,13 +690,33 @@ public fun get_eu_retail_investor_count<T>(
 
 // ==== Public Package Functions ====
 
+/// Returns the compliance region for a given country code.
+public(package) fun get_country_compliance<T>(
+    investor_info: &InvestorInfo<T>,
+    country: String,
+): u64 {
+    if (!investor_info.countries_compliances.contains(country)) {
+        return NONE
+    };
+    *investor_info.countries_compliances.borrow(country)
+}
+
 /// Sets the compliance region for a given country code.
+/// If compliance_region is NONE, removes the country entry if it exists.
 public(package) fun set_country_compliance<T>(
     investor_info: &mut InvestorInfo<T>,
     country: String,
     compliance_region: u64,
 ) {
-    investor_info.countries_compliances.add(country, compliance_region);
+    if (investor_info.countries_compliances.contains(country)) {
+        if (compliance_region == NONE) {
+            investor_info.countries_compliances.remove(country);
+        } else {
+            *investor_info.countries_compliances.borrow_mut(country) = compliance_region;
+        }
+    } else if (compliance_region != NONE) {
+        investor_info.countries_compliances.add(country, compliance_region);
+    }
 }
 
 /// Sets a special wallet type for a wallet address.
