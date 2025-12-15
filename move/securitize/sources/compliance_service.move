@@ -67,7 +67,7 @@ public struct RegisterRule() has drop;
 
 public struct UnregisterRule() has drop;
 
-public struct SetCountry() has drop;
+public struct SetCountryCompliance() has drop;
 
 public struct ManageRules() has drop;
 
@@ -82,12 +82,12 @@ public(package) fun new<T>(
 ): ComplianceConfig<T> {
     auth.add_role_ability<T, Master, RegisterRule>(version, ctx);
     auth.add_role_ability<T, Master, UnregisterRule>(version, ctx);
-    auth.add_role_ability<T, Master, SetCountry>(version, ctx);
+    auth.add_role_ability<T, Master, SetCountryCompliance>(version, ctx);
     auth.add_role_ability<T, Master, ManageRules>(version, ctx);
 
     auth.add_role_ability<T, TransferAgent, RegisterRule>(version, ctx);
     auth.add_role_ability<T, TransferAgent, UnregisterRule>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, SetCountry>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, SetCountryCompliance>(version, ctx);
     auth.add_role_ability<T, TransferAgent, ManageRules>(version, ctx);
 
     ComplianceConfig<T> {
@@ -396,7 +396,7 @@ fun get_investor_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64)
     bool    // new investor
 ) {
     if (registry.is_special_wallet(addr)) {
-        return ("", NONE, false, false, 0, false, false);
+        return ("", NONE, false, false, 0, false, false)
     };
 
     let id = registry.get_investor_id_by_wallet(addr);
@@ -462,6 +462,18 @@ public fun unregister_rule<T, R: store + drop>(
 public fun has_rule<T, R: store>(config: &ComplianceConfig<T>): bool {
     let rule_type = type_name::with_defining_ids<R>();
     config.rules.contains(&rule_type)
+}
+
+// ==================== Country Compliance Configuration ====================
+
+public fun set_country_compliance<T>(registry: &mut InvestorInfo<T>, country: String, compliance_region: u64, auth: &Auth<T>, version: &Version, ctx: &TxContext){
+    version.check_is_valid();
+    auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender());
+    registry.set_country_compliance(country, compliance_region)
+}
+
+public fun get_country_compliance<T>(registry: &InvestorInfo<T>, country: String): u64{
+    registry.get_country_compliance(country)
 }
 
 // ==================== Recorders ====================

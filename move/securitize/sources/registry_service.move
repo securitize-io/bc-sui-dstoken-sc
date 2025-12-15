@@ -6,14 +6,10 @@
 /// country, accreditation status, and qualification status.
 module securitize::registry_service;
 
-use std::string::{Self, String};
-use sui::table::{Self, Table};
-use sui::derived_object;
-use sui::event;
-use securitize::{version::Version, trust_service::{Auth, Master, Issuer, Exchange}};
-use std::address;
-use rwa::registry::RwaRegistry;
-use rwa::vault;
+use rwa::{registry::RwaRegistry, vault};
+use securitize::{trust_service::{Auth, Master, Issuer, Exchange}, version::Version};
+use std::{address, string::{Self, String}};
+use sui::{derived_object, event, table::{Self, Table}};
 
 // ==== Error Codes ====
 
@@ -41,6 +37,8 @@ const EWalletDoesNotBelongToInvestor: u64 = 9;
 const EUnknownAttribute: u64 = 10;
 /// Error code when wallet belongs to a different investor than expected
 const EWrongInvestor: u64 = 11;
+/// Error code if the compliance region is already set to the given value.
+const EComplianceUnchanged: u64 = 12;
 
 // ==== Attribute Constants ====
 
@@ -90,7 +88,7 @@ public struct InvestorInfo<phantom T> has key {
     /// Count of retail (non-qualified) investors per EU country
     eu_retail_investors_count: Table<String, u64>,
     /// Mapping of country codes to their compliance region
-    countries_compliances: Table<String, u64>
+    countries_compliances: Table<String, u64>,
 }
 
 /// Represents an investor in the registry with their compliance data.
@@ -108,7 +106,7 @@ public struct Investor has store {
 }
 
 /// Represents a wallet linked to an investor.
-public struct Wallet has store, drop {
+public struct Wallet has drop, store {
     /// Investor ID that owns this wallet
     owner: String,
     /// Address that linked this wallet to the investor
@@ -116,7 +114,7 @@ public struct Wallet has store, drop {
 }
 
 /// Represents a compliance attribute with value and expiration.
-public struct Attribute has store, copy, drop {
+public struct Attribute has copy, drop, store {
     /// The attribute value (e.g., APPROVED, REJECTED)
     value: u64,
     /// Unix timestamp when this attribute expires
@@ -200,28 +198,28 @@ public(package) fun new<T: key>(
     ctx: &mut TxContext,
 ): InvestorInfo<T> {
     // Assign abilities to roles
-    auth.add_role_ability<T, Master, RegisterInvestor>(version,ctx);
-    auth.add_role_ability<T, Master, RemoveInvestor>(version,ctx);
-    auth.add_role_ability<T, Master, UpdateInvestor>(version,ctx);
-    auth.add_role_ability<T, Master, SetCountry>(version,ctx);
-    auth.add_role_ability<T, Master, SetAttribute>(version,ctx);
-    auth.add_role_ability<T, Master, AddWallet>(version,ctx);
-    auth.add_role_ability<T, Master, RemoveWallet>(version,ctx);
+    auth.add_role_ability<T, Master, RegisterInvestor>(version, ctx);
+    auth.add_role_ability<T, Master, RemoveInvestor>(version, ctx);
+    auth.add_role_ability<T, Master, UpdateInvestor>(version, ctx);
+    auth.add_role_ability<T, Master, SetCountry>(version, ctx);
+    auth.add_role_ability<T, Master, SetAttribute>(version, ctx);
+    auth.add_role_ability<T, Master, AddWallet>(version, ctx);
+    auth.add_role_ability<T, Master, RemoveWallet>(version, ctx);
 
-    auth.add_role_ability<T, Issuer, RegisterInvestor>(version,ctx);
-    auth.add_role_ability<T, Issuer, RemoveInvestor>(version,ctx);
-    auth.add_role_ability<T, Issuer, UpdateInvestor>(version,ctx);
-    auth.add_role_ability<T, Issuer, SetCountry>(version,ctx);
-    auth.add_role_ability<T, Issuer, SetAttribute>(version,ctx);
-    auth.add_role_ability<T, Issuer, AddWallet>(version,ctx);
-    auth.add_role_ability<T, Issuer, RemoveWallet>(version,ctx);
+    auth.add_role_ability<T, Issuer, RegisterInvestor>(version, ctx);
+    auth.add_role_ability<T, Issuer, RemoveInvestor>(version, ctx);
+    auth.add_role_ability<T, Issuer, UpdateInvestor>(version, ctx);
+    auth.add_role_ability<T, Issuer, SetCountry>(version, ctx);
+    auth.add_role_ability<T, Issuer, SetAttribute>(version, ctx);
+    auth.add_role_ability<T, Issuer, AddWallet>(version, ctx);
+    auth.add_role_ability<T, Issuer, RemoveWallet>(version, ctx);
 
-    auth.add_role_ability<T, Exchange, RegisterInvestor>(version,ctx);
-    auth.add_role_ability<T, Exchange, RemoveInvestor>(version,ctx);
-    auth.add_role_ability<T, Exchange, SetCountry>(version,ctx);
-    auth.add_role_ability<T, Exchange, SetAttribute>(version,ctx);
-    auth.add_role_ability<T, Exchange, AddWallet>(version,ctx);
-    auth.add_role_ability<T, Exchange, RemoveWallet>(version,ctx);
+    auth.add_role_ability<T, Exchange, RegisterInvestor>(version, ctx);
+    auth.add_role_ability<T, Exchange, RemoveInvestor>(version, ctx);
+    auth.add_role_ability<T, Exchange, SetCountry>(version, ctx);
+    auth.add_role_ability<T, Exchange, SetAttribute>(version, ctx);
+    auth.add_role_ability<T, Exchange, AddWallet>(version, ctx);
+    auth.add_role_ability<T, Exchange, RemoveWallet>(version, ctx);
 
     let investor_info = InvestorInfo<T> {
         id: derived_object::claim(uid, RegistryServiceKey<T>()),
@@ -297,7 +295,13 @@ public fun remove_investor<T: key>(
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     assert!(investor_info.investors.borrow(investor_id).wallets.length() == 0, EInvestorHasWallets);
 
-    let Investor { creator:_, country:_, wallets:_, attributes, total_balance:_ } = investor_info.investors.remove(investor_id);
+    let Investor {
+        creator: _,
+        country: _,
+        wallets: _,
+        attributes,
+        total_balance: _,
+    } = investor_info.investors.remove(investor_id);
     attributes.drop();
     event::emit(DSRegistryServiceInvestorRemoved<T> { investor_id, sender: ctx.sender() });
 }
@@ -331,13 +335,16 @@ public fun update_investor<T: key>(
     if (!investor_info.is_investor(investor_id)) {
         register_investor<T>(investor_info, auth, investor_id, version, ctx);
     };
-    
+
     if (country.length() > 0) {
         set_country<T>(investor_info, auth, investor_id, country, version, ctx);
     };
     wallets.do!(|wallet| {
         if (investor_info.is_wallet(wallet)) {
-            assert!(investor_info.investor_wallets.borrow(wallet).owner == investor_id, EWrongInvestor);
+            assert!(
+                investor_info.investor_wallets.borrow(wallet).owner == investor_id,
+                EWrongInvestor,
+            );
         } else {
             investor_info.add_wallet<T>(
                 auth,
@@ -397,10 +404,10 @@ public fun add_wallet<T>(
     };
     investor_info.investor_wallets.add(wallet_addr, wallet);
     investor_info.investors.borrow_mut(investor_id).wallets.push_back(wallet_addr);
-    event::emit( DSRegistryServiceWalletAdded<T> {
+    event::emit(DSRegistryServiceWalletAdded<T> {
         wallet: wallet_addr,
         investor_id,
-        sender: ctx.sender()
+        sender: ctx.sender(),
     });
 }
 
@@ -422,16 +429,19 @@ public fun remove_wallet<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RemoveWallet>(ctx.sender()), ENotAuthorized);
     assert!(investor_info.is_wallet(wallet_addr), EWalletNotFound);
-    assert!(investor_info.investor_wallets.borrow(wallet_addr).owner == investor_id, EWalletDoesNotBelongToInvestor);
+    assert!(
+        investor_info.investor_wallets.borrow(wallet_addr).owner == investor_id,
+        EWalletDoesNotBelongToInvestor,
+    );
 
     investor_info.investor_wallets.remove(wallet_addr);
     let wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
     investor_info.investors.borrow_mut(investor_id).wallets.remove(idx);
-    event::emit( DSRegistryServiceWalletRemoved<T> {
+    event::emit(DSRegistryServiceWalletRemoved<T> {
         wallet: wallet_addr,
         investor_id,
-        sender: ctx.sender()
+        sender: ctx.sender(),
     });
 }
 
@@ -501,58 +511,41 @@ public fun set_attribute<T>(
         };
         investor.attributes.add(attribute_id, attribute);
     };
-    event::emit(
-        DSRegistryServiceAttributeChanged<T> {
-            investor_id,
-            attribute_id,
-            value: attribute_value,
-            expiry: attribute_expiration,
-            sender: ctx.sender(),
-        }
-    )
+    event::emit(DSRegistryServiceAttributeChanged<T> {
+        investor_id,
+        attribute_id,
+        value: attribute_value,
+        expiry: attribute_expiration,
+        sender: ctx.sender(),
+    })
 }
 
 // ==== View Functions ====
 
 /// Returns whether an investor exists in the registry.
-public fun is_investor<T>(
-    investor_info: &InvestorInfo<T>,
-    investor_id: String,
-): bool {
+public fun is_investor<T>(investor_info: &InvestorInfo<T>, investor_id: String): bool {
     investor_info.investors.contains(investor_id)
 }
 
 /// Returns whether an investor exists in the registry.
-public fun get_investor_id_by_wallet<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): String {
+public fun get_investor_id_by_wallet<T>(investor_info: &InvestorInfo<T>, wallet: address): String {
     assert!(investor_info.is_wallet(wallet), EInvestorNotFound);
     investor_info.investor_wallets.borrow(wallet).owner
 }
 
 /// Returns whether a wallet is registered in the registry.
-public fun is_wallet<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): bool {
+public fun is_wallet<T>(investor_info: &InvestorInfo<T>, wallet: address): bool {
     investor_info.investor_wallets.contains(wallet)
 }
 
 /// Returns whether a wallet is a special wallet (e.g., ISSUER, PLATFORM).
-public fun is_special_wallet<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address
-): bool {
+public fun is_special_wallet<T>(investor_info: &InvestorInfo<T>, wallet: address): bool {
     let wallet_type = investor_info.get_special_wallet_type(wallet);
     wallet_type != 0
 }
 
 /// Retrieves the wallet type for a special wallet address.
-public fun get_special_wallet_type<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address
-): u64 {
+public fun get_special_wallet_type<T>(investor_info: &InvestorInfo<T>, wallet: address): u64 {
     if (!investor_info.special_wallets.contains(wallet)) {
         return 0
     };
@@ -581,10 +574,7 @@ public fun is_accredited_investor_by_id<T>(
 }
 
 /// Returns whether an investor has accredited status based on their wallet address.
-public fun is_accredited_investor<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): bool {
+public fun is_accredited_investor<T>(investor_info: &InvestorInfo<T>, wallet: address): bool {
     let id = investor_info.investor_wallets.borrow(wallet).owner;
     investor_info.is_accredited_investor_by_id(id)
 }
@@ -598,30 +588,13 @@ public fun is_qualified_investor_by_id<T>(
 }
 
 /// Returns whether an investor has qualified status based on their wallet address.
-public fun is_qualified_investor<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): bool {
+public fun is_qualified_investor<T>(investor_info: &InvestorInfo<T>, wallet: address): bool {
     let id = investor_info.investor_wallets.borrow(wallet).owner;
     investor_info.is_qualified_investor_by_id(id)
 }
 
-/// Returns the compliance region for a given country code.
-public fun get_country_compliance<T>(
-    investor_info: &InvestorInfo<T>,
-    country: String,
-): u64 {
-    if (!investor_info.countries_compliances.contains(country)) {
-        return NONE
-    };
-    *investor_info.countries_compliances.borrow(country)
-}
-
 /// Returns the country of the investor.
-public fun get_country<T>(
-    investor_info: &InvestorInfo<T>,
-    investor_id: String,
-): String {
+public fun get_country<T>(investor_info: &InvestorInfo<T>, investor_id: String): String {
     investor_info.investors.borrow(investor_id).country
 }
 
@@ -654,37 +627,27 @@ public fun get_attribute_expiration<T>(
 }
 
 /// Returns the total number of investors.
-public fun get_total_investors_count<T>(
-    investor_info: &InvestorInfo<T>,
-): u64 {
+public fun get_total_investors_count<T>(investor_info: &InvestorInfo<T>): u64 {
     investor_info.total_investors_count
 }
 
 /// Returns the total number of accredited investors.
-public fun get_accredited_investor_count<T>(
-    investor_info: &InvestorInfo<T>,
-): u64 {
+public fun get_accredited_investor_count<T>(investor_info: &InvestorInfo<T>): u64 {
     investor_info.accredited_investors_count
 }
 
 /// Returns the total number of US investors.
-public fun get_us_investor_count<T>(
-    investor_info: &InvestorInfo<T>,
-): u64 {
+public fun get_us_investor_count<T>(investor_info: &InvestorInfo<T>): u64 {
     investor_info.us_investors_count
 }
 
 /// Returns the total number of US accredited investors.
-public fun get_us_accredited_investor_count<T>(
-    investor_info: &InvestorInfo<T>,
-): u64 {
+public fun get_us_accredited_investor_count<T>(investor_info: &InvestorInfo<T>): u64 {
     investor_info.us_accredited_investors_count
 }
 
 /// Returns the total number of JP investors.
-public fun get_jp_investor_count<T>(
-    investor_info: &InvestorInfo<T>,
-): u64 {
+public fun get_jp_investor_count<T>(investor_info: &InvestorInfo<T>): u64 {
     investor_info.jp_investors_count
 }
 
@@ -701,13 +664,37 @@ public fun get_eu_retail_investor_count<T>(
 
 // ==== Public Package Functions ====
 
+/// Returns the compliance region for a given country code.
+public(package) fun get_country_compliance<T>(
+    investor_info: &InvestorInfo<T>,
+    country: String,
+): u64 {
+    if (!investor_info.countries_compliances.contains(country)) {
+        return NONE
+    };
+    *investor_info.countries_compliances.borrow(country)
+}
+
 /// Sets the compliance region for a given country code.
+/// - If `compliance_region == NONE`, removes the country entry if it exists.
+/// - Otherwise, inserts or updates the entry.
+/// - No-op if the value is unchanged.
 public(package) fun set_country_compliance<T>(
     investor_info: &mut InvestorInfo<T>,
     country: String,
     compliance_region: u64,
 ) {
-    investor_info.countries_compliances.add(country, compliance_region);
+    let previous = get_country_compliance(investor_info, country);
+    assert!(previous != compliance_region, EComplianceUnchanged);
+    if (compliance_region == NONE) {
+        investor_info.countries_compliances.remove(country);
+        return;
+    };
+    if (previous == NONE) {
+        investor_info.countries_compliances.add(country, compliance_region);
+    } else {
+        *investor_info.countries_compliances.borrow_mut(country) = compliance_region;
+    }
 }
 
 /// Sets a special wallet type for a wallet address.
@@ -728,18 +715,12 @@ public(package) fun remove_special_wallet<T>(
 }
 
 /// Sets the count of Japanese investors.
-public(package) fun set_total_investors_count<T>(
-    investor_info: &mut InvestorInfo<T>,
-    count: u64,
-) {
+public(package) fun set_total_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
     investor_info.jp_investors_count = count;
 }
 
 /// Sets the count of US investors.
-public(package) fun set_us_investors_count<T>(
-    investor_info: &mut InvestorInfo<T>,
-    count: u64,
-) {
+public(package) fun set_us_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
     investor_info.us_investors_count = count;
 }
 
@@ -760,10 +741,7 @@ public(package) fun set_accredited_investors_count<T>(
 }
 
 /// Sets the count of Japanese investors.
-public(package) fun set_jp_investors_count<T>(
-    investor_info: &mut InvestorInfo<T>,
-    count: u64,
-) {
+public(package) fun set_jp_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
     investor_info.jp_investors_count = count;
 }
 
@@ -829,4 +807,3 @@ fun adjust_investor_counts_after_country_change<T>(
         adjust_investors_counts_by_country(investor_info, investor_id, new_country, true);
     };
 }
-
