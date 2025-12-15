@@ -20,6 +20,7 @@ use std::address;
 use rwa::registry;
 use securitize::registry_service::apply_change;
 use securitize::registry_service::is_special_wallet;
+use securitize::wallet_manager::is_issuer_wallet;
 
 // ==== Error Codes ====
 
@@ -242,24 +243,45 @@ public fun validate_issue<T>(
 
 /// Validate burn action against all configured rules
 public(package) fun validate_burn<T>(
-    config: &ComplianceConfig<T>,
+    registry: &mut InvestorInfo<T>,
     from: address,
     amount: u64,
-    from_balance: u64,
-    // lock_manager: &mut LockManager<T>,
 ) {
-    abort 0
+
+    let from_is_special_wallet = is_special_wallet(registry, from);
+    let (
+        _from_country,
+        _from_region,
+        _from_is_accredited,
+        from_is_exit_investor,
+        _from_balance,
+        _unused_from_qualified,
+        _unused_from_new
+    ) = get_investor_info(registry, from, amount);
+
+    record_burn(registry, from, amount, from_is_special_wallet, from_is_exit_investor);
 }
 
 /// Validate seize (clawback) action against all configured rules
 public(package) fun validate_seize<T>(
-    config: &ComplianceConfig<T>,
+    registry: &mut InvestorInfo<T>,
     from: address,
+    to: address,
     amount: u64,
-    from_balance: u64,
-    // lock_manager: &mut LockManager<T>,
 ) {
-    abort 0
+    assert!(is_issuer_wallet(registry, to));
+    let from_is_special_wallet = is_special_wallet(registry, from);
+    let (
+        _from_country,
+        _from_region,
+        _from_is_accredited,
+        from_is_exit_investor,
+        _from_balance,
+        _unused_from_qualified,
+        _unused_from_new
+    ) = get_investor_info(registry, from, amount);
+
+    record_seize(registry, from, amount, from_is_special_wallet, from_is_exit_investor);
 }
 
 // ==================== Helper Functions ====================

@@ -73,7 +73,7 @@ public fun set_region_min_holdings(
     version: &Version,
 ) {
     version.check_is_valid();
-    assert!(min >= 0, EInvalidMinimum);
+    assert!(min > 0, EInvalidMinimum);
 
     // Remove existing entry if present, then insert new value
     if (rule.region_min_tokens.contains(&region)) {
