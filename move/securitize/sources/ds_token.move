@@ -39,6 +39,8 @@ const EInvalidLengthOfParameters: u64 = 6;
 const EValueLockedLargerThanValue: u64 = 7;
 /// Error code when the specified address is not recognized as a wallet
 const ENotWallet: u64 = 8;
+/// Error code when there is not enough balance to perform the operation
+const ENotEnoughBalance: u64 = 9;
 
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
@@ -186,6 +188,11 @@ public fun issue_tokens<T>(
         &mut treasury.id,
         TreasuryCapKey(),
     ).mint_balance(value);
+    if (investors.is_wallet(to_address)) {
+        let id = investors.get_investor_id_by_wallet(to_address);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance + value);
+    };
     // Deposit to the investor's vault
     rule::deposit_to_vault(
         rwa_rule,
@@ -238,7 +245,8 @@ public fun burn<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     assert!(from.owner_address() == from_address, EVaultOwnerMismatch);
-    //compliance_service::validate_burn();
+    assert!(from.balance<T>() >= value, ENotEnoughBalance);
+    compliance_service::validate_burn(investors, from_address, value);
     let balance = rule::clawback(
         rwa_rule,
         from,
@@ -250,6 +258,11 @@ public fun burn<T>(
         &mut treasury.id,
         TreasuryCapKey(),
     ).burn(balance.into_coin(ctx));
+    if (investors.is_wallet(from_address)) {
+        let id = investors.get_investor_id_by_wallet(from_address);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance - value);
+    };
     event::emit(
         Burn<T> {
             burner: from_address,
@@ -289,7 +302,8 @@ public fun seize<T>(
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
     assert!(from.owner_address() == from_address, EVaultOwnerMismatch);
     assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
-    //compliance_service::validate_seize();
+    assert!(from.balance<T>() >= value, ENotEnoughBalance);
+    compliance_service::validate_seize(investors, from_address, to_address, value);
     // Withdraw from the investor's vault and deposit to the treasury's vault
     rule::clawback_to_vault(
         rwa_rule,
@@ -298,6 +312,16 @@ public fun seize<T>(
         value,
         DsProtocol(),
     );
+    if (investors.is_wallet(to_address)) {
+        let id = investors.get_investor_id_by_wallet(to_address);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance + value);
+    };
+    if (investors.is_wallet(from_address)) {
+        let id = investors.get_investor_id_by_wallet(from_address);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance - value);
+    };
     event::emit(
         Seize<T> {
             from: from_address,
@@ -327,6 +351,7 @@ public fun transfer<T>(
     rwa_rule: &RwaRule<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
+    clock: &Clock,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
@@ -343,7 +368,23 @@ public fun transfer<T>(
         investors.is_wallet(to_address) &&
         treasury.is_paused()), ETreasuryPaused
     );
-    // compliance_service::validate_transfer()
+    compliance_service::validate_transfer(
+        compliance_config, 
+        investors, 
+        &request, 
+        clock.timestamp_ms(), 
+        version
+    );
+    if (investors.is_wallet(to_address)) {
+        let id = investors.get_investor_id_by_wallet(to_address);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance + value);
+    };
+    if (investors.is_wallet(from_address)) {
+        let id = investors.get_investor_id_by_wallet(from_address);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance - value);
+    };
     // Resolve the request
     rule::resolve_transfer(rwa_rule, request, DsProtocol());
     event::emit(
