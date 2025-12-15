@@ -6,7 +6,7 @@
 module securitize::trust_service;
 
 use std::type_name::{Self, TypeName};
-use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}, vec_set::{Self, VecSet}};
+use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}, vec_set::{Self, VecSet}, derived_object};
 use securitize::version::Version;
 
 // ==== Error Codes ====
@@ -34,6 +34,8 @@ const EAbilityNotFound: u64 = 9;
 const ERoleAlreadyExists: u64 = 10;
 /// Role has active members and cannot be removed.
 const ERoleHasActiveMembers: u64 = 11;
+
+public struct TrustServiceKey<phantom T>() has copy, drop, store;
 
 // ==================== Structs ====================
 
@@ -75,6 +77,8 @@ public struct Master has drop {}
 public struct Issuer has drop {}
 /// TransferAgent role witness
 public struct TransferAgent has drop {}
+/// Exchange role Witness
+public struct Exchange has drop {}
 
 // ==================== Trust Service Abilities ====================
 
@@ -84,6 +88,8 @@ public struct SetServiceOwner has drop {}
 public struct SetTransferAgent has drop {}
 /// Add/Remove Issuer role
 public struct SetIssuer has drop {}
+/// Add/Remove Exchange role
+public struct SetExchange has drop {}
 /// Add/Remove abilities from roles
 public struct SetAbilities has drop {}
 /// Add/Remove role types dynamically
@@ -93,12 +99,13 @@ public struct SetRoleTypes has drop {}
 
 /// Create new Auth shared object for type T
 /// This should be called during initialization and the Auth object should be shared
-public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
+public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
     // Initialize roles VecMap with Master, Issuer, TransferAgent roles
     let mut roles = vec_map::empty();
     roles.insert(type_name::with_defining_ids<Master>(), 0);
     roles.insert(type_name::with_defining_ids<Issuer>(), 0);
     roles.insert(type_name::with_defining_ids<TransferAgent>(), 0);
+    roles.insert(type_name::with_defining_ids<Exchange>(), 0);
 
     // Initialize roles_abilities VecMap
     let mut roles_abilities = vec_map::empty();
@@ -112,6 +119,7 @@ public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
     master_abilities.insert(type_name::with_defining_ids<SetServiceOwner>());
     master_abilities.insert(type_name::with_defining_ids<SetIssuer>());
     master_abilities.insert(type_name::with_defining_ids<SetTransferAgent>());
+    master_abilities.insert(type_name::with_defining_ids<SetExchange>());
     roles_abilities.insert(type_name::with_defining_ids<Master>(), master_abilities);
 
     // Add TransferAgent role TypeName as ability to TransferAgent role
@@ -122,10 +130,15 @@ public(package) fun new<T>(ctx: &mut TxContext): Auth<T> {
     // Add Issuer role TypeName as ability to Issuer role
     let mut issuer_abilities = vec_set::empty();
     issuer_abilities.insert(type_name::with_defining_ids<SetIssuer>());
+    issuer_abilities.insert(type_name::with_defining_ids<SetExchange>());
     roles_abilities.insert(type_name::with_defining_ids<Issuer>(), issuer_abilities);
 
+    // Add Exchange abilities set
+    let mut exchange_abilities = vec_set::empty();
+    roles_abilities.insert(type_name::with_defining_ids<Exchange>(), exchange_abilities);
+
     let mut auth = Auth<T> {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, TrustServiceKey<T>()),
         roles,
         roles_abilities,
         roles_owners: bag::new(ctx),
@@ -143,6 +156,21 @@ public fun get_role<T>(self: &Auth<T>, owner: address): TypeName {
     let owner_key = AddressKey { owner };
     assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
     *self.roles_owners.borrow(owner_key)
+}
+
+/// Set/grant a role Exchange to an owner address
+/// Creates an AddressKey and stores it in the roles Bag
+public fun set_exchange<T>(self: &mut Auth<T>, owner: address, version: &Version, ctx: &mut TxContext) {
+    version.check_is_valid();
+    assert!(owner_has_ability<T, SetExchange>(self, ctx.sender()), ENotEnoughPermissions);
+    internal_assign_role<T, Exchange>(self, owner, ctx);
+}
+
+/// Remove a role Exchange from an owner address
+public fun remove_exchange<T>(self: &mut Auth<T>, owner: address, version: &Version, ctx: &mut TxContext) {
+    version.check_is_valid();
+    assert!(owner_has_ability<T, SetExchange>(self, ctx.sender()), ENotEnoughPermissions);
+    internal_remove_role<T, Exchange>(self, owner, ctx);
 }
 
 /// Set/grant a role TransferAgent to an owner address

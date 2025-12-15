@@ -175,13 +175,15 @@ public fun validate_investor_limits_for_transfer<T>(
         );
     } else if (to_region == EU && !to_is_qualified) {
         // TODO EU retail = EU region && not qualified (Retail)
-        let eu_retail_count = registry.get_eu_retail_investor_count(to_country);
-        limits_rule.validate_transfer_eu_retail(
-            eu_retail_count,
-            from_is_exit_investor,
-            to_is_new_investor,
-            equal_country,
-        );
+        let mut eu_retail_count = registry.get_eu_retail_investor_count(to_country);
+        if (eu_retail_count.is_some()) {
+            limits_rule.validate_transfer_eu_retail(
+                eu_retail_count.extract(),
+                from_is_exit_investor,
+                to_is_new_investor,
+                equal_country,
+            );
+        }
     };
 
     // Validate non-accredited limits
@@ -234,8 +236,10 @@ public fun validate_investor_limits_for_issuance<T>(
         }
     } else if (to_region == EU && !to_is_qualified) {
         // EU retail = EU && not qualified
-        let retail_count = registry.get_eu_retail_investor_count(to_country);
-        limits_rule.validate_issuance_eu_retail(retail_count, to_is_new_investor);
+        let mut retail_count = registry.get_eu_retail_investor_count(to_country);
+        if (retail_count.is_some()) {
+            limits_rule.validate_issuance_eu_retail(retail_count.extract(), to_is_new_investor);
+        }
     } else if (to_region == JP) {
         // JP investor limit
         limits_rule.validate_issuance_jp_investors(jp_count, to_is_new_investor);
@@ -398,10 +402,10 @@ public fun validate_issuance_non_accredited(
     current_count: u64,
     to_is_new_investor: bool,
 ) {
-    if (rule.us_accredited_limit == 0) return;
+    if (rule.non_accredited_limit == 0) return;
 
     if (to_is_new_investor) {
-        assert!(current_count < rule.non_accredited_limit, EMaxUSAccreditedExceeded);
+        assert!(current_count < rule.non_accredited_limit, EMaxNonAccreditedExceeded);
     }
 }
 

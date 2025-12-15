@@ -26,22 +26,8 @@ public struct HoldingLimits has drop, store {
 }
 // ==================== Initialization ====================
 
-/// Create a new HoldingLimits rule
-public fun new(
-    min_holdings_per_investor: u64,
-    max_holdings_per_investor: u64,
-    version: &Version,
-): HoldingLimits {
-    version.check_is_valid();
-    HoldingLimits {
-        min_holdings_per_investor,
-        max_holdings_per_investor,
-        region_min_tokens: vec_map::empty(),
-    }
-}
-
 /// Create with region-specific minimums
-public fun new_with_regions(
+public fun new(
     min_holdings_per_investor: u64,
     max_holdings_per_investor: u64,
     regions: vector<u64>,
@@ -87,7 +73,7 @@ public fun set_region_min_holdings(
     version: &Version,
 ) {
     version.check_is_valid();
-    assert!(min >= 0, EInvalidMinimum);
+    assert!(min > 0, EInvalidMinimum);
 
     // Remove existing entry if present, then insert new value
     if (rule.region_min_tokens.contains(&region)) {
@@ -97,11 +83,7 @@ public fun set_region_min_holdings(
 }
 
 /// Remove region-specific minimum
-public fun remove_region_min_holdings(
-    rule: &mut HoldingLimits,
-    region: u64,
-    version: &Version,
-) {
+public fun remove_region_min_holdings(rule: &mut HoldingLimits, region: u64, version: &Version) {
     version.check_is_valid();
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
@@ -121,9 +103,11 @@ public fun validate_holding_limits_for_transfer(
     to_region: u64,
 ) {
     // ---- SENDER ----
-    let from_balance_after = from_balance - amount;
-    if (from_balance_after > 0 && !from_is_platform_wallet) {
-        rule.validate_min_holdings(from_balance_after, from_region);
+    if (!from_is_platform_wallet) {
+        let from_balance_after = from_balance - amount;
+        if (from_balance_after > 0){
+            rule.validate_min_holdings(from_balance_after, from_region);
+        }
     };
     // ---- RECEIVER ----
     let to_balance_after = to_balance + amount;

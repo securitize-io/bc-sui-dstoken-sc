@@ -6,22 +6,39 @@ use securitize::{
     holding_limits::HoldingLimits,
     investor_limits::InvestorLimits,
     trust_service::{Auth, TransferAgent, Master},
-    version::Version
+    version::Version,
 };
 use std::{type_name::{Self, TypeName}};
-use sui::{bag::{Self, Bag}, event};
+use sui::{bag::{Self, Bag}, event, derived_object};
 use securitize::registry_service::InvestorInfo;
 use std::string::String;
+use securitize::force_full_transfer::ForceFullTransfer;
+use securitize::flowback_restriction::FlowbackRestriction;
+use sui::clock::Clock;
+use securitize::wallet_manager::is_platform_wallet;
+use std::address;
+use rwa::registry;
+use securitize::registry_service::apply_change;
+use securitize::registry_service::is_special_wallet;
+use securitize::wallet_manager::is_issuer_wallet;
 
 // ==== Error Codes ====
 
-/// Rule type not found in the system
 const ERuleNotFound: u64 = 0;
-/// Rule already exists for this asset
 const ERuleAlreadyExists: u64 = 1;
 const EDestinationRestricted: u64 = 2;
 const ENotWhitelisted: u64 = 3;
-const ENotEnoughTokens: u64 = 4;
+const ETotalInvestorsUnderflow: u64 = 4;
+
+// ==== TEMP Compliance Region Constants ====
+
+const NONE: u64 = 0;
+const US: u64 = 1;
+const EU: u64 = 2;
+const FORBIDDEN: u64 = 4;
+const JP: u64 = 8;
+
+public struct ComplianceServiceKey<phantom T>() has copy, drop, store;
 
 // ==== Events ====
 
@@ -44,25 +61,21 @@ public struct ComplianceConfig<phantom T> has key {
     rules: vector<TypeName>,
 }
 
-// ==== TEMP Compliance Region Constants ====
-
-const US: u64 = 1;
-const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
-
-
-// Compliance Abilities
+// ==== Compliance Abilities ====
 
 public struct RegisterRule() has drop;
+
 public struct UnregisterRule() has drop;
+
 public struct SetCountry() has drop;
+
 public struct ManageRules() has drop;
 
 // ==================== Initialization Functions ====================
 
 /// Create a new ComplianceConfig for token type T
 public(package) fun new<T>(
+    uid: &mut UID,
     auth: &mut Auth<T>,
     version: &Version,
     ctx: &mut TxContext,
@@ -78,7 +91,7 @@ public(package) fun new<T>(
     auth.add_role_ability<T, TransferAgent, ManageRules>(version, ctx);
 
     ComplianceConfig<T> {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, ComplianceServiceKey<T>()),
         rules_bag: bag::new(ctx),
         rules: vector[],
     }
@@ -95,10 +108,11 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 /// Validate transfer action against all configured rules
 public fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
-    registry: &InvestorInfo<T>,
+    registry: &mut InvestorInfo<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
     // lock_manager: &LockManager<T>,
+    clock: &Clock
 ): RwaTransferRequest<T> {
     version.check_is_valid();
 
@@ -106,36 +120,43 @@ public fun validate_transfer<T>(
     let to_address = request.request_to_address();
 
     assert!(registry.is_special_wallet(to_address) ||  registry.is_wallet(to_address), ENotWhitelisted);
-    // get investor id
-    // TODO check SPECIAL WALLETS 
-    let from_id = registry.get_investor_id_by_wallet(from_address);
-    let to_id = registry.get_investor_id_by_wallet(to_address);
-    /////////////////
-    let from_country = registry.get_country(from_id);
-    let to_country = registry.get_country(to_id);
-    let from_region = registry.get_country_compliance(from_country);
-    let to_region = registry.get_country_compliance(to_country);
-    let from_balance = registry.investor_wallet_balance_total(from_id);
-    let to_balance = registry.investor_wallet_balance_total(to_id);
-    let from_is_accredited = registry.is_accredited_investor_by_id(from_id);
-    let to_is_accredited = registry.is_accredited_investor_by_id(to_id);
-    let to_is_qualified = registry.is_qualified_investor_by_id(to_id);
-    let to_is_new_investor = to_balance == 0;
+
+    let to_is_platform_wallet = is_platform_wallet(registry, to_address);
+    let from_is_platform_wallet = is_platform_wallet(registry, from_address);
+    let to_is_special_wallet = is_special_wallet(registry, to_address);
+    let from_is_special_wallet = is_special_wallet(registry, from_address);
+
     let amount = request.request_amount();
-    let from_is_exit_investor = from_balance == amount;
-    // TODO add platform wallet
-    let to_is_platform_wallet = false;
-    let from_is_platform_wallet = false;
+    // ---- FROM ----
+    let (
+        from_country,
+        from_region,
+        from_is_accredited,
+        from_is_exit_investor,
+        from_balance,
+        _unused_from_qualified,
+        _unused_from_new
+    ) = get_investor_info(registry, from_address, amount);
+
+    // ---- TO ----
+    let (
+        to_country,
+        to_region,
+        to_is_accredited,
+        _unused_to_exit,
+        to_balance,
+        to_is_qualified,
+        to_is_new_investor
+    ) = get_investor_info(registry, to_address, amount);
 
     let equal_country = from_country == to_country;
 
-    assert!(from_balance >= amount, ENotEnoughTokens);
     assert!(to_region != FORBIDDEN, EDestinationRestricted);
 
     let mut rules =  config.rules;
     // Skip checks for platform wallets except force full transfer
     if (to_is_platform_wallet) {
-        rules = vector[]
+        rules = vector[type_name::with_defining_ids<ForceFullTransfer>()]
     };
 
     if (from_address == to_address) {
@@ -161,15 +182,18 @@ public fun validate_transfer<T>(
             to_is_qualified,
             to_is_new_investor,
             equal_country,
+            clock
         );
     });
+
+    record_transfer(registry, from_address, to_address, amount, from_is_special_wallet, to_is_special_wallet, to_is_new_investor, from_is_exit_investor);
     request
 }
 
 /// Validate issuance action against all configured rules
 public fun validate_issue<T>(
     config: &ComplianceConfig<T>,
-    registry: &InvestorInfo<T>,
+    registry: &mut InvestorInfo<T>,
     to: address,
     // lock_manager: &LockManager<T>,
     amount: u64,
@@ -181,16 +205,18 @@ public fun validate_issue<T>(
 
     // get investor info
     // TODO check SPECIAL WALLETS 
-    let to_id = registry.get_investor_id_by_wallet(to);
-    ////////////////
-    let to_country = registry.get_country(to_id);
-    let to_region = registry.get_country_compliance(to_country);
-    let to_balance = registry.investor_wallet_balance_total(to_id);
-    let to_is_accredited = registry.is_accredited_investor_by_id(to_id);
-    let to_is_qualified = registry.is_qualified_investor_by_id(to_id);
-    let to_is_new_investor = to_balance == 0;
-    // TODO add platform wallet
-    let is_platform_wallet = false;
+    let is_platform_wallet = is_platform_wallet(registry, to);
+
+    // ---- TO ----
+    let (
+        to_country,
+        to_region,
+        to_is_accredited,
+        _unused_to_exit,
+        to_balance,
+        to_is_qualified,
+        to_is_new_investor
+    ) = get_investor_info(registry, to, amount);
 
     assert!(to_region != FORBIDDEN, EDestinationRestricted);
 
@@ -211,28 +237,51 @@ public fun validate_issue<T>(
             to_is_new_investor
         );
     });
+
+    record_issuance(registry, to, amount, is_platform_wallet, to_is_new_investor);
 }
 
 /// Validate burn action against all configured rules
 public(package) fun validate_burn<T>(
-    config: &ComplianceConfig<T>,
+    registry: &mut InvestorInfo<T>,
     from: address,
     amount: u64,
-    from_balance: u64,
-    // lock_manager: &mut LockManager<T>,
 ) {
-    abort 0
+
+    let from_is_special_wallet = is_special_wallet(registry, from);
+    let (
+        _from_country,
+        _from_region,
+        _from_is_accredited,
+        from_is_exit_investor,
+        _from_balance,
+        _unused_from_qualified,
+        _unused_from_new
+    ) = get_investor_info(registry, from, amount);
+
+    record_burn(registry, from, amount, from_is_special_wallet, from_is_exit_investor);
 }
 
 /// Validate seize (clawback) action against all configured rules
 public(package) fun validate_seize<T>(
-    config: &ComplianceConfig<T>,
+    registry: &mut InvestorInfo<T>,
     from: address,
+    to: address,
     amount: u64,
-    from_balance: u64,
-    // lock_manager: &mut LockManager<T>,
 ) {
-    abort 0
+    assert!(is_issuer_wallet(registry, to));
+    let from_is_special_wallet = is_special_wallet(registry, from);
+    let (
+        _from_country,
+        _from_region,
+        _from_is_accredited,
+        from_is_exit_investor,
+        _from_balance,
+        _unused_from_qualified,
+        _unused_from_new
+    ) = get_investor_info(registry, from, amount);
+
+    record_seize(registry, from, amount, from_is_special_wallet, from_is_exit_investor);
 }
 
 // ==================== Helper Functions ====================
@@ -255,6 +304,7 @@ fun validate_transfer_rule<T>(
     to_is_qualified: bool,
     to_is_new_investor: bool,
     equal_country: bool,
+    clock: &Clock
 ) {
     // Match on rule type and delegate to appropriate validator
     if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
@@ -283,6 +333,12 @@ fun validate_transfer_rule<T>(
             to_is_new_investor,
             equal_country,
         );
+    } else if (rule == type_name::with_defining_ids<ForceFullTransfer>()) {
+        let rule: &ForceFullTransfer = config.rules_bag.borrow(rule);
+        rule.validate_rule(from_region, from_is_exit_investor);
+    } else if (rule == type_name::with_defining_ids<FlowbackRestriction>()) {
+        let rule: &FlowbackRestriction = config.rules_bag.borrow(rule);
+        rule.validate_rule(from_region, to_region, from_is_platform_wallet, clock);
     };
 }
 
@@ -300,18 +356,13 @@ fun validate_issuance_rule<T>(
     to_is_new_investor: bool,
 ) {
     // TODO: LockManager Is Investor LiquidateOnly
-    // Accredited only check
     if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
         let rule: &AccreditedOnly = config.rules_bag.borrow(rule);
         rule.validate_rule(to_region, to_is_accredited);
-    }
-    // Holding limits - min/max holdings
-    else if (rule == type_name::with_defining_ids<HoldingLimits>()) {
+    } else if (rule == type_name::with_defining_ids<HoldingLimits>()) {
         let rule: &HoldingLimits = config.rules_bag.borrow(rule);
         rule.validate_holding_limits_for_issuance(amount, to_balance, to_region);
-    }
-    // Investor limits - category limits for new investors
-    else if (rule == type_name::with_defining_ids<InvestorLimits>()) {
+    } else if (rule == type_name::with_defining_ids<InvestorLimits>()) {
         let rule: &InvestorLimits = config.rules_bag.borrow(rule);
         rule.validate_investor_limits_for_issuance(
             registry,
@@ -322,6 +373,42 @@ fun validate_issuance_rule<T>(
             to_is_new_investor,
         );
     };
+}
+
+/// Loads all relevant compliance and investor state for a given wallet address. 
+/// For **non-special wallets**, it resolves:
+/// - the investor ID,
+/// - the country and mapped compliance region,
+/// - total token balance across all wallets,
+/// - accreditation and qualification status,
+/// - whether the investor is new (balance == 0),
+/// - whether the outgoing transfer represents a full exit (balance == amount).
+///
+/// For **special wallets**, all fields are defaulted (region = NONE, booleans = false,
+/// balance = 0), and no registry lookups are performed.
+fun get_investor_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): (
+    String, // country
+    u64,    // region
+    bool,   // accredited
+    bool,   // exit investor
+    u64,    // balance
+    bool,   // qualified
+    bool    // new investor
+) {
+    if (registry.is_special_wallet(addr)) {
+        return ("", NONE, false, false, 0, false, false);
+    };
+
+    let id = registry.get_investor_id_by_wallet(addr);
+    let country = registry.get_country(id);
+    let region = registry.get_country_compliance(country);
+    let balance = registry.investor_wallet_balance_total(id);
+    let accredited = registry.is_accredited_investor_by_id(id);
+    let qualified = registry.is_qualified_investor_by_id(id);
+    let exit = balance == amount;
+    let is_new = balance == 0;
+
+    (country, region, accredited, exit, balance, qualified, is_new)
 }
 
 // ==================== Rule Management Functions ====================
@@ -375,6 +462,127 @@ public fun unregister_rule<T, R: store + drop>(
 public fun has_rule<T, R: store>(config: &ComplianceConfig<T>): bool {
     let rule_type = type_name::with_defining_ids<R>();
     config.rules.contains(&rule_type)
+}
+
+// ==================== Recorders ====================
+
+public(package) fun record_issuance<T>(
+    registry: &mut InvestorInfo<T>,
+    to: address,
+    amount: u64,
+    to_is_special_wallet: bool,
+    to_is_new_investor: bool,
+) {
+    if (amount == 0) return;
+
+    // === TO side ===
+    if (to_is_new_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            to,
+            to_is_special_wallet,
+            true,
+        );
+    };
+}
+
+public(package) fun record_transfer<T>(
+    registry: &mut InvestorInfo<T>,
+    from: address,
+    to: address,
+    amount: u64,
+    from_is_special_wallet: bool,
+    to_is_special_wallet: bool,
+    to_is_new_investor: bool,
+    from_is_exit_investor: bool,
+) {
+    if (amount == 0) return;
+
+    let mut same_investor = false;
+
+    if (!from_is_special_wallet && !to_is_special_wallet) {
+        let from_id = registry.get_investor_id_by_wallet(from);
+        let to_id = registry.get_investor_id_by_wallet(to);
+        same_investor = from_id == to_id;
+    };
+
+    // === TO side ===
+    if (to_is_new_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            to,
+            to_is_special_wallet,
+            true,
+        );
+    };
+
+    // === FROM side ===
+    if (!same_investor && from_is_exit_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            from,
+            from_is_special_wallet,
+            false,
+        );
+    };
+}
+
+public(package) fun record_burn<T>(
+    registry: &mut InvestorInfo<T>,
+    from: address,
+    amount: u64,
+    from_is_special_wallet: bool,
+    from_is_exit_investor: bool,
+) {
+    if (amount == 0) return;
+
+    // === FROM side ===
+    if (from_is_exit_investor) {
+        adjust_total_investors_counts<T>(
+            registry,
+            from,
+            from_is_special_wallet,
+            false,
+        );
+    };
+}
+
+public(package) fun record_seize<T>(
+    registry: &mut InvestorInfo<T>,
+    from: address,
+    amount: u64,
+    from_is_special_wallet: bool,
+    from_is_exit_investor: bool,
+) {
+    record_burn(registry, from, amount, from_is_special_wallet, from_is_exit_investor);
+}
+
+public(package) fun adjust_total_investors_counts<T>(
+    registry: &mut InvestorInfo<T>,
+    wallet: address,
+    is_special_wallet: bool,
+    increase: bool,
+) {
+    if (is_special_wallet) return;
+
+    let total = registry.get_total_investors_count();
+
+    if (increase) {
+        registry.set_total_investors_count(total + 1);
+    } else {
+        assert!(total > 0, ETotalInvestorsUnderflow);
+        registry.set_total_investors_count(total - 1);
+    };
+
+    // country + accreditation breakdown
+    let investor_id = registry.get_investor_id_by_wallet(wallet);
+    let country = registry.get_country(investor_id);
+
+    registry.adjust_investors_counts_by_country<T>(
+        investor_id,
+        country,
+        increase,
+    );
 }
 
 // ==================== Accessor Functions ====================

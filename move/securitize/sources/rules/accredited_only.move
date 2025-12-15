@@ -4,8 +4,7 @@
 /// Can be configured globally or for specific jurisdictions.
 module securitize::accredited_only;
 
-use securitize::{version::Version};
-use std::type_name::{Self, TypeName};
+use securitize::version::Version;
 
 // ==== Error Codes ====
 

@@ -68,7 +68,7 @@ public fun claim(rwa_registry: &mut RwaRegistry, owner: Owner) {
     };
 
     assert!(
-        !derived_object::exists(rwa_registry.uid_mut(), RwaVaultKey(owner_address)),
+        !derived_object::exists(rwa_registry.uid(), RwaVaultKey(owner_address)),
         EVaultAlreadyExists,
     );
 
@@ -207,6 +207,10 @@ public fun balance<T>(vault: &RwaVault): u64 {
     assert!(df::exists_(&vault.id, BalanceKey<T>()), ENonExistentBalance);
     let vault_balance: &Balance<T> = df::borrow(&vault.id, BalanceKey<T>());
     vault_balance.value()
+}
+
+public fun vault_exists(rwa_registry: &RwaRegistry, owner_addr: address): bool {
+    derived_object::exists(rwa_registry.uid(), RwaVaultKey(owner_addr))
 }
 
 // ========== Request Getter Functions ==========

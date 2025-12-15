@@ -1,18 +1,19 @@
 module securitize::ds_token;
 
-use sui::{
-    coin::TreasuryCap, 
-    coin_registry::MetadataCap,
-    dynamic_object_field as dof,
-    clock::Clock, 
-    event
-};
 use std::string::{Self, String};
 use securitize::{
     version::Version, 
     trust_service::{Auth, Master, Issuer, TransferAgent},
     registry_service::InvestorInfo,
     compliance_service::{Self, ComplianceConfig},
+};
+use sui::{
+    coin::TreasuryCap, 
+    coin_registry::{Currency, MetadataCap},
+    clock::Clock, 
+    dynamic_object_field as dof, 
+    event, 
+    derived_object
 };
 use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
 use rwa::rule::{Self, RwaRule};
@@ -42,6 +43,8 @@ const ENotWallet: u64 = 8;
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
 public struct DsProtocol() has drop;
+
+public struct DsTokenKey<phantom T>() has copy, drop, store;
 
 // ==== Structs ====
 
@@ -104,6 +107,7 @@ public struct Pause<phantom T> has copy, drop {
 ///
 /// Called by the setup module during token deployment.
 public(package) fun new<T: key>(
+    uid: &mut UID,
     auth: &mut Auth<T>,
     rwa_registry: &mut RwaRegistry,
     treasury_cap: TreasuryCap<T>,
@@ -126,7 +130,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, TransferAgent, Pauser>(version,ctx);
     // Initialize the Treasury
     let mut treasury = Treasury {
-        id: object::new(ctx),
+        id: derived_object::claim(uid, DsTokenKey<T>()),
         metadata_cap,
         paused: false,
     };
@@ -351,16 +355,28 @@ public fun transfer<T>(
     );
 }
 
-// Set everything
-public fun metadata_cap<T>(
+/// Updates the token's metadata (name, description, and/or icon URL).
+/// Only authorized addresses with the MetadataUpdate ability can call this function.
+/// Each metadata field is optional - only provided values will be updated.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the MetadataUpdate ability
+public fun set_metadata<T>(
     treasury: &Treasury<T>,
     auth: &Auth<T>,
+    currency: &mut Currency<T>,
+    name: Option<String>,
+    description: Option<String>,
+    icon_url: Option<String>,
     version: &Version,
     ctx: &mut TxContext,
-): &MetadataCap<T> {
+) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, MetadataUpdate>(ctx.sender()), ENotAuthorized);
-    &treasury.metadata_cap
+    let metadata_cap = &treasury.metadata_cap;
+    name.do!(|n| {currency.set_name<T>(metadata_cap, n);});
+    description.do!(|d| {currency.set_description<T>(metadata_cap, d);});
+    icon_url.do!(|i| {currency.set_icon_url<T>(metadata_cap, i);});
 }
 
 /// Pauses the treasury, preventing token operations.

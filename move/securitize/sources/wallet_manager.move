@@ -1,16 +1,18 @@
 /// Module: wallet_manager
 ///
 /// This module manages special wallets for security tokens.
-/// Special wallets are designated addresses (Issuer, Platform, Exchange) that have
+/// Special wallets are designated addresses (Issuer, Platform) that have
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
 use sui::event;
 use securitize::{
     version::Version,
-    trust_service::{Self, Auth, Master, Issuer},
-    registry_service::{Self, InvestorInfo},
+    trust_service::{Auth, Master, Issuer},
+    registry_service::{InvestorInfo},
 };
+use rwa::registry::RwaRegistry;
+use rwa::vault;
 
 // ==== Constants ====
 
@@ -18,8 +20,6 @@ use securitize::{
 const ISSUER: u64 = 1;
 /// Wallet type identifier for platform wallets
 const PLATFORM: u64 = 2;
-/// Wallet type identifier for exchange wallets
-const EXCHANGE: u64 = 4;
 
 // ==== Error Codes ====
 
@@ -37,9 +37,6 @@ public struct SetIssuerWallet() has drop;
 
 /// Ability to set platform wallets
 public struct SetPlatformWallet() has drop;
-
-/// Ability to set exchange wallets
-public struct SetExchangeWallet() has drop;
 
 /// Ability to remove special wallets
 public struct RemoveSpecialWallet() has drop;
@@ -71,12 +68,10 @@ public(package) fun new<T: key>(
     // Assign abilities to roles
     auth.add_role_ability<T, Master, SetIssuerWallet>(version, ctx);
     auth.add_role_ability<T, Master, SetPlatformWallet>(version, ctx);
-    auth.add_role_ability<T, Master, SetExchangeWallet>(version, ctx);
     auth.add_role_ability<T, Master, RemoveSpecialWallet>(version, ctx);
 
     auth.add_role_ability<T, Issuer, SetIssuerWallet>(version, ctx);
     auth.add_role_ability<T, Issuer, SetPlatformWallet>(version, ctx);
-    auth.add_role_ability<T, Issuer, SetExchangeWallet>(version, ctx);
     auth.add_role_ability<T, Issuer, RemoveSpecialWallet>(version, ctx);
 }
 
@@ -89,13 +84,14 @@ public(package) fun new<T: key>(
 public fun add_issuer_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
+    registry: &mut RwaRegistry,
     wallet: address,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetIssuerWallet>(ctx.sender());
-    set_special_wallet(investor_info, wallet, ISSUER, ctx);
+    set_special_wallet(investor_info, registry, wallet, ISSUER, ctx);
 }
 
 /// Adds a wallet address as a platform wallet.
@@ -107,31 +103,14 @@ public fun add_issuer_wallet<T>(
 public fun add_platform_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
+    registry: &mut RwaRegistry,
     wallet: address,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetPlatformWallet>(ctx.sender());
-    set_special_wallet(investor_info, wallet, PLATFORM, ctx);
-}
-
-/// Adds a wallet address as an exchange wallet.
-/// Only authorized addresses with the SetExchangeWallet ability can call this function.
-///
-/// # Aborts
-/// * `EWalletBelongsToInvestor` - If the wallet belongs to an investor
-/// * `EDirectWalletChange` - If the wallet is already a special wallet
-public fun add_exchange_wallet<T>(
-    investor_info: &mut InvestorInfo<T>,
-    auth: &Auth<T>,
-    wallet: address,
-    version: &Version,
-    ctx: &mut TxContext,
-) {
-    version.check_is_valid();
-    auth.owner_has_ability<T, SetExchangeWallet>(ctx.sender());
-    set_special_wallet(investor_info, wallet, EXCHANGE, ctx);
+    set_special_wallet(investor_info, registry, wallet, PLATFORM, ctx);
 }
 
 /// Removes a special wallet from the registry.
@@ -163,12 +142,16 @@ public fun remove_special_wallet<T>(
 /// Validates that the wallet is not already an investor wallet or special wallet.
 fun set_special_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
+    registry: &mut RwaRegistry,
     wallet: address,
     wallet_type: u64,
     ctx: &mut TxContext,
 ) {
     assert!(!investor_info.is_wallet(wallet), EWalletBelongsToInvestor);
     assert!(!investor_info.is_special_wallet(wallet), EDirectWalletChange);
+    if (!vault::vault_exists(registry, wallet)) {
+        vault::claim(registry, vault::owner_from_address(wallet));
+    };
     investor_info.set_special_wallet(wallet, wallet_type);
     event::emit(
         DSWalletManagerSpecialWalletAdded<T> {
@@ -195,14 +178,6 @@ public fun is_issuer_wallet<T>(
     wallet: address,
 ): bool {
     investor_info.get_special_wallet_type(wallet) == ISSUER
-}
-
-/// Returns whether the given wallet is an exchange wallet.
-public fun is_exchange_wallet<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): bool {
-    investor_info.get_special_wallet_type(wallet) == EXCHANGE
 }
 
 
