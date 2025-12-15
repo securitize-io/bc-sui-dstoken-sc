@@ -6,6 +6,7 @@ import {Transaction} from "@mysten/sui/transactions";
 import {Rules} from "./rules";
 import {Roles} from "./roles";
 import {PTBDetails} from "./domains/PTBDetails";
+import {CountryCompliance} from "./CountryCompliance";
 
 export async function createDSToken(request: DeploymentRequest) {
     //TODO: deploy token contract first
@@ -57,25 +58,25 @@ export async function createDSToken(request: DeploymentRequest) {
     const roles = new Roles(tokenAddressId)
 
     if (request.owners) {
-        ptb = roles.setServiceOwnerPTB(request.owners.tokenOwner, ptb)
-        ptb = roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptb)
+        roles.setServiceOwnerPTB(request.owners.tokenOwner, ptb)
+        roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptb)
         // TODO: Transfer upgrade cap to request.owners.tokenOwner
     }
 
     request.roles.forEach((r) => {
-        ptb = roles.updateRolePTB(r.address, r.role, ptb)
+        roles.updateRolePTB(r.address, r.role, ptb)
     })
 
     if (request.complianceRules) {
-        ptb = new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
+        new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
     }
 
-    // TODO: Create a country compliance class for setting and getting
-    // if (request.countriesComplianceStatuses) {
-    //     request.countriesComplianceStatuses.forEach((c) => {
-    //         ptb = TBD.setCountryCompliance(c.countryName, toRegionId(c.complianceStatus), ptb)
-    //     })
-    // }
+    if (request.countriesComplianceStatuses) {
+        const countryCompliance = new CountryCompliance(tokenAddressId)
+        request.countriesComplianceStatuses.forEach((c) => {
+            countryCompliance.setCountryCompliancePTB(c.countryName, c.complianceStatus, ptbDetails)
+        })
+    }
 
     ptb.moveCall({
         target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,

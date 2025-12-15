@@ -1,5 +1,13 @@
-import {ADMIN_KEYPAIR, ComplianceRules, createDSToken, DeploymentRequest, SuiClient} from "../src";
+import {
+    ADMIN_KEYPAIR,
+    ComplianceRules,
+    CountryComplianceStatus,
+    createDSToken,
+    DeploymentRequest,
+    SuiClient
+} from "../src";
 import {Keypair} from "@mysten/sui/cryptography";
+import {ComplianceStatus} from "../src/sdk/domains/CountryComplianceStatus";
 
 export const testTokenRequest: DeploymentRequest = {
     tokenDescription: {
@@ -40,8 +48,31 @@ export const complianceRules = {
     authorizedSecurities: "10000",
 }
 
-export async function createTestToken(complianceRules?: ComplianceRules) {
+export const countriesComplianceStatuses: CountryComplianceStatus[] = [
+    {
+        countryName: "GR",
+        complianceStatus: "eu",
+    },
+    {
+        countryName: "US",
+        complianceStatus: "us",
+    },
+    {
+        countryName: "JP",
+        complianceStatus: "jp",
+    },
+    {
+        countryName: "NK",
+        complianceStatus: "forbidden",
+    },
+]
+
+export async function createTestToken(
+    complianceRules?: ComplianceRules,
+    countriesComplianceStatuses?: CountryComplianceStatus[]
+) {
     testTokenRequest.complianceRules = complianceRules
+    testTokenRequest.countriesComplianceStatuses = countriesComplianceStatuses
     const res = await createDSToken(testTokenRequest)
     return res.id
 }

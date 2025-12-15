@@ -1,4 +1,4 @@
-import {complianceRules, createTestToken} from "./test_utils";
+import {complianceRules, countriesComplianceStatuses, createTestToken} from "./test_utils";
 import {deploy} from "../src/sdk/utils/deploy";
 
 describe('Ds token', () => {
@@ -6,7 +6,7 @@ describe('Ds token', () => {
 
     beforeAll(async () => {
         await deploy()
-        tokenAddress = await createTestToken(complianceRules)
+        tokenAddress = await createTestToken(complianceRules, countriesComplianceStatuses)
         expect(tokenAddress).not.toBe('')
     })
 

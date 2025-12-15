@@ -17,3 +17,13 @@ export function toRegionId(region: ComplianceStatus) {
         'jp': Regions.JP,
     }[region]
 }
+
+export function fromRegionId(regionId: Regions) {
+    return {
+        [Regions.NONE]: 'none',
+        [Regions.US]: 'us',
+        [Regions.EU]: 'eu',
+        [Regions.FORBIDDEN]: 'forbidden',
+        [Regions.JP]: 'jp',
+    }[regionId] as ComplianceStatus
+}
