@@ -396,7 +396,7 @@ fun get_investor_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64)
     bool    // new investor
 ) {
     if (registry.is_special_wallet(addr)) {
-        return ("", NONE, false, false, 0, false, false);
+        return ("", NONE, false, false, 0, false, false)
     };
 
     let id = registry.get_investor_id_by_wallet(addr);
