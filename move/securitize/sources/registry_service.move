@@ -675,6 +675,16 @@ public(package) fun get_country_compliance<T>(
     *investor_info.countries_compliances.borrow(country)
 }
 
+/// Sets the total token balance for an investor.
+public(package) fun update_investor_total_balance<T>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+    new_total_balance: u64,
+) {
+    let investor = investor_info.investors.borrow_mut(investor_id);
+    investor.total_balance = new_total_balance;
+}
+
 /// Sets the compliance region for a given country code.
 /// - If `compliance_region == NONE`, removes the country entry if it exists.
 /// - Otherwise, inserts or updates the entry.

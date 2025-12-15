@@ -55,13 +55,12 @@ public fun validate_rule(
     from_region: u64,
     to_region: u64,
     from_is_platform_wallet: bool,
-    clock: &Clock,
+    timestamp_ms: u64,
 ) {
     let end = rule.block_flowback_end_time_ms;
-    let now = clock.timestamp_ms();
 
     let is_non_us_to_us = from_region != US && to_region == US;
-    let restriction_active = (end == 0) || (now < end);
+    let restriction_active = (end == 0) || (timestamp_ms < end);
 
     assert!(
         !(is_non_us_to_us && !from_is_platform_wallet && restriction_active),

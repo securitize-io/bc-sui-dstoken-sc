@@ -14,7 +14,6 @@ use securitize::registry_service::InvestorInfo;
 use std::string::String;
 use securitize::force_full_transfer::ForceFullTransfer;
 use securitize::flowback_restriction::FlowbackRestriction;
-use sui::clock::Clock;
 use securitize::wallet_manager::is_platform_wallet;
 use std::address;
 use rwa::registry;
@@ -109,11 +108,11 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 public fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
-    request: RwaTransferRequest<T>,
+    request: &RwaTransferRequest<T>,
+    timestamp_ms: u64,
     version: &Version,
     // lock_manager: &LockManager<T>,
-    clock: &Clock
-): RwaTransferRequest<T> {
+) {
     version.check_is_valid();
 
     let from_address = request.request_from_address();
@@ -182,12 +181,11 @@ public fun validate_transfer<T>(
             to_is_qualified,
             to_is_new_investor,
             equal_country,
-            clock
+            timestamp_ms
         );
     });
 
     record_transfer(registry, from_address, to_address, amount, from_is_special_wallet, to_is_special_wallet, to_is_new_investor, from_is_exit_investor);
-    request
 }
 
 /// Validate issuance action against all configured rules
@@ -304,7 +302,7 @@ fun validate_transfer_rule<T>(
     to_is_qualified: bool,
     to_is_new_investor: bool,
     equal_country: bool,
-    clock: &Clock
+    timestamp_ms: u64,
 ) {
     // Match on rule type and delegate to appropriate validator
     if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
@@ -338,7 +336,7 @@ fun validate_transfer_rule<T>(
         rule.validate_rule(from_region, from_is_exit_investor);
     } else if (rule == type_name::with_defining_ids<FlowbackRestriction>()) {
         let rule: &FlowbackRestriction = config.rules_bag.borrow(rule);
-        rule.validate_rule(from_region, to_region, from_is_platform_wallet, clock);
+        rule.validate_rule(from_region, to_region, from_is_platform_wallet, timestamp_ms);
     };
 }
 
