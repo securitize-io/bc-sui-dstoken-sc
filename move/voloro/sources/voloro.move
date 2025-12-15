@@ -20,6 +20,7 @@ public fun create_ds_token(
     name: String,
     symbol: String,
     url: String,
+    description: String,
     decimals: u8,
     setup_registry: &mut SetupRegistry,
     rwa_registry: &mut RwaRegistry,
@@ -32,7 +33,7 @@ public fun create_ds_token(
         decimals,
         name,
         symbol,
-        b"This is a Securitize RWA Token".to_string(),
+        description,
         url,
         ctx,
     );

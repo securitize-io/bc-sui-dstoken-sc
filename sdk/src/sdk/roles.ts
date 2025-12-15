@@ -68,7 +68,12 @@ export class Roles {
 
     async updateRole(owner: string, role: RoleTypes, signer: string) {
         const currentRole = await this.getRole(owner)
-        const errorMessage = "No direct role-to-role change";
+        let ptb = this.updateRolePTB(owner, role, undefined, currentRole)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    updateRolePTB(owner: string, role: RoleTypes, ptb?: Transaction, currentRole: RoleTypes = 'none') {
+        const errorMessage = "No direct role-to-role change"
 
         if (currentRole === role || currentRole === "master") {
             throw new Error(errorMessage)
@@ -87,7 +92,7 @@ export class Roles {
             transfer_agent: this.setTransferAgentPTB,
         }
 
-        let ptb: Transaction | undefined = undefined
+        ptb ??= new Transaction()
 
         if (currentRole in REMOVE_MAPPING) {
             ptb = REMOVE_MAPPING[currentRole](owner, ptb)
@@ -100,8 +105,7 @@ export class Roles {
         if (!ptb) {
             throw new Error(errorMessage)
         }
-
-        return this.buildSetBytes(ptb, signer)
+        return ptb;
     }
 
     setTransferAgentPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('set_transfer_agent', [owner], ptb)

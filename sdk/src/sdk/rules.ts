@@ -6,6 +6,7 @@ import {FlowbackRestriction} from "./rules/FlowbackRestriction";
 import {ForceFullTransfer} from "./rules/ForceFullTransfer";
 import {HoldingLimits} from "./rules/HoldingLimits";
 import {InvestorLimits} from "./rules/InvestorLimits";
+import {PTBDetails} from "./domains/ptb_details";
 
 export class Rules {
     private readonly tokenAddress: string;
@@ -14,20 +15,23 @@ export class Rules {
         this.tokenAddress = tokenAddress;
     }
 
-    updatePTB(rules: ComplianceRules, ptb?: Transaction) {
-        ptb ??= new Transaction()
+    updatePTB(
+        rules: ComplianceRules,
+        ptbDetails?: PTBDetails,
+    ) {
+        let ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
 
-        ptb = new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptb)
-        ptb = new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptb)
-        ptb = new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptb)
-        ptb = new HoldingLimits(this.tokenAddress).registerPTB(
+       new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
+       new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
+       new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
+       new HoldingLimits(this.tokenAddress).registerPTB(
             BigInt(rules.minimumHoldingsPerInvestor || 0),
             BigInt(rules.maximumHoldingsPerInvestor || 0),
             BigInt(rules.minUSTokens || 0),
             BigInt(rules.minEUTokens || 0),
-            ptb
+            ptbDetails,
         )
-        ptb = new InvestorLimits(this.tokenAddress).registerPTB(
+        new InvestorLimits(this.tokenAddress).registerPTB(
             rules.totalInvestorsLimit,
             rules.minimumTotalInvestors,
             rules.usInvestorsLimit,
@@ -36,7 +40,7 @@ export class Rules {
             rules.jpInvestorsLimit,
             rules.euRetailInvestorsLimit,
             rules.maxUSInvestorsPercentage,
-            ptb
+            ptbDetails,
         )
         return ptb
     }

@@ -1,6 +1,7 @@
 import {Rule} from "./Rule";
 import {Transaction} from "@mysten/sui/transactions";
 import {SuiClient} from "../../easysui";
+import {PTBDetails} from "../domains/ptb_details";
 
 export class InvestorLimits extends Rule {
     constructor(tokenAddress: string) {
@@ -16,9 +17,9 @@ export class InvestorLimits extends Rule {
         jp_investors_limit?: number, // jpInvestorsLimit
         eu_retail_limit?: number, // euRetailInvestorsLimit
         max_us_percentage?: number, //maxUSInvestorsPercentage
-        ptb?: Transaction
+        ptbDetails?: PTBDetails,
     ) {
-        ptb ??= new Transaction()
+        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
 
         const rule = this.newRule(ptb, [
             ptb.pure.u64(total_investors_limit || 0),
@@ -30,7 +31,7 @@ export class InvestorLimits extends Rule {
             ptb.pure.u64(eu_retail_limit || 0),
             ptb.pure.u64(max_us_percentage || 0),        ])
 
-        return this._registerPTB(ptb, rule)
+        return this._registerPTB(rule, ptbDetails)
     }
 
     async register(

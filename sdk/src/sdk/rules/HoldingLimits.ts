@@ -2,6 +2,7 @@ import {Rule} from "./Rule";
 import {Transaction} from "@mysten/sui/transactions";
 import {SuiClient} from "../../easysui";
 import {Regions} from "../domains";
+import {PTBDetails} from "../domains/ptb_details";
 
 export class HoldingLimits extends Rule {
     constructor(tokenAddress: string) {
@@ -13,8 +14,9 @@ export class HoldingLimits extends Rule {
         max_holdings_per_investor?: bigint, // maximumHoldingsPerInvestor
         minUSTokens?: bigint, // minUSTokens
         minEUTokens?: bigint, // minEUTokens
-        ptb?: Transaction
+        ptbDetails?: PTBDetails,
     ) {
+        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
         const regions: Regions[] = []
         const regionMins: bigint[] = []
 
@@ -28,15 +30,13 @@ export class HoldingLimits extends Rule {
             regionMins.push(minEUTokens)
         }
 
-        ptb ??= new Transaction()
-
         const rule = this.newRule(ptb, [
             ptb.pure.u64(min_holdings_per_investor || 0),
             ptb.pure.u64(max_holdings_per_investor || 0),
             ptb.pure.vector('u64', regions),
             ptb.pure.vector('u64', regionMins),        ])
 
-        return this._registerPTB(ptb, rule)
+        return this._registerPTB(rule, ptbDetails)
     }
 
     async register(

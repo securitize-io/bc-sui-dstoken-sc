@@ -8,6 +8,12 @@ export interface TokenDetails {
     complianceConfig: string
 }
 
+export interface TokenDetailsObj {
+    investorInfo: { NestedResult: [number, number] },
+    auth: { NestedResult: [number, number] },
+    complianceConfig: { NestedResult: [number, number] }
+}
+
 export function getDerivedObjectId(
     parentId: string,
     module: string,

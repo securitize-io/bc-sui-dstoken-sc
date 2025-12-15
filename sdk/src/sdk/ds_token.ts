@@ -3,13 +3,26 @@ import {ADMIN_KEYPAIR, SuiClient} from '../easysui'
 import {Config} from "./utils/config";
 import {DeploymentRequest} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
+import {Rules} from "./rules";
+import {Roles} from "./roles";
+import {PTBDetails} from "./domains/ptb_details";
 
 export async function createDSToken(request: DeploymentRequest) {
     //TODO: deploy token contract first
 
-    const ptb = new Transaction()
-    const tokenSymbol = request.tokenDescription.symbol
+    if (request.lockManagerType !== 'investor') {
+        throw new Error(`not_implemented: lock manager type ${request.lockManagerType}`)
+    }
+
+    if (!['regulated', 'whitelisted'].includes(request.complianceType)) {
+        throw new Error(`not_implemented: compliance type ${request.complianceType}`)
+    }
+
+    let ptb = new Transaction()
+    const tokenDescription = request.tokenDescription
+    const tokenSymbol = tokenDescription.symbol
     const tokenPackage = `${Config.vars.PACKAGE_ID}::${tokenSymbol.toLowerCase()}`
+    const tokenAddressId = `${tokenPackage}::${tokenSymbol.toUpperCase()}`
 
     const [
         auth,
@@ -20,10 +33,11 @@ export async function createDSToken(request: DeploymentRequest) {
     ] = ptb.moveCall({
         target: `${tokenPackage}::create_ds_token`,
         arguments: [
+            ptb.pure.string(tokenDescription.name),
             ptb.pure.string(tokenSymbol),
-            ptb.pure.string(tokenSymbol),
-            ptb.pure.string("https://aggregator.walrus-mainnet.h2o-nodes.com/v1/blobs/DYlIcfM32ICsXfTJR69kQ6Vv4roYnQbOvoUbRiwsg6g"),
-            ptb.pure.u8(request.tokenDescription.decimals),
+            ptb.pure.string(tokenDescription.iconUri),
+            ptb.pure.string(tokenDescription.description),
+            ptb.pure.u8(tokenDescription.decimals),
             ptb.object(Config.vars.SETUP_REGISTRY),
             ptb.object(Config.vars.RWA_REGISTRY),
             ptb.object(normalizeSuiAddress('0xc')),
@@ -31,11 +45,41 @@ export async function createDSToken(request: DeploymentRequest) {
         ],
     })
 
-    // TODO: Add extra rules to compliance here
+    const ptbDetails: PTBDetails = {
+        ptb,
+        tokenDetails: {
+            investorInfo,
+            auth,
+            complianceConfig
+        }
+    }
+
+    const roles = new Roles(tokenAddressId)
+
+    if (request.owners) {
+        ptb = roles.setServiceOwnerPTB(request.owners.tokenOwner, ptb)
+        ptb = roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptb)
+        // TODO: Transfer upgrade cap to request.owners.tokenOwner
+    }
+
+    request.roles.forEach((r) => {
+        ptb = roles.updateRolePTB(r.address, r.role, ptb)
+    })
+
+    if (request.complianceRules) {
+        ptb = new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
+    }
+
+    // TODO: Create a country compliance class for setting and getting
+    // if (request.countriesComplianceStatuses) {
+    //     request.countriesComplianceStatuses.forEach((c) => {
+    //         ptb = TBD.setCountryCompliance(c.countryName, toRegionId(c.complianceStatus), ptb)
+    //     })
+    // }
 
     ptb.moveCall({
         target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,
-        typeArguments: [`${tokenPackage}::${tokenSymbol.toUpperCase()}`],
+        typeArguments: [tokenAddressId],
         arguments: [
             setupFinalize,
             auth,

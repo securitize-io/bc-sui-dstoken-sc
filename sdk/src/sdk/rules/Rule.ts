@@ -2,6 +2,7 @@ import {SuiClient} from "../../easysui";
 import {Config} from "../utils/config";
 import {getTokenDetails} from "../token";
 import {Transaction, TransactionResult} from "@mysten/sui/transactions";
+import {PTBDetails} from "../domains/ptb_details";
 
 export class Rule {
     private readonly tokenAddress: string;
@@ -69,7 +70,8 @@ export class Rule {
 
     // ==== Rule Management Functions ====
 
-    protected _registerPTB(ptb: Transaction, rule: TransactionResult) {
+    protected _registerPTB(rule: TransactionResult, ptbDetails?: PTBDetails) {
+        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
         ptb.moveCall({
             target: this.getComplianceTarget('register_rule'),
             typeArguments: [
@@ -77,8 +79,8 @@ export class Rule {
                 `${Config.vars.PACKAGE_ID}::${this.ruleModule}::${this.ruleType}`
             ],
             arguments: [
-                ptb.object(this.tokenDetails.complianceConfig),
-                ptb.object(this.tokenDetails.auth),
+                ptbDetails?.tokenDetails.complianceConfig || ptb.object(this.tokenDetails.complianceConfig),
+                ptbDetails?.tokenDetails.auth || ptb.object(this.tokenDetails.auth),
                 rule,
                 ptb.object(Config.vars.VERSION),
             ],
