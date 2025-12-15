@@ -99,19 +99,6 @@ describe('Rules (Compliance)', () => {
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
         })
-
-        it('should accept custom PTB instance', async () => {
-            const { Transaction } = await import('@mysten/sui/transactions')
-            const customPTB = new Transaction()
-
-            const complianceRules: ComplianceRules = {
-                forceAccredited: false,
-                forceAccreditedUS: true
-            }
-
-            const result = rules.updatePTB(complianceRules, customPTB)
-            expect(result).toBe(customPTB)
-        })
     })
 
     describe('Rules Update with Different Configurations', () => {

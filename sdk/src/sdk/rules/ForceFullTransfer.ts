@@ -1,7 +1,7 @@
 import {Rule} from "./Rule";
-import {Transaction} from "@mysten/sui/transactions";
 import {SuiClient} from "../../easysui";
-import {PTBDetails} from "../domains/ptb_details";
+import {PTBDetails} from "../domains/PTBDetails";
+import {newPTBDetails} from "../domains/PTBDetails";
 
 export class ForceFullTransfer extends Rule {
     constructor(tokenAddress: string) {
@@ -13,7 +13,8 @@ export class ForceFullTransfer extends Rule {
         force_full_transfer_worldwide?: boolean, // worldWideForceFullTransfer
         ptbDetails?: PTBDetails,
     ) {
-        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
             ptb.pure.bool(!!force_full_transfer_us),

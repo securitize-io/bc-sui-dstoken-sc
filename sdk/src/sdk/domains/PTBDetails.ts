@@ -3,5 +3,11 @@ import {TokenDetailsObj} from "../token";
 
 export interface PTBDetails {
     ptb: Transaction,
-    tokenDetails: TokenDetailsObj
+    tokenDetails?: TokenDetailsObj
+}
+
+export function newPTBDetails() {
+    return {
+        ptb: new Transaction()
+    } as PTBDetails
 }

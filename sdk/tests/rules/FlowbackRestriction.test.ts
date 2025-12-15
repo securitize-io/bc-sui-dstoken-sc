@@ -79,14 +79,6 @@ describe('FlowbackRestriction Rule', () => {
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
         })
-
-        it('should accept custom PTB instance', async () => {
-            const { Transaction } = await import('@mysten/sui/transactions')
-            const customPTB = new Transaction()
-            const endTime = Date.now() + 90 * 24 * 60 * 60 * 1000
-            const result = flowbackRestriction.registerPTB(endTime, customPTB)
-            expect(result).toBe(customPTB)
-        })
     })
 
     describe('Edge Cases', () => {

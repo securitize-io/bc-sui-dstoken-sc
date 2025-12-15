@@ -1,12 +1,11 @@
 import {SuiClient} from "../easysui";
-import {Transaction} from "@mysten/sui/transactions";
 import {ComplianceRules} from "./domains";
 import {AccreditedOnly} from "./rules/AccreditedOnly";
 import {FlowbackRestriction} from "./rules/FlowbackRestriction";
 import {ForceFullTransfer} from "./rules/ForceFullTransfer";
 import {HoldingLimits} from "./rules/HoldingLimits";
 import {InvestorLimits} from "./rules/InvestorLimits";
-import {PTBDetails} from "./domains/ptb_details";
+import {newPTBDetails, PTBDetails} from "./domains/PTBDetails";
 
 export class Rules {
     private readonly tokenAddress: string;
@@ -19,7 +18,8 @@ export class Rules {
         rules: ComplianceRules,
         ptbDetails?: PTBDetails,
     ) {
-        let ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
 
        new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
        new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)

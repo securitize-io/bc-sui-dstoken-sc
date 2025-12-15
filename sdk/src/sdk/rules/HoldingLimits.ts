@@ -1,8 +1,7 @@
 import {Rule} from "./Rule";
-import {Transaction} from "@mysten/sui/transactions";
 import {SuiClient} from "../../easysui";
 import {Regions} from "../domains";
-import {PTBDetails} from "../domains/ptb_details";
+import {newPTBDetails, PTBDetails} from "../domains/PTBDetails";
 
 export class HoldingLimits extends Rule {
     constructor(tokenAddress: string) {
@@ -16,7 +15,9 @@ export class HoldingLimits extends Rule {
         minEUTokens?: bigint, // minEUTokens
         ptbDetails?: PTBDetails,
     ) {
-        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+
         const regions: Regions[] = []
         const regionMins: bigint[] = []
 

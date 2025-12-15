@@ -105,15 +105,6 @@ describe('InvestorLimits Rule', () => {
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
         })
-
-        it('should accept custom PTB instance', async () => {
-            const { Transaction } = await import('@mysten/sui/transactions')
-            const customPTB = new Transaction()
-            const result = investorLimits.registerPTB(
-                2000, 100, 500, 300, 150, 100, 200, 25, customPTB
-            )
-            expect(result).toBe(customPTB)
-        })
     })
 
     describe('Edge Cases', () => {

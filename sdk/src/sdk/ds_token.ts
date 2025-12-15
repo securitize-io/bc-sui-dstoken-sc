@@ -5,7 +5,7 @@ import {DeploymentRequest} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import {Rules} from "./rules";
 import {Roles} from "./roles";
-import {PTBDetails} from "./domains/ptb_details";
+import {PTBDetails} from "./domains/PTBDetails";
 
 export async function createDSToken(request: DeploymentRequest) {
     //TODO: deploy token contract first

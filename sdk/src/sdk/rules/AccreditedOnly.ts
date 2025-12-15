@@ -1,7 +1,6 @@
 import {Rule} from "./Rule";
-import {Transaction} from "@mysten/sui/transactions";
 import {SuiClient} from "../../easysui";
-import {PTBDetails} from "../domains/ptb_details";
+import {newPTBDetails, PTBDetails} from "../domains/PTBDetails";
 
 export class AccreditedOnly extends Rule {
     constructor(tokenAddress: string) {
@@ -13,7 +12,8 @@ export class AccreditedOnly extends Rule {
         force_us_accredited?: boolean, // forceAccreditedUS
         ptbDetails?: PTBDetails,
     ) {
-        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
             ptb.pure.bool(!!force_accredited),

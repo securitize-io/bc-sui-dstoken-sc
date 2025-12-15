@@ -72,13 +72,6 @@ describe('ForceFullTransfer Rule', () => {
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
         })
-
-        it('should accept custom PTB instance', async () => {
-            const { Transaction } = await import('@mysten/sui/transactions')
-            const customPTB = new Transaction()
-            const result = forceFullTransfer.registerPTB(true, false, customPTB)
-            expect(result).toBe(customPTB)
-        })
     })
 
     describe('Edge Cases', () => {

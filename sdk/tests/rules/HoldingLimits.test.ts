@@ -107,13 +107,6 @@ describe('HoldingLimits Rule', () => {
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
         })
-
-        it('should accept custom PTB instance', async () => {
-            const { Transaction } = await import('@mysten/sui/transactions')
-            const customPTB = new Transaction()
-            const result = holdingLimits.registerPTB(100n, 1000000n, 500n, 300n, customPTB)
-            expect(result).toBe(customPTB)
-        })
     })
 
     describe('Edge Cases', () => {

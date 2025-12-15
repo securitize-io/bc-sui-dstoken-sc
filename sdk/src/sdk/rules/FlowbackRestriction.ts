@@ -1,7 +1,6 @@
 import {Rule} from "./Rule";
-import {Transaction} from "@mysten/sui/transactions";
 import {SuiClient} from "../../easysui";
-import {PTBDetails} from "../domains/ptb_details";
+import {newPTBDetails, PTBDetails} from "../domains/PTBDetails";
 
 export class FlowbackRestriction extends Rule {
     constructor(tokenAddress: string) {
@@ -12,7 +11,8 @@ export class FlowbackRestriction extends Rule {
         block_flowback_end_time_ms?: number, // blockFlowbackEndTime
         ptbDetails?: PTBDetails,
     ) {
-        const ptb = ptbDetails ? ptbDetails.ptb : new Transaction()
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
             ptb.pure.u64(block_flowback_end_time_ms || 0),
