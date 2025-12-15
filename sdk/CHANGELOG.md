@@ -1,5 +1,11 @@
 # @securitize/sui-sdk
 
+## 1.1.0
+
+### Minor Changes
+
+- This version include Investors, Rules, Roles and Wallets SDK.
+
 ## 1.0.7
 
 ### Patch Changes
