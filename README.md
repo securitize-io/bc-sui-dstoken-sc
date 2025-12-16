@@ -86,3 +86,34 @@ Deploy the contracts to localnet:
 ```bash
 pnpm faucet
 ```
+
+## Architecture
+
+The DS Protocol is a factory contract for Ds Tokens. It uses the Permissioned Token Standard (PTS) for the transferability of the tokens and its discoverability by the ecosystem. Below is the high-level architecture showing how the different components interact:
+
+![DS Protocol Architecture](docs/DS%20Protocol%20Overview.png)
+
+### Key Components
+
+- **DS Protocol**: The core module that orchestrates token operations (issue, burn, transfer, seize) and enforces compliance rules
+    - **Compliance Service**: Validates all operations against configurable rules (AccreditedOnly, HoldingLimits, InvestorLimits, etc.)
+    - **Treasury**: Manages the TreasuryCap for minting and burning tokens and their Metadata
+    - **InvestorInfo Registry**: Tracks investor balances and metadata across all their wallets
+- **Permissioned Token Standard (PTS)**: Sui's standard for controlled token transfers using the hot-potato pattern
+
+## Token Operation Flows
+
+The protocol supports four main token operations, each with compliance validation:
+
+| Operation | Description | Documentation |
+|-----------|-------------|---------------|
+| **Transfer** | Move tokens between vaults with compliance checks | [Transfer Flow](docs/transfer-flow.md) |
+| **Issue** | Mint new tokens to a vault | [Issue Flow](docs/issue-flow.md) |
+| **Burn** | Destroy tokens from a vault | [Burn Flow](docs/burn-flow.md) |
+| **Seize** | Force transfer tokens (regulatory/legal action) | [Seize Flow](docs/seize-flow.md) |
+
+All operations follow a similar pattern:
+1. Request initiated by authorized role
+2. Compliance validation against configured rules
+3. PTS authorization via DsProtocol witness
+4. Registry update to track investor balances
