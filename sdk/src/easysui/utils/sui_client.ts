@@ -52,35 +52,25 @@ export class SuiClient {
     private static async waitForTransaction(
         ptb: Transaction,
         resp: SuiTransactionBlockResponse,
-        errorHandler: (e: any) => string = (e) => e
     ) {
-        try {
-            await SuiClient.client.waitForTransaction({ digest: resp.digest })
-            if (resp.effects?.status.status !== 'success') {
-                throw new Error(JSON.stringify(resp))
-            }
-            analyze_cost(ptb, resp)
-            return resp
-        } catch (e) {
-            throw new Error(errorHandler(e))
+        await SuiClient.client.waitForTransaction({ digest: resp.digest })
+        if (resp.effects?.status.status !== 'success') {
+            throw new Error(JSON.stringify(resp))
         }
+        analyze_cost(ptb, resp)
+        return resp
     }
 
     public static async signAndExecute(
         ptb: Transaction,
         signer: Keypair,
-        errorHandler: (e: any) => string = (e) => e
     ) {
-        try {
-            const resp = await SuiClient.client.signAndExecuteTransaction({
-                transaction: ptb,
-                signer,
-                options: txOptions,
-            })
-            return SuiClient.waitForTransaction(ptb, resp, errorHandler)
-        } catch (e) {
-            throw new Error(errorHandler(e))
-        }
+        const resp = await SuiClient.client.signAndExecuteTransaction({
+            transaction: ptb,
+            signer,
+            options: txOptions,
+        })
+        return SuiClient.waitForTransaction(ptb, resp)
     }
 
     public static toMoveArg(ptb: Transaction, value: any, type?: MoveType) {
@@ -127,7 +117,6 @@ export class SuiClient {
         typeArgs = [],
         args = [],
         argTypes = [],
-        errorHandler = (e) => e,
         ptb,
         withTransfer = false,
     }: {
@@ -136,13 +125,12 @@ export class SuiClient {
         typeArgs?: string[]
         args?: any[]
         argTypes?: MoveType[]
-        errorHandler?: (e: any) => string
         ptb?: Transaction
         withTransfer?: boolean
     }) {
         ptb = this.getPTB(target, typeArgs, args, argTypes, signer.toSuiAddress(), withTransfer, ptb);
 
-        return SuiClient.signAndExecute(ptb, signer, errorHandler)
+        return SuiClient.signAndExecute(ptb, signer)
     }
 
     public static async getMoveCallBytes({
@@ -161,7 +149,6 @@ export class SuiClient {
         typeArgs?: string[]
         args?: any[]
         argTypes?: MoveType[]
-        errorHandler?: (e: any) => string
         ptb?: Transaction
         withTransfer?: boolean
         gasOwner?: string
@@ -199,28 +186,22 @@ export class SuiClient {
         bytes: Uint8Array | string,
         senderSignature: string | Keypair,
         gasOwnerSignature?: string | Keypair,
-        errorHandler: (e: any) => string = (e) => e,
     ) {
-        try {
-            const transactionBlock = this.toBytes(bytes)
-            senderSignature = await this.getSignature(senderSignature, transactionBlock)
+        const transactionBlock = this.toBytes(bytes)
+        senderSignature = await this.getSignature(senderSignature, transactionBlock)
 
-            const signature = [senderSignature]
-            if (gasOwnerSignature) {
-                gasOwnerSignature = await this.getSignature(gasOwnerSignature, transactionBlock)
-                signature.push(gasOwnerSignature)
-            }
-            const resp = await SuiClient.client.executeTransactionBlock({
-                transactionBlock: toBase64(transactionBlock),
-                signature,
-                options: txOptions
-            })
-            const ptb = Transaction.from(toBase64(transactionBlock))
-            return SuiClient.waitForTransaction(ptb, resp, errorHandler)
-        } catch (e) {
-            throw e
-            // throw new Error(errorHandler(e))
+        const signature = [senderSignature]
+        if (gasOwnerSignature) {
+            gasOwnerSignature = await this.getSignature(gasOwnerSignature, transactionBlock)
+            signature.push(gasOwnerSignature)
         }
+        const resp = await SuiClient.client.executeTransactionBlock({
+            transactionBlock: toBase64(transactionBlock),
+            signature,
+            options: txOptions
+        })
+        const ptb = Transaction.from(toBase64(transactionBlock))
+        return SuiClient.waitForTransaction(ptb, resp)
     }
 
     public static getPTB(
