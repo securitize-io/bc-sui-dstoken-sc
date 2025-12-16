@@ -318,9 +318,9 @@ public fun remove_role_ability<T, R: drop, A: drop>(self: &mut Auth<T>, version:
 public(package) fun role_has_ability<T, R: drop, A: drop>(self: &Auth<T>): bool {
     let roles_type = type_name::with_defining_ids<R>();
     let ability_type = type_name::with_defining_ids<A>();
-
-    assert!(self.roles_abilities.contains(&roles_type), ERoleAbilitiesNotFound);
-
+    if (!self.roles_abilities.contains(&roles_type)) {
+        return false
+    };
     let abilities = self.roles_abilities.get(&roles_type);
     abilities.contains(&ability_type)
 }
@@ -329,9 +329,10 @@ public(package) fun role_has_ability<T, R: drop, A: drop>(self: &Auth<T>): bool 
 /// This is a combined check: does the owner have a role, and does that role have ability A
 public(package) fun owner_has_ability<T, A: drop>(self: &Auth<T>, owner: address): bool {    
     let owner_key = AddressKey { owner };
-    assert!(self.roles_owners.contains(owner_key), EOwnerHasNoRole);
+    if (!self.roles_owners.contains(owner_key)) {
+        return false
+    };
     let owner_role = self.roles_owners.borrow(owner_key);
-
     let ability_type = type_name::with_defining_ids<A>();
     let abilities = self.roles_abilities.get(owner_role);
     abilities.contains(&ability_type)
