@@ -95,7 +95,7 @@ export class PublishSingleton {
 
         let buildCommand = `sui move build --dump-bytecode-as-base64 --path ${packagePath}`
         const network = Config.vars.NETWORK
-        if (network === 'localnet' || network === 'devnet') {
+        if (network === 'localnet' || network === 'devnet' || network === 'testnet') { // TODO: remove testnet
             buildCommand += ' --with-unpublished-dependencies'
         }
 
