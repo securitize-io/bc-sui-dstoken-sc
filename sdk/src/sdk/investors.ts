@@ -1,7 +1,8 @@
 import {MoveType, SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
-import {AttributeStatus, AttributeType} from "./domains";
+import {Attribute, AttributeStatus, AttributeType, toAttributeStatus, toAttributeType} from "./domains";
+import {InvestorDetails} from "./domains/InvestorDetails";
 
 export class Investors {
     private readonly tokenAddress: string;
@@ -40,6 +41,60 @@ export class Investors {
     }
 
     // ==== View Functions ====
+
+    async getInvestorDetails(investorId: string): Promise<InvestorDetails> {
+        const investor = await SuiClient.getObject(this.tokenDetails.investorInfo)
+        const fields = (investor.data?.content as any)?.fields
+
+        const investorsTableId = fields.investors.fields.id.id
+        const investorsTable = await SuiClient.client.getDynamicFields({
+            parentId: investorsTableId
+        })
+
+        const investorObjectId = investorsTable.data.find((i) => i.name.value === investorId)?.objectId
+        if (!investorObjectId) {
+            throw `Investor ${investorId} does not exist.`
+        }
+
+        const investorObject = await SuiClient.getObject(investorObjectId)
+        let investorFields = (investorObject.data?.content as any).fields.value.fields
+        const country = investorFields.country
+        const totalBalance = investorFields.total_balance
+        const wallets = investorFields.wallets
+
+        let attributes: Attribute[] = []
+        const attributesSize = investorFields.attributes.fields.size
+        if (parseInt(attributesSize) > 0) {
+            const attributesTableId = investorFields.attributes.fields.id.id
+            const attributesObject = await SuiClient.client.getDynamicFields({
+                parentId: attributesTableId
+            })
+
+            const attributeObjectCalls = attributesObject.data.map((o) => SuiClient.getObject(o.objectId))
+            const attributeObjects = await Promise.all(attributeObjectCalls)
+
+            attributes = attributeObjects.map((a): Attribute => {
+                const fields = (a.data?.content as any)?.fields
+                const name = toAttributeType(fields.name)
+                const expiration: string = fields.value.fields.expiration || 0
+                const status = toAttributeStatus(fields.value.fields.value)
+
+                return {
+                    name,
+                    status,
+                    expiry: parseInt(expiration),
+                }
+            })
+        }
+
+        return {
+            id: investorId,
+            country,
+            attributes,
+            totalBalance,
+            wallets,
+        }
+    }
 
     async isInvestor(investorId: string, sender: string) {
         const ptb = this.buildGetPTB('is_investor', [investorId])
