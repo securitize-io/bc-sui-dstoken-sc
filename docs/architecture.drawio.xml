@@ -1,0 +1,813 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.6" pages="4">
+  <diagram name="DS Protocol Overview" id="overview">
+    <mxGraphModel dx="1226" dy="773" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1;fontColor=#1a1a2e;" value="DS Protocol Architecture" vertex="1">
+          <mxGeometry height="50" width="500" x="514" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="ds-protocol" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="400" width="1130" x="200" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="ds-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a365d;" value="DS PROTOCOL" vertex="1">
+          <mxGeometry height="30" width="200" x="661" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="ds-sublabel" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#4a5568;" value="Business Logic Layer" vertex="1">
+          <mxGeometry height="20" width="200" x="661" y="285" as="geometry" />
+        </mxCell>
+        <mxCell id="shared-container" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;" value="" vertex="1">
+          <mxGeometry height="300" width="1030" x="250" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="auth" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="240" width="220" x="280" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" value="🔐" vertex="1">
+          <mxGeometry height="40" width="50" x="365" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#7c3aed;" value="Auth&lt;T&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="330" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;" value="Trust Service" vertex="1">
+          <mxGeometry height="20" width="120" x="330" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#374151;" value="• Roles &amp; Permissions&#xa;• Master / Issuer / &#xa;  TransferAgent / Exchange&#xa;• Ability Assignment&#xa;• Access Control" vertex="1">
+          <mxGeometry height="120" width="190" x="295" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="treasury" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="240" width="220" x="530" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="treasury-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" value="🏦" vertex="1">
+          <mxGeometry height="40" width="50" x="615" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="treasury-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#059669;" value="Treasury&lt;T&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="570" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="treasury-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;" value="DS Token" vertex="1">
+          <mxGeometry height="20" width="120" x="580" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="treasury-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#374151;" value="• TreasuryCap (mint/burn)&#xa;• MetadataCap&#xa;• Pause Control&#xa;• Issue / Burn / Seize /&#xa;  Transfer Operations" vertex="1">
+          <mxGeometry height="120" width="190" x="545" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="investor-info" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="240" width="220" x="780" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="investor-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" value="👥" vertex="1">
+          <mxGeometry height="40" width="50" x="865" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="investor-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#d97706;" value="InvestorInfo&lt;T&gt;" vertex="1">
+          <mxGeometry height="30" width="150" x="815" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="investor-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;" value="Registry Service" vertex="1">
+          <mxGeometry height="20" width="120" x="830" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="investor-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#374151;" value="• Investors Registry&#xa;• Wallet Mappings&#xa;• Special Wallets&#xa;• Attributes (KYC, etc.)&#xa;• Investor Counters" vertex="1">
+          <mxGeometry height="120" width="190" x="795" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="compliance" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="240" width="220" x="1030" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="compliance-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;fontStyle=1;fontColor=#dc2626;" value="✓" vertex="1">
+          <mxGeometry height="40" width="50" x="1115" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="compliance-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#dc2626;" value="ComplianceConfig&lt;T&gt;" vertex="1">
+          <mxGeometry height="30" width="190" x="1045" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="compliance-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;" value="Compliance Service" vertex="1">
+          <mxGeometry height="20" width="120" x="1080" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="compliance-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#374151;" value="• Validation Rules&#xa;• AccreditedOnly&#xa;• HoldingLimits&#xa;• InvestorLimits&#xa;• ForceFullTransfer&#xa;• FlowbackRestriction" vertex="1">
+          <mxGeometry height="120" width="190" x="1045" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2" edge="1" parent="1" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#666666;fontStyle=1;" value="utilizes">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="758" y="660" as="sourcePoint" />
+            <mxPoint x="758" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rwa-module" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f3ff;strokeColor=#4a90d9;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="280" width="1000" x="258" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="rwa-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1e40af;" value="Permission Tokens Standard" vertex="1">
+          <mxGeometry height="30" width="310" x="600" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="rwa-registry" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfdbfe;strokeColor=#3b82f6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="60" width="300" x="608" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="registry-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#1e40af;" value="TokenRegistry" vertex="1">
+          <mxGeometry height="20" width="150" x="683" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="registry-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" value="Registry for derived Vaults" vertex="1">
+          <mxGeometry height="20" width="200" x="658" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-arrow1" edge="1" parent="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#3b82f6;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="658" y="840" as="sourcePoint" />
+            <mxPoint x="458" y="880" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vault-arrow2" edge="1" parent="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#3b82f6;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="758" y="840" as="sourcePoint" />
+            <mxPoint x="758" y="880" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vault-arrow3" edge="1" parent="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#3b82f6;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="858" y="840" as="sourcePoint" />
+            <mxPoint x="1058" y="880" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vault-a" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="100" width="180" x="328" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-a-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;" value="🔒" vertex="1">
+          <mxGeometry height="30" width="40" x="398" y="895" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-a-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#1e40af;" value="RwaVault&lt;T&gt;" vertex="1">
+          <mxGeometry height="20" width="110" x="363" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-a-wallet" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" value="Wallet A" vertex="1">
+          <mxGeometry height="20" width="100" x="368" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-a-balance" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6b7280;" value="Balance (object_balances)" vertex="1">
+          <mxGeometry height="20" width="140" x="348" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-b" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="100" width="180" x="668" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-b-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;" value="🔒" vertex="1">
+          <mxGeometry height="30" width="40" x="738" y="895" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-b-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#1e40af;" value="RwaVault&lt;T&gt;" vertex="1">
+          <mxGeometry height="20" width="110" x="703" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-b-wallet" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" value="Wallet B" vertex="1">
+          <mxGeometry height="20" width="100" x="708" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-b-balance" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6b7280;" value="Balance (object_balances)" vertex="1">
+          <mxGeometry height="20" width="140" x="688" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-c" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="100" width="180" x="978" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-c-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;" value="🔒" vertex="1">
+          <mxGeometry height="30" width="40" x="1048" y="895" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-c-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#1e40af;" value="RwaVault&lt;T&gt;" vertex="1">
+          <mxGeometry height="20" width="110" x="1013" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-c-wallet" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" value="Wallet C" vertex="1">
+          <mxGeometry height="20" width="100" x="1018" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="vault-c-balance" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6b7280;" value="Balance (object_balances)" vertex="1">
+          <mxGeometry height="20" width="140" x="998" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="conn1" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#9ca3af;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="500" y="480" as="sourcePoint" />
+            <mxPoint x="530" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn2" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#9ca3af;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="750" y="480" as="sourcePoint" />
+            <mxPoint x="780" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn3" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#9ca3af;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1000" y="480" as="sourcePoint" />
+            <mxPoint x="1030" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Investor Wallet Relationship" id="investor-wallet">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="title2" value="Investor &amp; Wallet Relationship" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="450" y="30" width="500" height="40" as="geometry" />
+        </mxCell>
+        <!-- InvestorInfo Container -->
+        <mxCell id="inv-info-container" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#f59e0b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="1200" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-info-label" value="InvestorInfo&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="120" y="110" width="200" height="30" as="geometry" />
+        </mxCell>
+        <!-- Investor A -->
+        <mxCell id="inv-a" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="150" y="160" width="300" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-icon" value="👤" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="275" y="170" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-title" value="Investor A" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="225" y="210" width="150" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-id" value="ID: inv_001" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#78350f;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="225" y="235" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-country" value="🌍 Country: US" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="175" y="265" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-balance" value="💰 Total Balance: 1000" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="175" y="290" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-attr-label" value="Attributes:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="175" y="315" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-kyc" value="✓ KYC Approved" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="185" y="335" width="120" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-accredited" value="✓ Accredited" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="185" y="353" width="100" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-wallets-label" value="Wallets:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="175" y="378" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-wallet1" value="0xABC..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fde68a;strokeColor=#d97706;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="185" y="398" width="70" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-a-wallet2" value="0x123..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fde68a;strokeColor=#d97706;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="265" y="398" width="70" height="20" as="geometry" />
+        </mxCell>
+        <!-- Investor B -->
+        <mxCell id="inv-b" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="550" y="160" width="300" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-icon" value="👤" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="675" y="170" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-title" value="Investor B" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="625" y="210" width="150" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-id" value="ID: inv_002" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#78350f;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="625" y="235" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-country" value="🌍 Country: DE" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="575" y="265" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-balance" value="💰 Total Balance: 500" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="575" y="290" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-attr-label" value="Attributes:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="575" y="315" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-kyc" value="✓ KYC Approved" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="585" y="335" width="120" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-accredited" value="✗ Not Accredited" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="585" y="353" width="110" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-wallets-label" value="Wallets:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="575" y="378" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="inv-b-wallet1" value="0xDEF..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fde68a;strokeColor=#d97706;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="585" y="398" width="70" height="20" as="geometry" />
+        </mxCell>
+        <!-- Special Wallets Section -->
+        <mxCell id="special-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="920" y="160" width="350" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="special-label" value="Special Wallets" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#16a34a;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="170" width="150" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="special-desc" value="(Not linked to investors)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="195" width="150" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-wallet" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#22c55e;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="230" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-icon" value="🏛️" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="995" y="235" width="50" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-label" value="ISSUER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="970" y="270" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-addr" value="0xISS..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="975" y="290" width="90" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="platform-wallet" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#22c55e;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="230" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="platform-icon" value="🔄" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="235" width="50" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="platform-label" value="PLATFORM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="270" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="platform-addr" value="0xPLT..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="290" width="90" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="special-note" value="• Exempt from most compliance rules&#xa;• Not counted in investor metrics&#xa;• Used for treasury operations" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="950" y="330" width="300" height="60" as="geometry" />
+        </mxCell>
+        <!-- Arrows to RwaVaults -->
+        <mxCell id="arrow-vault-1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#f59e0b;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="inv-a">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="430" as="sourcePoint" />
+            <mxPoint x="230" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-vault-2" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#f59e0b;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="inv-a">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="380" y="430" as="sourcePoint" />
+            <mxPoint x="380" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-vault-3" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#f59e0b;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="inv-b">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="430" as="sourcePoint" />
+            <mxPoint x="700" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- RwaVaults -->
+        <mxCell id="rwa-vault-1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="150" y="540" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="vault1-icon" value="🔐" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="205" y="550" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vault1-title" value="RwaVault" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="180" y="580" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vault1-owner" value="owner: 0xABC..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="175" y="600" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="vault1-balance" value="Balance: 600 DS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="175" y="620" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vault1-ob" value="(object_balances)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="175" y="640" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="rwa-vault-2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="320" y="540" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="vault2-icon" value="🔐" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="375" y="550" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vault2-title" value="RwaVault" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="350" y="580" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vault2-owner" value="owner: 0x123..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="345" y="600" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="vault2-balance" value="Balance: 400 DS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="345" y="620" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vault2-ob" value="(object_balances)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="345" y="640" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="rwa-vault-3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="620" y="540" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="vault3-icon" value="🔐" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="675" y="550" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vault3-title" value="RwaVault" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="650" y="580" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vault3-owner" value="owner: 0xDEF..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="645" y="600" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="vault3-balance" value="Balance: 500 DS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="645" y="620" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vault3-ob" value="(object_balances)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="645" y="640" width="110" height="15" as="geometry" />
+        </mxCell>
+        <!-- Sum equation -->
+        <mxCell id="sum-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="700" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sum-text" value="Investor A total_balance = 600 + 400 = 1000" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="165" y="715" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sum-arrow1" value="" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#d97706;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="660" as="sourcePoint" />
+            <mxPoint x="230" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sum-arrow2" value="" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#d97706;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="660" as="sourcePoint" />
+            <mxPoint x="400" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Legend -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#d1d5db;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="920" y="540" width="320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="935" y="550" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-inv" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="935" y="580" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-inv-text" value="Investor Data" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="960" y="577" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-vault" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="935" y="605" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-vault-text" value="RwaVault (Token Storage)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="960" y="602" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-special" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#22c55e;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="935" y="630" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-special-text" value="Special Wallet (Issuer/Platform)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="960" y="627" width="170" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Token Transfer Flow" id="transfer-flow">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="flow-title" value="Token Transfer Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="400" y="30" width="400" height="40" as="geometry" />
+        </mxCell>
+        <!-- Step 1: User Request -->
+        <mxCell id="step1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="100" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="step1-num" value="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="420" y="100" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step1-icon" value="👤" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="470" y="110" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step1-title" value="User Transaction" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="520" y="115" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step1-desc" value="transfer(from, to, amount)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#78350f;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="140" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1-2" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="180" as="sourcePoint" />
+            <mxPoint x="600" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Step 2: Auth Check -->
+        <mxCell id="step2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="240" width="300" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="step2-num" value="2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#7c3aed;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="420" y="240" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step2-icon" value="🔐" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="470" y="250" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step2-title" value="Authorization Check" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="520" y="255" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step2-obj" value="Auth&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="280" width="80" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="step2-desc" value="Does sender have required ability?" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="520" y="295" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="step2-check" value="✓ or ✗" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#059669;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="315" width="50" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2-3" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="340" as="sourcePoint" />
+            <mxPoint x="600" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Step 3: Pause Check -->
+        <mxCell id="step3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="400" width="300" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="step3-num" value="3" style="ellipse;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#059669;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="420" y="400" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step3-icon" value="🏦" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="470" y="410" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step3-title" value="Treasury State Check" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="520" y="415" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step3-obj" value="Treasury&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="440" width="80" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="step3-desc" value="Is token paused?" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="520" y="455" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="step3-check" value="✓ or ✗" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#059669;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="475" width="50" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow3-4" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="500" as="sourcePoint" />
+            <mxPoint x="600" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Step 4: Compliance Validation -->
+        <mxCell id="step4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="350" y="560" width="500" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-num" value="4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#dc2626;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="320" y="560" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-icon" value="✓" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="370" y="570" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-title" value="Compliance Validation" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="420" y="575" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-obj1" value="ComplianceConfig&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="420" y="600" width="120" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-obj2" value="+ InvestorInfo&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="550" y="600" width="100" height="15" as="geometry" />
+        </mxCell>
+        <!-- Rules boxes -->
+        <mxCell id="rule1" value="AccreditedOnly" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fecaca;strokeColor=#dc2626;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="370" y="630" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="rule2" value="HoldingLimits" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fecaca;strokeColor=#dc2626;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="470" y="630" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="rule3" value="InvestorLimits" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fecaca;strokeColor=#dc2626;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="570" y="630" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="rule4" value="ForceFullTransfer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fecaca;strokeColor=#dc2626;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="670" y="630" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="rule5" value="FlowbackRestriction" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fecaca;strokeColor=#dc2626;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="780" y="630" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-desc" value="Get investor data → Validate all rules → Record transfer" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="400" y="670" width="400" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="step4-note" value="* Platform wallets skip most rules" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#9ca3af;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="700" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow4-5" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="740" as="sourcePoint" />
+            <mxPoint x="600" y="790" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Step 5: Update Balances -->
+        <mxCell id="step5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="800" width="300" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="step5-num" value="5" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#d97706;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="420" y="800" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step5-icon" value="👥" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="470" y="810" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step5-title" value="Update Investor Balances" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="520" y="815" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step5-obj" value="InvestorInfo&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="840" width="100" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="step5-desc1" value="from: total_balance -= amount" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="520" y="855" width="180" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="step5-desc2" value="to: total_balance += amount" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="520" y="870" width="180" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow5-6" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="900" as="sourcePoint" />
+            <mxPoint x="600" y="950" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Step 6: Execute Vault Transfer -->
+        <mxCell id="step6" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="960" width="300" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="step6-num" value="6" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#1e40af;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="420" y="960" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step6-icon" value="🔐" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="470" y="970" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step6-title" value="Execute Vault Transfer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="520" y="975" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step6-obj" value="RwaVault + RwaRule" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1000" width="120" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="step6-desc" value="Move tokens via object_balances" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1015" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="step6-flow" value="from_vault → to_vault" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#1e40af;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1035" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow6-7" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="1080" as="sourcePoint" />
+            <mxPoint x="600" y="1130" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Step 7: Emit Event -->
+        <mxCell id="step7" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0e7ff;strokeColor=#6366f1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="1140" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="step7-num" value="7" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;fontColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1140" width="35" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="step7-icon" value="📢" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;" vertex="1" parent="1">
+          <mxGeometry x="470" y="1150" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="step7-title" value="Emit Event" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1155" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="step7-desc" value="Transfer { from, to, value }" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#4b5563;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1180" width="200" height="20" as="geometry" />
+        </mxCell>
+        <!-- Done -->
+        <mxCell id="done" value="✓ Transfer Complete" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="490" y="1260" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow7-done" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#10b981;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="1220" as="sourcePoint" />
+            <mxPoint x="600" y="1260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Roles and Abilities" id="roles">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="roles-title" value="Auth - Roles &amp; Abilities" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="500" y="30" width="400" height="40" as="geometry" />
+        </mxCell>
+        <!-- Auth Container -->
+        <mxCell id="auth-container" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9333ea;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="1200" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-label" value="Auth&lt;T&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="120" y="110" width="100" height="30" as="geometry" />
+        </mxCell>
+        <!-- Master Role -->
+        <mxCell id="master-role" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="150" y="160" width="250" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="master-icon" value="👑" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="250" y="170" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="master-title" value="MASTER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="225" y="210" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="master-desc" value="Full Control" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#78350f;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="225" y="235" width="100" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="master-abilities" value="Abilities:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="170" y="260" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="master-list" value="• SetServiceOwner&#xa;• SetIssuer&#xa;• SetTransferAgent&#xa;• SetExchange&#xa;• SetAbilities&#xa;• SetRoleTypes&#xa;• IssueTokens&#xa;• BurnTokens&#xa;• SeizeTokens&#xa;• MetadataUpdate&#xa;• Pauser&#xa;• RegisterInvestor&#xa;• RemoveInvestor&#xa;• UpdateInvestor&#xa;• SetCountry&#xa;• SetAttribute&#xa;• AddWallet&#xa;• RemoveWallet&#xa;• SetIssuerWallet&#xa;• SetPlatformWallet&#xa;• RemoveSpecialWallet&#xa;• RegisterRule&#xa;• UnregisterRule&#xa;• SetCountryCompliance&#xa;• ManageRules" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="170" y="280" width="210" height="400" as="geometry" />
+        </mxCell>
+        <!-- Issuer Role -->
+        <mxCell id="issuer-role" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="430" y="160" width="220" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-icon" value="🏛️" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="515" y="170" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-title" value="ISSUER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="490" y="210" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-desc" value="Token Issuer" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#047857;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="490" y="235" width="100" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-abilities" value="Abilities:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="450" y="260" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="issuer-list" value="• IssueTokens&#xa;• BurnTokens&#xa;• SetIssuer&#xa;• SetExchange" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="450" y="280" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Transfer Agent Role -->
+        <mxCell id="ta-role" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="680" y="160" width="220" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ta-icon" value="📋" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="765" y="170" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ta-title" value="TRANSFER AGENT" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="720" y="210" width="140" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ta-desc" value="Compliance" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#1e40af;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="740" y="235" width="100" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="ta-abilities" value="Abilities:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="700" y="260" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ta-list" value="• BurnTokens&#xa;• SeizeTokens&#xa;• Pauser" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="700" y="280" width="180" height="50" as="geometry" />
+        </mxCell>
+        <!-- Exchange Role -->
+        <mxCell id="exchange-role" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#ec4899;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="930" y="160" width="220" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="exchange-icon" value="🔄" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="170" width="50" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="exchange-title" value="EXCHANGE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#db2777;" vertex="1" parent="1">
+          <mxGeometry x="990" y="210" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="exchange-desc" value="Trading" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#db2777;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="990" y="235" width="100" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="exchange-abilities" value="Abilities:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="950" y="260" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="exchange-list" value="(Custom abilities&#xa; assigned by Master)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="950" y="280" width="180" height="40" as="geometry" />
+        </mxCell>
+        <!-- Role Assignment Section -->
+        <mxCell id="assignment-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#d1d5db;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="400" width="720" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="assignment-title" value="Role Assignment (roles_owners)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="450" y="410" width="250" height="25" as="geometry" />
+        </mxCell>
+        <!-- Address to Role mappings -->
+        <mxCell id="addr1" value="0x111..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e5e7eb;strokeColor=#9ca3af;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="470" y="460" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-addr1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="475" as="sourcePoint" />
+            <mxPoint x="630" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="role1-badge" value="MASTER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="460" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="addr2" value="0x222..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e5e7eb;strokeColor=#9ca3af;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="470" y="510" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-addr2" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="525" as="sourcePoint" />
+            <mxPoint x="630" y="525" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="role2-badge" value="ISSUER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="510" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="addr3" value="0x333..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e5e7eb;strokeColor=#9ca3af;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="470" y="560" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-addr3" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="575" as="sourcePoint" />
+            <mxPoint x="630" y="575" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="role3-badge" value="TRANSFER AGENT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="560" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="addr4" value="0x444..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e5e7eb;strokeColor=#9ca3af;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="470" y="610" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-addr4" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="625" as="sourcePoint" />
+            <mxPoint x="630" y="625" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="role4-badge" value="EXCHANGE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#ec4899;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="610" width="80" height="30" as="geometry" />
+        </mxCell>
+        <!-- How it works note -->
+        <mxCell id="how-note" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#3b82f6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="450" width="320" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="how-title" value="How Authorization Works" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="820" y="460" width="180" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="how-text" value="1. User calls a function&#xa;&#xa;2. Function checks Auth&lt;T&gt;:&#xa;   auth.owner_has_ability&lt;Ability&gt;(sender)&#xa;&#xa;3. Auth looks up:&#xa;   • sender&#39;s role from roles_owners&#xa;   • role&#39;s abilities from roles_abilities&#xa;&#xa;4. If ability exists → Proceed&#xa;   If not → Error: ENotAuthorized" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="820" y="490" width="280" height="150" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
