@@ -4,10 +4,10 @@ import {
     CountryComplianceStatus,
     createDSToken,
     DeploymentRequest,
+    Investors,
     SuiClient
 } from "../src";
 import {Keypair} from "@mysten/sui/cryptography";
-import {ComplianceStatus} from "../src/sdk/domains/CountryComplianceStatus";
 
 export const testTokenRequest: DeploymentRequest = {
     tokenDescription: {
@@ -81,4 +81,21 @@ export async function executeTxFunc(promise: Promise<string>, signer?: Keypair) 
     signer ??= ADMIN_KEYPAIR!
     const bytes = await promise
     await SuiClient.executeMoveCallBytes(bytes, signer)
+}
+
+export async function registerInvestor(
+    tokenAddress: string,
+    investorId: string,
+    wallets?: string[],
+    signer?: Keypair,
+) {
+    signer ??= ADMIN_KEYPAIR!
+    const signerAddress= signer.toSuiAddress()
+    const investors = new Investors(tokenAddress)
+    await executeTxFunc(investors.registerInvestor(investorId, signerAddress), signer)
+
+    wallets ??= [signerAddress]
+    for (const w of wallets) {
+        await executeTxFunc(investors.addWallet(investorId, w, signerAddress), signer)
+    }
 }

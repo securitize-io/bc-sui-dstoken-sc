@@ -2,8 +2,8 @@ import {CLOCK_ID, deriveObjectId, MoveType, SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails, TokenDetails} from "./token";
 import {Transaction} from "@mysten/sui/transactions";
-import {COIN_REGISTRY} from "../easysui/config/config";
 import {TokenMetadata} from "./domains/TokenMetadata";
+import {bcs} from "@mysten/sui/bcs";
 
 export class DSToken {
     private readonly tokenAddress: string;
@@ -128,6 +128,67 @@ export class DSToken {
         iconUrl?: string,
     ) {
         const ptb = this.setMetadataPTB(name, description, iconUrl)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    getRwaVault(address: string) {
+        const key = 'RwaVaultKey'
+        const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
+        return deriveObjectId(Config.vars.RWA_REGISTRY, 'vault', key, Config.vars.RWA_PACKAGE_ID, undefined, serializedBcs)
+    }
+
+    issuePTB(
+        to: string,
+        value: bigint,
+        valuesLocked: number[],
+        releaseTimes: number[],
+        reason: string,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        let rwaVault = this.getRwaVault(to);
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.auth,
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.complianceConfig,
+            this.tokenDetails.rwaRule,
+            rwaVault,
+            to,
+            value,
+            Config.vars.VERSION,
+            valuesLocked,
+            releaseTimes,
+            reason,
+            CLOCK_ID,
+        ]
+        const argsTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.address,
+            MoveType.u64,
+            MoveType.object,
+            MoveType.vec_u64,
+            MoveType.vec_u64,
+            MoveType.string,
+            MoveType.object,
+        ]
+        return this.buildSetPTB('issue_tokens', args, ptb, argsTypes)
+    }
+
+    async issue(
+        signer: string,
+        to: string,
+        value: bigint,
+        valuesLocked: number[],
+        releaseTimes: number[],
+        reason: string,
+    ) {
+        const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes, reason)
         return this.buildSetBytes(ptb, signer)
     }
 }

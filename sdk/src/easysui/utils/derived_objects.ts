@@ -6,9 +6,11 @@ export function deriveObjectId(
     module: string,
     key: string,
     packageId: string,
-    type?: string
+    type?: string,
+    serializedBcs?: any
 ) {
-    const keyU8 = bcs.struct(key, { dummy_value: bcs.bool() }).serialize({ dummy_value: false }).toBytes();
+    serializedBcs ??= bcs.struct(key, { dummy_value: bcs.bool() }).serialize({ dummy_value: false })
+    const keyU8 = serializedBcs.toBytes();
     let typeTag = `${packageId}::${module}::${key}`
     if (type) {
         typeTag += `<${type}>`

@@ -1,6 +1,6 @@
 import {ADMIN_KEYPAIR} from '../src'
 import {deploy} from '../src/sdk/utils/deploy'
-import {createTestToken, executeTxFunc, testTokenRequest,} from './test_utils'
+import {createTestToken, executeTxFunc, registerInvestor, testTokenRequest,} from './test_utils'
 import {DSToken} from "../src/sdk/DSToken";
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
@@ -81,6 +81,19 @@ describe('DSToken', () => {
             expect(data.iconUri).toBe("all iconUri")
             expect(data.totalIssued).toBe('0')
             expect(data.isPaused).toBe(false)
+        })
+    })
+
+    describe('issue tokens', () => {
+        it('should issue tokens', async () => {
+            const totalIssued = await dsToken.getTotalIssued()
+            expect(totalIssued).toBe('0')
+
+            await registerInvestor(tokenAddress, 'testInvestor')
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], ""))
+
+            const totalIssuedAfter = await dsToken.getTotalIssued()
+            expect(totalIssuedAfter).toBe('1000000')
         })
     })
 })
