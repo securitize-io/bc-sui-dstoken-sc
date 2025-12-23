@@ -286,4 +286,34 @@ export class DSToken {
         const ptb = this.seizePTB(from, to, value, reason)
         return this.buildSetBytes(ptb, signer)
     }
+
+    pausePTB(ptb?: Transaction) {
+        ptb ??= new Transaction()
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.auth,
+            Config.vars.VERSION,
+        ]
+        return this.buildSetPTB('pause', args, ptb)
+    }
+
+    async pause(signer: string) {
+        const ptb = this.pausePTB()
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    unpausePTB(ptb?: Transaction) {
+        ptb ??= new Transaction()
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.auth,
+            Config.vars.VERSION,
+        ]
+        return this.buildSetPTB('unpause', args, ptb)
+    }
+
+    async unpause(signer: string) {
+        const ptb = this.unpausePTB()
+        return this.buildSetBytes(ptb, signer)
+    }
 }

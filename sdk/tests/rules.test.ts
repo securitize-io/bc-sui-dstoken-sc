@@ -87,6 +87,7 @@ describe('Rules (Compliance)', () => {
             await expect(forceFullTransfer.exists(sender)).resolves.toBe(true)
             await expect(holdingLimits.exists(sender)).resolves.toBe(true)
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
+            await expect(rules.getRules()).resolves.toEqual(complianceRules)
 
             // Clean up
             await executeTxFunc(accreditedOnly.unregister(sender))

@@ -16,6 +16,8 @@ describe('DSToken', () => {
         tokenAddress = await createTestToken()
         dsToken = new DSToken(tokenAddress)
         investor2 = await createFundedWallet()
+        await registerInvestor(tokenAddress, 'testInvestor')
+        await registerInvestor(tokenAddress, 'testInvestor2', [investor2.toSuiAddress()])
     })
 
     describe('metadata', () => {
@@ -92,7 +94,6 @@ describe('DSToken', () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('0')
 
-            await registerInvestor(tokenAddress, 'testInvestor')
             await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
@@ -109,12 +110,30 @@ describe('DSToken', () => {
         })
     })
 
+    describe('pause/unpause tokens', () => {
+        it('should pause/unpause tokens', async () => {
+            await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
+            await executeTxFunc(dsToken.pause(sender))
+            await expect(dsToken.isPaused(sender)).resolves.toBeTruthy()
+            await executeTxFunc(dsToken.unpause(sender))
+            await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
+        })
+
+        // it('should not allow token transfers when paused', async () => {
+        //     await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
+        //     await executeTxFunc(dsToken.pause(sender))
+        //     await expect(dsToken.isPaused(sender)).resolves.toBeTruthy()
+        //
+        //     await expect(executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))).rejects.toThrow()
+        //
+        //     await executeTxFunc(dsToken.unpause(sender))
+        //     await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
+        // })
+    })
+
     // describe('seize tokens', () => {
     //     it('should seize tokens', async () => {
     //         const totalIssued = parseInt(await dsToken.getTotalIssued())
-    //
-    //         await registerInvestor(tokenAddress, 'testInvestor')
-    //         await registerInvestor(tokenAddress, 'testInvestor2', [investor2.toSuiAddress()])
     //
     //         await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
     //         await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], "reason"))
