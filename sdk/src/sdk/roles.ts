@@ -55,6 +55,7 @@ export class Roles {
 
         const MAPPING: Record<string, string> = {
             none: "none",
+            None: "none",
             Master: "master",
             Issuer: "issuer",
             Exchange: "exchange",

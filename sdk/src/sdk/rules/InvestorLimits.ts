@@ -29,7 +29,8 @@ export class InvestorLimits extends Rule {
             ptb.pure.u64(non_accredited_limit || 0),
             ptb.pure.u64(jp_investors_limit || 0),
             ptb.pure.u64(eu_retail_limit || 0),
-            ptb.pure.u64(max_us_percentage || 0),        ])
+            ptb.pure.u64(max_us_percentage || 0),
+        ])
 
         return this._registerPTB(rule, ptbDetails)
     }

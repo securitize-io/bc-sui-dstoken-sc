@@ -13,6 +13,35 @@ import {InvestorLimits} from "../src/sdk/rules/InvestorLimits";
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress();
 
+async function cleanup(tokenAddress: string) {
+    // Clean up all possible rules after each test
+    try {
+        const accreditedOnly = new AccreditedOnly(tokenAddress)
+        const flowbackRestriction = new FlowbackRestriction(tokenAddress)
+        const forceFullTransfer = new ForceFullTransfer(tokenAddress)
+        const holdingLimits = new HoldingLimits(tokenAddress)
+        const investorLimits = new InvestorLimits(tokenAddress)
+
+        if (await accreditedOnly.exists(sender)) {
+            await executeTxFunc(accreditedOnly.unregister(sender))
+        }
+        if (await flowbackRestriction.exists(sender)) {
+            await executeTxFunc(flowbackRestriction.unregister(sender))
+        }
+        if (await forceFullTransfer.exists(sender)) {
+            await executeTxFunc(forceFullTransfer.unregister(sender))
+        }
+        if (await holdingLimits.exists(sender)) {
+            await executeTxFunc(holdingLimits.unregister(sender))
+        }
+        if (await investorLimits.exists(sender)) {
+            await executeTxFunc(investorLimits.unregister(sender))
+        }
+    } catch (error) {
+        // Ignore cleanup errors
+    }
+}
+
 describe('Rules (Compliance)', () => {
     let tokenAddress: string
     let rules: Rules
@@ -102,36 +131,10 @@ describe('Rules (Compliance)', () => {
     })
 
     describe('Rules Update with Different Configurations', () => {
-        afterEach(async () => {
-            // Clean up all possible rules after each test
-            try {
-                const accreditedOnly = new AccreditedOnly(tokenAddress)
-                const flowbackRestriction = new FlowbackRestriction(tokenAddress)
-                const forceFullTransfer = new ForceFullTransfer(tokenAddress)
-                const holdingLimits = new HoldingLimits(tokenAddress)
-                const investorLimits = new InvestorLimits(tokenAddress)
-
-                if (await accreditedOnly.exists(sender)) {
-                    await executeTxFunc(accreditedOnly.unregister(sender))
-                }
-                if (await flowbackRestriction.exists(sender)) {
-                    await executeTxFunc(flowbackRestriction.unregister(sender))
-                }
-                if (await forceFullTransfer.exists(sender)) {
-                    await executeTxFunc(forceFullTransfer.unregister(sender))
-                }
-                if (await holdingLimits.exists(sender)) {
-                    await executeTxFunc(holdingLimits.unregister(sender))
-                }
-                if (await investorLimits.exists(sender)) {
-                    await executeTxFunc(investorLimits.unregister(sender))
-                }
-            } catch (error) {
-                // Ignore cleanup errors
-            }
-        })
+        afterEach(() => cleanup(tokenAddress))
 
         it('should update with AccreditedOnly rules only', async () => {
+            await cleanup(tokenAddress)
             const complianceRules: ComplianceRules = {
                 forceAccredited: true,
                 forceAccreditedUS: true
@@ -199,34 +202,7 @@ describe('Rules (Compliance)', () => {
     })
 
     describe('Edge Cases and Validation', () => {
-        afterEach(async () => {
-            // Clean up all possible rules after each test
-            try {
-                const accreditedOnly = new AccreditedOnly(tokenAddress)
-                const flowbackRestriction = new FlowbackRestriction(tokenAddress)
-                const forceFullTransfer = new ForceFullTransfer(tokenAddress)
-                const holdingLimits = new HoldingLimits(tokenAddress)
-                const investorLimits = new InvestorLimits(tokenAddress)
-
-                if (await accreditedOnly.exists(sender)) {
-                    await executeTxFunc(accreditedOnly.unregister(sender))
-                }
-                if (await flowbackRestriction.exists(sender)) {
-                    await executeTxFunc(flowbackRestriction.unregister(sender))
-                }
-                if (await forceFullTransfer.exists(sender)) {
-                    await executeTxFunc(forceFullTransfer.unregister(sender))
-                }
-                if (await holdingLimits.exists(sender)) {
-                    await executeTxFunc(holdingLimits.unregister(sender))
-                }
-                if (await investorLimits.exists(sender)) {
-                    await executeTxFunc(investorLimits.unregister(sender))
-                }
-            } catch (error) {
-                // Ignore cleanup errors
-            }
-        })
+        afterEach(async () => await cleanup(tokenAddress))
 
         it('should handle HoldingLimits with zero minimums', async () => {
             const complianceRules: ComplianceRules = {

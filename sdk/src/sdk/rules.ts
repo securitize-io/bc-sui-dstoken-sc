@@ -19,7 +19,6 @@ export class Rules {
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
-        const ptb = ptbDetails.ptb
 
        new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
        new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
@@ -42,7 +41,7 @@ export class Rules {
             rules.maxUSInvestorsPercentage,
             ptbDetails,
         )
-        return ptb
+        return ptbDetails.ptb
     }
 
     async update(
