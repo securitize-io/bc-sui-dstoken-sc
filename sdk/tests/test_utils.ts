@@ -99,3 +99,13 @@ export async function registerInvestor(
         await executeTxFunc(investors.addWallet(investorId, w, signerAddress), signer)
     }
 }
+
+export async function assertInvestorBalance(
+    tokenAddress: string,
+    investorId: string,
+    balance: string
+) {
+    const investors = new Investors(tokenAddress)
+    const details = await investors.getInvestorDetails(investorId)
+    expect(details.totalBalance).toBe(balance)
+}

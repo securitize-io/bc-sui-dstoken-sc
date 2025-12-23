@@ -1,8 +1,10 @@
-export { createDSToken } from './sdk/deploy_ds_token';
-export { Voloro } from './sdk/voloro';
+export * from './easysui';
 export * from './sdk/domains';
+export * from './sdk/CountryCompliance';
+export * from './sdk/deploy_ds_token';
+export * from './sdk/DSToken';
 export * from './sdk/investors';
 export * from './sdk/roles';
-export * from './sdk/wallets';
 export * from './sdk/rules';
-export * from './easysui';
+export * from './sdk/token';
+export * from './sdk/wallets';

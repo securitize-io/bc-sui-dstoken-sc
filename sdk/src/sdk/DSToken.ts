@@ -146,7 +146,7 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        let rwaVault = this.getRwaVault(to);
+        const rwaVault = this.getRwaVault(to);
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
@@ -189,6 +189,101 @@ export class DSToken {
         reason: string,
     ) {
         const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes, reason)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    burnPTB(
+        from: string,
+        value: bigint,
+        reason: string,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        const rwaVault = this.getRwaVault(from);
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.auth,
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.complianceConfig,
+            this.tokenDetails.rwaRule,
+            rwaVault,
+            from,
+            value,
+            reason,
+            Config.vars.VERSION,
+        ]
+        const argsTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.address,
+            MoveType.u64,
+            MoveType.string,
+            MoveType.object,
+        ]
+        return this.buildSetPTB('burn', args, ptb, argsTypes)
+    }
+
+    async burn(
+        signer: string,
+        from: string,
+        value: bigint,
+        reason: string,
+    ) {
+        const ptb = this.burnPTB(from, value, reason)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    seizePTB(
+        from: string,
+        to: string,
+        value: bigint,
+        reason: string,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        const fromRwaVault = this.getRwaVault(from);
+        const toRwaVault = this.getRwaVault(to);
+        const args = [
+            this.tokenDetails.auth,
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.complianceConfig,
+            this.tokenDetails.rwaRule,
+            fromRwaVault,
+            from,
+            toRwaVault,
+            to,
+            value,
+            reason,
+            Config.vars.VERSION,
+        ]
+        const argsTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.address,
+            MoveType.object,
+            MoveType.address,
+            MoveType.u64,
+            MoveType.string,
+            MoveType.object,
+        ]
+        return this.buildSetPTB('seize', args, ptb, argsTypes)
+    }
+
+    async seize(
+        signer: string,
+        from: string,
+        to: string,
+        value: bigint,
+        reason: string,
+    ) {
+        const ptb = this.seizePTB(from, to, value, reason)
         return this.buildSetBytes(ptb, signer)
     }
 }
