@@ -22,6 +22,7 @@ use securitize::registry_service::Issuance;
 use securitize::registry_service::new_issuance;
 use securitize::lockup_restriction::LockupRestriction;
 use securitize::lock_manager;
+use securitize::authorized_securities::AuthorizedSecurities;
 
 // ==== Error Codes ====
 
@@ -31,6 +32,7 @@ const EDestinationRestricted: u64 = 2;
 const ENotWhitelisted: u64 = 3;
 const ETotalInvestorsUnderflow: u64 = 4;
 const ETokensLocked: u64 = 6;
+const EInvestorLiquidateOnly: u64 = 7;
 
 // ==== TEMP Compliance Region Constants ====
 
@@ -191,6 +193,11 @@ public fun validate_transfer<T>(
         (empty_issuances, from_balance)
     };
 
+    if (!to_is_special_wallet) {
+        let to_id = registry.get_investor_id_by_wallet(to_address);
+        assert!(!lock_manager::is_liquidate_only(registry, to_id), EInvestorLiquidateOnly);
+    };
+
     // Validate all configured rules
     rules.do_ref!(|rule| {
         validate_transfer_rule(
@@ -226,6 +233,7 @@ public fun validate_issue<T>(
     registry: &mut InvestorInfo<T>,
     to: address,
     amount: u64,
+    total_supply: u64,
     timestamp_ms: u64,
     version: &Version,
 ) {
@@ -234,8 +242,8 @@ public fun validate_issue<T>(
     assert!(registry.is_special_wallet(to) ||  registry.is_wallet(to), ENotWhitelisted);
 
     // get investor info
-    // TODO check SPECIAL WALLETS 
     let is_platform_wallet = is_platform_wallet(registry, to);
+    let is_special_wallet = is_special_wallet(registry, to);
 
     // ---- TO ----
     let (
@@ -252,6 +260,12 @@ public fun validate_issue<T>(
 
     // Skip checks for platform wallets
     if (is_platform_wallet) return;
+
+    if (!is_special_wallet) {
+        let to_id = registry.get_investor_id_by_wallet(to);
+        assert!(!lock_manager::is_liquidate_only(registry, to_id), EInvestorLiquidateOnly);
+    };
+
     // Validate all configured rules
     config.rules.do_ref!(|rule| {
         validate_issuance_rule(
@@ -259,6 +273,7 @@ public fun validate_issue<T>(
             registry,
             *rule,
             amount,
+            total_supply,
             to_balance,
             to_region,
             to_country,
@@ -374,7 +389,7 @@ fun validate_transfer_rule<T>(
     } else if (rule == type_name::with_defining_ids<LockupRestriction>()) {
         let rule: &LockupRestriction = config.rules_bag.borrow(rule);
         rule.validate_rule(investor_issuances, amount, from_region, from_is_platform_wallet, from_transferable_balance, timestamp_ms);
-    };
+    }
 }
 
 /// Validate a single issuance rule
@@ -383,6 +398,7 @@ fun validate_issuance_rule<T>(
     registry: &InvestorInfo<T>,
     rule: TypeName,
     amount: u64,
+    total_supply: u64,
     to_balance: u64,
     to_region: u64,
     to_country: String,
@@ -407,6 +423,9 @@ fun validate_issuance_rule<T>(
             to_is_qualified,
             to_is_new_investor,
         );
+    } else if (rule == type_name::with_defining_ids<AuthorizedSecurities>()) {
+        let rule: &AuthorizedSecurities = config.rules_bag.borrow(rule);
+        rule.validate_rule(total_supply, amount);
     };
 }
 

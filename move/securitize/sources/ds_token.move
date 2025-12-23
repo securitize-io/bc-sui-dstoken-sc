@@ -175,11 +175,16 @@ public fun issue_tokens<T>(
     assert!(value > 0, EValueZero);
     assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
     let timestamp_ms = clock.timestamp_ms();
+    let total_supply = dof::borrow<TreasuryCapKey, TreasuryCap<T>>(
+        &treasury.id,
+        TreasuryCapKey(),
+    ).total_supply()
     compliance_service::validate_issue(
         compliance_config,
         investors,
         to_address,
         value,
+        total_supply,
         timestamp_ms,
         version,
     );
