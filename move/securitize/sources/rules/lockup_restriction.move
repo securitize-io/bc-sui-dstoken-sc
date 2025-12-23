@@ -2,7 +2,7 @@
 ///
 /// Rule that enforces lock-up periods on token issuances.
 /// Tokens are locked for a configurable period after issuance, with separate
-/// lock periods for US and non-US investors (Regulation D/S compliance).
+/// lock periods for US and non-US investors.
 ///
 /// This module validates that transfers do not exceed the amount of unlocked
 /// (transferable) tokens based on issuance timestamps tracked in InvestorInfo.
@@ -60,19 +60,7 @@ public fun set_non_us_lock_period(rule: &mut LockupRestriction, period_ms: u64, 
 
 // ==================== Validation ====================
 
-/// Validate that a transfer does not exceed the transferable (unlocked) token amount.
-///
-/// This checks if the sender has enough unlocked tokens to transfer.
-/// Tokens are locked based on the lock period for the sender's region.
-///
-/// # Arguments
-/// * `rule` - The lockup restriction configuration
-/// * `investor_issuances` - Vector of issuance records for the investor (from ComplianceConfig)
-/// * `amount` - Amount being transferred
-/// * `from_region` - Compliance region of the sender
-/// * `from_is_platform_wallet` - Whether sender is a platform wallet (exempt)
-/// * `transferable_balance` - Current Transferable_balance balance of the investor
-/// * `clock` - Sui clock for current timestamp
+/// Validate that a transfer does not exceed the transferable (issuances unlocked) token amount.
 public fun validate_rule(
     rule: &LockupRestriction,
     investor_issuances: &vector<Issuance>,
@@ -80,7 +68,7 @@ public fun validate_rule(
     from_region: u64,
     from_is_platform_wallet: bool,
     current_transferable_balance: u64,
-    now_ms: u64,
+    timestamp_ms: u64,
 ) {
     // Platform wallets are exempt from lockup restrictions
     if (from_is_platform_wallet) return;
@@ -90,7 +78,7 @@ public fun validate_rule(
         investor_issuances,
         from_region,
         current_transferable_balance,
-        now_ms,
+        timestamp_ms,
     );
 
     assert!(transferable >= amount, EUnderLockup);
@@ -104,7 +92,7 @@ public fun compute_transferable_tokens(
     investor_issuances: &vector<Issuance>,
     region: u64,
     balance: u64,
-    now_ms: u64,
+    timestamp_ms: u64,
 ): u64 {
     // No issuances = all tokens transferable
     if (investor_issuances.is_empty()) {
@@ -122,12 +110,11 @@ public fun compute_transferable_tokens(
 
     investor_issuances.do_ref!(|issuance| {
         // Check if issuance is still under lockup
-        // Locked if: now_ms < lock_period OR issuance_time > (now_ms - lock_period)
         let locked =
             // Global initial lock window
-            now_ms < lock_period
+            timestamp_ms < lock_period
             // Issuance-relative lock window
-            || issuance.issuance_time_ms() + lock_period > now_ms;
+            || issuance.issuance_time_ms() + lock_period > timestamp_ms;
 
         if (locked) {
             total_locked = total_locked + issuance.issuance_amount();
@@ -144,7 +131,7 @@ public fun is_issuance_locked(
     rule: &LockupRestriction,
     issuance: &Issuance,
     region: u64,
-    now_ms: u64,
+    timestamp_ms: u64,
 ): bool {
     let lock_period = get_lock_period(rule, region);
 
@@ -153,35 +140,7 @@ public fun is_issuance_locked(
         return false
     };
 
-    now_ms < lock_period || issuance.issuance_time_ms() + lock_period > now_ms
-}
-
-/// Filter out expired issuances from a vector.
-/// Returns a new vector with only the still-locked issuances.
-public fun filter_expired_issuances(
-    rule: &LockupRestriction,
-    issuances: &vector<Issuance>,
-    region: u64,
-    now_ms: u64
-): vector<Issuance> {
-    let mut result = vector::empty();
-    let lock_period = get_lock_period(rule, region);
-
-    // Lock period of 0 means no lockup - all issuances are "expired"
-    if (lock_period == 0) {
-        return result
-    };
-
-    issuances.do_ref!(|issuance| {
-        let locked =
-            now_ms < lock_period
-            || issuance.issuance_time_ms() + lock_period > now_ms;
-
-        if (locked) {
-            result.push_back(*issuance);
-        };
-    });
-    result
+    timestamp_ms < lock_period || issuance.issuance_time_ms() + lock_period > timestamp_ms
 }
 
 // ==================== View Functions ====================
