@@ -178,7 +178,7 @@ public fun issue_tokens<T>(
     let total_supply = dof::borrow<TreasuryCapKey, TreasuryCap<T>>(
         &treasury.id,
         TreasuryCapKey(),
-    ).total_supply()
+    ).total_supply();
     compliance_service::validate_issue(
         compliance_config,
         investors,
