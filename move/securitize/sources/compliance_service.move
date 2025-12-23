@@ -15,11 +15,13 @@ use std::string::String;
 use securitize::force_full_transfer::ForceFullTransfer;
 use securitize::flowback_restriction::FlowbackRestriction;
 use securitize::wallet_manager::is_platform_wallet;
-use std::address;
-use rwa::registry;
-use securitize::registry_service::apply_change;
 use securitize::registry_service::is_special_wallet;
 use securitize::wallet_manager::is_issuer_wallet;
+use sui::clock::timestamp_ms;
+use securitize::registry_service::Issuance;
+use securitize::registry_service::new_issuance;
+use securitize::lockup_restriction::LockupRestriction;
+use securitize::lock_manager;
 
 // ==== Error Codes ====
 
@@ -28,6 +30,7 @@ const ERuleAlreadyExists: u64 = 1;
 const EDestinationRestricted: u64 = 2;
 const ENotWhitelisted: u64 = 3;
 const ETotalInvestorsUnderflow: u64 = 4;
+const ETokensLocked: u64 = 6;
 
 // ==== TEMP Compliance Region Constants ====
 
@@ -111,7 +114,6 @@ public fun validate_transfer<T>(
     request: &RwaTransferRequest<T>,
     timestamp_ms: u64,
     version: &Version,
-    // lock_manager: &LockManager<T>,
 ) {
     version.check_is_valid();
 
@@ -152,14 +154,41 @@ public fun validate_transfer<T>(
 
     assert!(to_region != FORBIDDEN, EDestinationRestricted);
 
-    let mut rules =  config.rules;
-    // Skip checks for platform wallets except force full transfer
+    let platform_rules = vector[type_name::with_defining_ids<ForceFullTransfer>()];
+    let empty_rules = vector[];
+
+    let mut rules = &config.rules;
+
     if (to_is_platform_wallet) {
-        rules = vector[type_name::with_defining_ids<ForceFullTransfer>()]
+        rules = &platform_rules;
     };
 
     if (from_address == to_address) {
-        rules = vector[]
+        rules = &empty_rules;
+    };
+
+    let empty_issuances: &vector<Issuance> = &vector[];
+
+    let (from_investor_issuances_ref, from_transferable_balance) =
+    if (!from_is_special_wallet) {
+        let from_id = registry.get_investor_id_by_wallet(from_address);
+
+        let transferable = lock_manager::compute_transferable(
+            registry,
+            from_id,
+            from_balance,
+            timestamp_ms,
+        );
+
+        // ---- GLOBAL lock invariant (TokenLocked) ----
+        assert!(transferable >= amount, ETokensLocked);
+
+        (
+            registry.get_investor_issuances(from_id),
+            transferable,
+        )
+    } else {
+        (empty_issuances, from_balance)
     };
 
     // Validate all configured rules
@@ -171,6 +200,7 @@ public fun validate_transfer<T>(
             amount,
             from_region,
             from_balance,
+            from_transferable_balance,
             from_is_accredited,
             from_is_exit_investor,
             from_is_platform_wallet,
@@ -180,21 +210,23 @@ public fun validate_transfer<T>(
             to_is_accredited,
             to_is_qualified,
             to_is_new_investor,
+            from_investor_issuances_ref,
             equal_country,
             timestamp_ms
         );
     });
 
-    record_transfer(registry, from_address, to_address, amount, from_is_special_wallet, to_is_special_wallet, to_is_new_investor, from_is_exit_investor);
+    record_transfer(config, registry, from_region, to_region, from_address, to_address, amount, from_is_special_wallet, to_is_special_wallet, to_is_new_investor, from_is_exit_investor, timestamp_ms);
+
 }
 
 /// Validate issuance action against all configured rules
 public fun validate_issue<T>(
-    config: &ComplianceConfig<T>,
+    config: &mut ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
     to: address,
-    // lock_manager: &LockManager<T>,
     amount: u64,
+    timestamp_ms: u64,
     version: &Version,
 ) {
     version.check_is_valid();
@@ -236,7 +268,7 @@ public fun validate_issue<T>(
         );
     });
 
-    record_issuance(registry, to, amount, is_platform_wallet, to_is_new_investor);
+    record_issuance(config, registry, to, to_region, amount, is_platform_wallet, to_is_new_investor, timestamp_ms);
 }
 
 /// Validate burn action against all configured rules
@@ -292,6 +324,7 @@ fun validate_transfer_rule<T>(
     amount: u64,
     from_region: u64,
     from_balance: u64,
+    from_transferable_balance: u64,
     from_is_accredited: bool,
     from_is_exit_investor: bool,
     from_is_platform_wallet: bool,
@@ -301,6 +334,7 @@ fun validate_transfer_rule<T>(
     to_is_accredited: bool,
     to_is_qualified: bool,
     to_is_new_investor: bool,
+    investor_issuances: &vector<Issuance>,
     equal_country: bool,
     timestamp_ms: u64,
 ) {
@@ -337,6 +371,9 @@ fun validate_transfer_rule<T>(
     } else if (rule == type_name::with_defining_ids<FlowbackRestriction>()) {
         let rule: &FlowbackRestriction = config.rules_bag.borrow(rule);
         rule.validate_rule(from_region, to_region, from_is_platform_wallet, timestamp_ms);
+    } else if (rule == type_name::with_defining_ids<LockupRestriction>()) {
+        let rule: &LockupRestriction = config.rules_bag.borrow(rule);
+        rule.validate_rule(investor_issuances, amount, from_region, from_is_platform_wallet, from_transferable_balance, timestamp_ms);
     };
 }
 
@@ -477,11 +514,14 @@ public fun get_country_compliance<T>(registry: &InvestorInfo<T>, country: String
 // ==================== Recorders ====================
 
 public(package) fun record_issuance<T>(
+    config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
     to: address,
     amount: u64,
+    region: u64,
     to_is_special_wallet: bool,
     to_is_new_investor: bool,
+    timestamp_ms: u64,
 ) {
     if (amount == 0) return;
 
@@ -494,10 +534,17 @@ public(package) fun record_issuance<T>(
             true,
         );
     };
+    let to_investor_id = registry.get_investor_id_by_wallet(to);
+
+    record_investor_issuance(registry, to_investor_id, amount, timestamp_ms);
+    cleanup_investor_issuances(config, registry, region, to_investor_id, timestamp_ms)
 }
 
 public(package) fun record_transfer<T>(
+    config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
+    from_region: u64,
+    to_region: u64,
     from: address,
     to: address,
     amount: u64,
@@ -505,6 +552,7 @@ public(package) fun record_transfer<T>(
     to_is_special_wallet: bool,
     to_is_new_investor: bool,
     from_is_exit_investor: bool,
+    timestamp_ms: u64,
 ) {
     if (amount == 0) return;
 
@@ -534,6 +582,15 @@ public(package) fun record_transfer<T>(
             from_is_special_wallet,
             false,
         );
+    };
+
+    if (!from_is_special_wallet) {
+        let from_id = registry.get_investor_id_by_wallet(from);
+        cleanup_investor_issuances(config, registry, from_region, from_id, timestamp_ms)
+    };
+    if (!to_is_special_wallet) {
+        let to_id = registry.get_investor_id_by_wallet(to);
+        cleanup_investor_issuances(config, registry, to_region, to_id, timestamp_ms)
     };
 }
 
@@ -613,4 +670,74 @@ public fun rules<T, R: store>(
 /// Get immutable reference to the rules vector
 public fun rules_vector<T>(config: &ComplianceConfig<T>): &vector<TypeName> {
     &config.rules
+}
+
+// ==================== Issuance Management Functions ====================
+
+/// Record a new issuance for an investor (for lockup tracking)
+public(package) fun record_investor_issuance<T>(
+    registry: &mut InvestorInfo<T>,
+    investor_id: String,
+    amount: u64,
+    issuance_time_ms: u64,
+) {
+    if (amount == 0) return;
+
+    let issuance = new_issuance(amount, issuance_time_ms);
+
+    if (registry.has_investor_issuances(investor_id)) {
+        let issuances = registry.get_investor_issuances_mut(investor_id);
+        issuances.push_back(issuance);
+    } else {
+        registry.add_investor_issuances(investor_id, vector[issuance]);
+    };
+}
+
+/// Cleanup expired issuances for an investor based on lock period
+/// Should be called during transfers to remove stale records
+public(package) fun cleanup_investor_issuances<T>(
+    config: &ComplianceConfig<T>,
+    registry: &mut InvestorInfo<T>,
+    region: u64,
+    investor_id: String,
+    now_ms: u64,
+) {
+    let lock_period_ms = if (has_rule<T, LockupRestriction>(config)) {
+        let rule: &LockupRestriction =
+        config.rules_bag.borrow(type_name::with_defining_ids<LockupRestriction>());
+
+        rule.lock_period_for_region(region)
+    } else {
+        0
+    };
+
+    if (!registry.has_investor_issuances(investor_id)) return;
+    let issuances = registry.get_investor_issuances_mut(investor_id);
+
+    // Lock period of 0 means no lockup - clear all issuances but keep entry
+    if (lock_period_ms == 0) {
+        while (!issuances.is_empty()) {
+            issuances.pop_back();
+        };
+        return
+    };
+
+    remove_if!(issuances, |issuance| {
+        issuance.issuance_time_ms() + lock_period_ms <= now_ms
+    })
+}
+
+// ==== Macros ====
+
+/// Remove elements from vector where predicate returns true (in-place, O(1) per removal)
+macro fun remove_if<$T: drop>($v: &mut vector<$T>, $pred: |&$T| -> bool) {
+    let v = $v;
+    let mut i = 0;
+    while (i < v.length()) {
+        if ($pred(&v[i])) {
+            v.swap_remove(i);
+        } else {
+            i = i + 1;
+        }
+    }
 }
