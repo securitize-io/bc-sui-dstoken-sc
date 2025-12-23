@@ -136,7 +136,7 @@ public(package) fun new<T>(uid: &mut UID, ctx: &mut TxContext): Auth<T> {
     roles_abilities.insert(type_name::with_defining_ids<Issuer>(), issuer_abilities);
 
     // Add Exchange abilities set
-    let mut exchange_abilities = vec_set::empty();
+    let exchange_abilities = vec_set::empty();
     roles_abilities.insert(type_name::with_defining_ids<Exchange>(), exchange_abilities);
 
     let mut auth = Auth<T> {

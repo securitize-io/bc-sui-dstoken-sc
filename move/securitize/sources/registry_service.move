@@ -8,7 +8,7 @@ module securitize::registry_service;
 
 use rwa::{registry::RwaRegistry, vault};
 use securitize::{trust_service::{Auth, Master, Issuer, Exchange}, version::Version};
-use std::{address, string::{Self, String}};
+use std::string::{Self, String};
 use sui::{derived_object, event, table::{Self, Table}};
 
 // ==== Error Codes ====
@@ -89,6 +89,33 @@ public struct InvestorInfo<phantom T> has key {
     eu_retail_investors_count: Table<String, u64>,
     /// Mapping of country codes to their compliance region
     countries_compliances: Table<String, u64>,
+    /// Investor locks data
+    investor_locks: Table<String, InvestorLockState>,
+    /// Investor issuances data
+    investor_issuances: Table<String, vector<Issuance>>,
+}
+
+// ==== Structs ====
+
+public struct Lock has drop, store {
+    value: u64,
+    reason_code: u64,
+    reason_string: String,
+    release_time_ms: u64,
+}
+
+public struct InvestorLockState has drop, store {
+    fully_locked: bool,
+    liquidate_only: bool,
+    locks: vector<Lock>,
+}
+
+/// Individual issuance record tracking the amount and timestamp for lockup validation
+public struct Issuance has copy, drop, store {
+    /// Amount of tokens issued
+    amount: u64,
+    /// Timestamp when tokens were issued (in milliseconds)
+    issuance_time_ms: u64,
 }
 
 /// Represents an investor in the registry with their compliance data.
@@ -233,6 +260,8 @@ public(package) fun new<T: key>(
         jp_investors_count: 0,
         eu_retail_investors_count: table::new(ctx),
         countries_compliances: table::new(ctx),
+        investor_locks: table::new(ctx),
+        investor_issuances: table::new(ctx),
     };
     investor_info
 }
@@ -593,6 +622,14 @@ public fun is_qualified_investor<T>(investor_info: &InvestorInfo<T>, wallet: add
     investor_info.is_qualified_investor_by_id(id)
 }
 
+/// Returns the compliance region for a given country code.
+public fun get_country_compliance<T>(investor_info: &InvestorInfo<T>, country: String): u64 {
+    if (!investor_info.countries_compliances.contains(country)) {
+        return NONE
+    };
+    *investor_info.countries_compliances.borrow(country)
+}
+
 /// Returns the country of the investor.
 public fun get_country<T>(investor_info: &InvestorInfo<T>, investor_id: String): String {
     investor_info.investors.borrow(investor_id).country
@@ -657,23 +694,32 @@ public fun get_eu_retail_investor_count<T>(
     to_country: String,
 ): Option<u64> {
     if (investor_info.eu_retail_investors_count.contains(to_country)) {
-        return option::some(*investor_info.eu_retail_investors_count.borrow(to_country));
+        return option::some(*investor_info.eu_retail_investors_count.borrow(to_country))
     };
     option::none()
 }
 
-// ==== Public Package Functions ====
-
-/// Returns the compliance region for a given country code.
-public(package) fun get_country_compliance<T>(
-    investor_info: &InvestorInfo<T>,
-    country: String,
-): u64 {
-    if (!investor_info.countries_compliances.contains(country)) {
-        return NONE
-    };
-    *investor_info.countries_compliances.borrow(country)
+/// Check if investor has any issuances
+public fun has_investor_issuances<T>(investor_info: &InvestorInfo<T>, investor_id: String): bool {
+    investor_info.investor_issuances.contains(investor_id)
 }
+
+/// Creates a new Issuance record
+public fun new_issuance(amount: u64, issuance_time_ms: u64): Issuance {
+    Issuance { amount, issuance_time_ms }
+}
+
+/// Get amount from issuance
+public fun issuance_amount(issuance: &Issuance): u64 {
+    issuance.amount
+}
+
+/// Get issuance time from issuance (in milliseconds)
+public fun issuance_time_ms(issuance: &Issuance): u64 {
+    issuance.issuance_time_ms
+}
+
+// ==== Public Package Functions ====
 
 /// Sets the total token balance for an investor.
 public(package) fun update_investor_total_balance<T>(
@@ -698,7 +744,7 @@ public(package) fun set_country_compliance<T>(
     assert!(previous != compliance_region, EComplianceUnchanged);
     if (compliance_region == NONE) {
         investor_info.countries_compliances.remove(country);
-        return;
+        return
     };
     if (previous == NONE) {
         investor_info.countries_compliances.add(country, compliance_region);
@@ -762,6 +808,133 @@ public(package) fun set_eu_retail_investors_count<T>(
 ) {
     let count_ref = investor_info.eu_retail_investors_count.borrow_mut(country);
     *count_ref = count;
+}
+
+/// Returns a reference to the investor issuances for a given investor ID.
+public(package) fun get_investor_issuances<T>(
+    investor_info: &InvestorInfo<T>,
+    investor_id: String,
+): &vector<Issuance> {
+    investor_info.investor_issuances.borrow(investor_id)
+}
+
+/// Returns a mutable reference to the investor issuances for a given investor ID.
+public(package) fun get_investor_issuances_mut<T>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+): &mut vector<Issuance> {
+    investor_info.investor_issuances.borrow_mut(investor_id)
+}
+
+/// Returns a mutable reference to the investor issuances for a given investor ID.
+public(package) fun add_investor_issuances<T>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+    issuances: vector<Issuance>,
+) {
+    investor_info.investor_issuances.add(investor_id, issuances)
+}
+
+/// Returns a reference to the investor lock state for a given investor ID.
+public(package) fun get_investor_locks<T>(
+    investor_info: &InvestorInfo<T>,
+    investor_id: String,
+): &InvestorLockState {
+    investor_info.investor_locks.borrow(investor_id)
+}
+
+/// Returns a mutable reference to the investor lock state for a given investor ID.
+public(package) fun get_investor_locks_mut<T>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+): &mut InvestorLockState {
+    investor_info.investor_locks.borrow_mut(investor_id)
+}
+
+/// Checks if an investor has a lock state entry
+public(package) fun has_investor_locks<T>(
+    investor_info: &InvestorInfo<T>,
+    investor_id: String,
+): bool {
+    investor_info.investor_locks.contains(investor_id)
+}
+
+/// Creates a new investor lock state and adds it to the registry
+public(package) fun create_investor_lock_state<T>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+) {
+    let state = InvestorLockState {
+        fully_locked: false,
+        liquidate_only: false,
+        locks: vector::empty(),
+    };
+    investor_info.investor_locks.add(investor_id, state);
+}
+
+// ==== InvestorLockState Accessors ====
+
+/// Returns whether the investor is fully locked
+public(package) fun is_fully_locked(state: &InvestorLockState): bool {
+    state.fully_locked
+}
+
+/// Sets the fully locked status
+public(package) fun set_fully_locked(state: &mut InvestorLockState, locked: bool) {
+    state.fully_locked = locked;
+}
+
+/// Returns whether the investor is in liquidate only mode
+public(package) fun is_liquidate_only(state: &InvestorLockState): bool {
+    state.liquidate_only
+}
+
+/// Sets the liquidate only status
+public(package) fun set_liquidate_only(state: &mut InvestorLockState, enabled: bool) {
+    state.liquidate_only = enabled;
+}
+
+/// Returns the number of locks
+public(package) fun locks_length(state: &InvestorLockState): u64 {
+    state.locks.length()
+}
+
+/// Adds a new lock to the lock state
+public(package) fun add_lock(
+    state: &mut InvestorLockState,
+    value: u64,
+    reason_code: u64,
+    reason_string: String,
+    release_time_ms: u64,
+) {
+    let lock = Lock {
+        value,
+        reason_code,
+        reason_string,
+        release_time_ms,
+    };
+    state.locks.push_back(lock);
+}
+
+/// Removes a lock at the given index (swap-remove)
+public(package) fun remove_lock(state: &mut InvestorLockState, index: u64) {
+    let len = state.locks.length();
+    let last = len - 1;
+    if (index != last) {
+        state.locks.swap(index, last);
+    };
+    let _ = state.locks.pop_back();
+}
+
+/// Computes the total locked amount based on current time
+public(package) fun compute_locked_sum(state: &InvestorLockState, now_ms: u64): u64 {
+    let mut locked_sum = 0;
+    state.locks.do_ref!(|l| {
+        if (l.release_time_ms == 0 || l.release_time_ms >= now_ms) {
+            locked_sum = locked_sum + l.value
+        }
+    });
+    locked_sum
 }
 
 // Adjusts compliance counters for a specific country.
