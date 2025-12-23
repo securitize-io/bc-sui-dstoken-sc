@@ -46,7 +46,6 @@ public fun set_max_supply(
 // ==================== Validation ====================
 
 /// Validate that issuance does not exceed max authorized securities
-/// Mirrors Solidity: require(authorizedSecurities == 0 || totalSupply + _value <= authorizedSecurities)
 public fun validate_rule(
     rule: &AuthorizedSecurities,
     total_supply: u64,
