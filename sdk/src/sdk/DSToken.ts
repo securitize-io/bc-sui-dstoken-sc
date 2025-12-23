@@ -316,4 +316,57 @@ export class DSToken {
         const ptb = this.unpausePTB()
         return this.buildSetBytes(ptb, signer)
     }
+
+    transferPTB(
+        from: string,
+        to: string,
+        amount: bigint,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        const fromRwaVault = this.getRwaVault(from);
+        const vaultOwnerProof = ptb.moveCall({
+            target: `${Config.vars.RWA_PACKAGE_ID}::vault::proof_as_sender`,
+        })
+        const transferRequest = ptb.moveCall({
+            target: `${Config.vars.RWA_PACKAGE_ID}::vault::transfer`,
+            typeArguments: [this.tokenAddress],
+            arguments: [
+                ptb.object(fromRwaVault),
+                vaultOwnerProof,
+                ptb.pure.u64(amount),
+                ptb.pure.address(to)
+            ],
+        })
+
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.complianceConfig,
+            this.tokenDetails.rwaRule,
+            transferRequest,
+            Config.vars.VERSION,
+            CLOCK_ID,
+        ]
+        const argsTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+        ]
+        return this.buildSetPTB('transfer', args, ptb, argsTypes)
+    }
+
+    async transfer(
+        signer: string,
+        from: string,
+        to: string,
+        amount: bigint,
+    ) {
+        const ptb = this.transferPTB(from, to, amount)
+        return this.buildSetBytes(ptb, signer)
+    }
 }

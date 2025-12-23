@@ -119,16 +119,29 @@ describe('DSToken', () => {
             await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
         })
 
-        // it('should not allow token transfers when paused', async () => {
-        //     await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
-        //     await executeTxFunc(dsToken.pause(sender))
-        //     await expect(dsToken.isPaused(sender)).resolves.toBeTruthy()
-        //
-        //     await expect(executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))).rejects.toThrow()
-        //
-        //     await executeTxFunc(dsToken.unpause(sender))
-        //     await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
-        // })
+        it('should not allow token transfers when paused', async () => {
+            await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
+            await executeTxFunc(dsToken.pause(sender))
+            await expect(dsToken.isPaused(sender)).resolves.toBeTruthy()
+
+            await expect(executeTxFunc(dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n))).rejects.toThrow()
+
+            await executeTxFunc(dsToken.unpause(sender))
+            await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
+        })
+    })
+
+    describe('transfer', () => {
+        it('should transfer tokens', async () => {
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
+            await assertInvestorBalance(tokenAddress, 'testInvestor', '1500000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor2', '0')
+
+            await executeTxFunc(dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n))
+
+            await assertInvestorBalance(tokenAddress, 'testInvestor', '1200000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor2', '300000')
+        })
     })
 
     // describe('seize tokens', () => {
