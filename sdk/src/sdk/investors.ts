@@ -3,6 +3,7 @@ import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {Attribute, AttributeStatus, AttributeType, toAttributeStatus, toAttributeType} from "./domains";
 import {InvestorDetails} from "./domains/InvestorDetails";
+import {Transaction} from "@mysten/sui/transactions";
 
 export class Investors {
     private readonly tokenAddress: string;
@@ -25,19 +26,27 @@ export class Investors {
         )
     }
 
-    private buildSetPTB(signer: string, func: string, args: any[], argTypes?: any[]) {
-        return SuiClient.getMoveCallBytes({
-            signer,
-            target: this.getTarget(func),
-            typeArgs: [this.tokenAddress],
-            args: [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                ...args,
-                Config.vars.VERSION
-            ],
-            argTypes
-        })
+    private _buildSetPTB(func: string, args: any[], argTypes?: any[], ptb?: Transaction) {
+        args = [
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.auth,
+            ...args,
+            Config.vars.VERSION
+        ]
+        return SuiClient.getPTB(
+            this.getTarget(func),
+            [this.tokenAddress],
+            args,
+            argTypes,
+            undefined,
+            false,
+            ptb
+        )
+    }
+
+    private buildSetPTB(signer: string, func: string, args: any[], argTypes?: any[], ptb?: Transaction) {
+        const _ptb = this._buildSetPTB(func, args, argTypes, ptb)
+        return SuiClient.getMoveCallBytesFromPTB(_ptb, signer)
     }
 
     // ==== View Functions ====
@@ -47,11 +56,15 @@ export class Investors {
         const fields = (investor.data?.content as any)?.fields
 
         const investorsTableId = fields.investors.fields.id.id
-        const investorsTable = await SuiClient.client.getDynamicFields({
-            parentId: investorsTableId
+        const investorData = await SuiClient.client.getDynamicFieldObject({
+            parentId: investorsTableId,
+            name: {
+                type: "0x1::string::String",
+                value: investorId,
+            }
         })
 
-        const investorObjectId = investorsTable.data.find((i) => i.name.value === investorId)?.objectId
+        const investorObjectId = investorData.data?.objectId
         if (!investorObjectId) {
             throw `Investor ${investorId} does not exist.`
         }
@@ -198,8 +211,14 @@ export class Investors {
 
     // ==== Setters ====
 
+    registerInvestorPTB(investorId: string, ptb?: Transaction) {
+        ptb ??= new Transaction()
+        return this._buildSetPTB('register_investor', [investorId], [], ptb)
+    }
+
     async registerInvestor(investorId: string, signer: string) {
-        return this.buildSetPTB(signer, 'register_investor', [investorId])
+        const ptb = this.registerInvestorPTB(investorId)
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
     async removeInvestor(investorId: string, signer: string) {
@@ -239,12 +258,22 @@ export class Investors {
         return this.buildSetPTB(signer, 'update_investor', args, argTypes)
     }
 
+    addWalletPTB(
+        investorId: string,
+        walletAddr: string,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        return this._buildSetPTB('add_wallet', [Config.vars.RWA_REGISTRY, investorId, walletAddr], [], ptb)
+    }
+
     async addWallet(
         investorId: string,
         walletAddr: string,
         signer: string
     ) {
-        return this.buildSetPTB(signer, 'add_wallet', [Config.vars.RWA_REGISTRY, investorId, walletAddr])
+        const ptb = this.addWalletPTB(investorId, walletAddr)
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
     async removeWallet(

@@ -1,7 +1,7 @@
-import {ADMIN_KEYPAIR, createFundedWallet, Investors} from '../src'
+import {ADMIN_KEYPAIR, createFundedWallet, Roles} from '../src'
 import {deploy} from '../src/sdk/utils/deploy'
 import {assertInvestorBalance, createTestToken, executeTxFunc, registerInvestor, testTokenRequest,} from './test_utils'
-import {DSToken} from "../src/sdk/DSToken";
+import {DSToken} from "../src";
 import {Keypair} from "@mysten/sui/cryptography";
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
@@ -10,14 +10,17 @@ describe('DSToken', () => {
     let tokenAddress: string
     let dsToken: DSToken
     let investor2: Keypair
+    let issuer: Keypair
 
     beforeAll(async () => {
         await deploy()
         tokenAddress = await createTestToken()
         dsToken = new DSToken(tokenAddress)
         investor2 = await createFundedWallet()
+        issuer = await createFundedWallet()
         await registerInvestor(tokenAddress, 'testInvestor')
         await registerInvestor(tokenAddress, 'testInvestor2', [investor2.toSuiAddress()])
+        await registerInvestor(tokenAddress, 'issuer', [issuer.toSuiAddress()])
     })
 
     describe('metadata', () => {
@@ -144,22 +147,25 @@ describe('DSToken', () => {
         })
     })
 
-    // describe('seize tokens', () => {
-    //     it('should seize tokens', async () => {
-    //         const totalIssued = parseInt(await dsToken.getTotalIssued())
-    //
-    //         await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
-    //         await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], "reason"))
-    //
-    //         await assertInvestorBalance(tokenAddress, 'testInvestor', '1000000')
-    //         await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
-    //         await expect(dsToken.getTotalIssued()).resolves.toBe((totalIssued + 1_000_000 + 500_000).toString())
-    //
-    //         await executeTxFunc(dsToken.seize(sender, investor2.toSuiAddress(), sender, 300_000n, "reason"))
-    //
-    //         await assertInvestorBalance(tokenAddress, 'testInvestor', '1300000')
-    //         await assertInvestorBalance(tokenAddress, 'testInvestor2', '200000')
-    //         await expect(dsToken.getTotalIssued()).resolves.toBe((totalIssued + 1_000_000 + 500_000).toString())
-    //     })
-    // })
+    describe('seize tokens', () => {
+        it('should seize tokens', async () => {
+            const totalIssued = parseInt(await dsToken.getTotalIssued())
+
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
+            await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], "reason"))
+
+            const roles = new Roles(tokenAddress)
+            await executeTxFunc(roles.setIssuer(issuer.toSuiAddress(), sender))
+
+            await assertInvestorBalance(tokenAddress, 'issuer', '0')
+            await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
+            await expect(dsToken.getTotalIssued()).resolves.toBe((totalIssued + 1_000_000 + 500_000).toString())
+
+            await executeTxFunc(dsToken.seize(sender, investor2.toSuiAddress(), issuer.toSuiAddress(), 300_000n, "reason"))
+
+            await assertInvestorBalance(tokenAddress, 'issuer', '300000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor2', '200000')
+            await expect(dsToken.getTotalIssued()).resolves.toBe((totalIssued + 1_000_000 + 500_000).toString())
+        })
+    })
 })

@@ -6,6 +6,8 @@ export type { ComplianceRules } from './ComplianceRules';
 export type { CountryComplianceStatus } from './CountryComplianceStatus';
 export type { SwapContract } from './SwapContract';
 export type { DeploymentRequest } from './DeploymentRequest';
+export type { TokenIssue } from './TokenIssue';
+export type { Investor } from './Investor';
 export * from './Attributes';
 export * from './Region';
 export * from './Country';
