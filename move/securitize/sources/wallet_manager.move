@@ -63,7 +63,7 @@ public struct DSWalletManagerSpecialWalletRemoved<phantom T> has copy, drop {
 public(package) fun new<T: key>(
     auth: &mut Auth<T>,
     version: &Version,
-    ctx: &mut TxContext,
+    ctx: &TxContext,
 ) {
     // Assign abilities to roles
     auth.add_role_ability<T, Master, SetIssuerWallet>(version, ctx);
@@ -145,7 +145,7 @@ fun set_special_wallet<T>(
     registry: &mut RwaRegistry,
     wallet: address,
     wallet_type: u64,
-    ctx: &mut TxContext,
+    ctx: &TxContext,
 ) {
     assert!(!investor_info.is_wallet(wallet), EWalletBelongsToInvestor);
     assert!(!investor_info.is_special_wallet(wallet), EDirectWalletChange);

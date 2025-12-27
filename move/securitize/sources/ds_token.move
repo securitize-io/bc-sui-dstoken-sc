@@ -1,6 +1,6 @@
 module securitize::ds_token;
 
-use std::string::{Self, String};
+use std::string::{String};
 use securitize::{
     version::Version, 
     trust_service::{Auth, Master, Issuer, TransferAgent},
@@ -15,7 +15,7 @@ use sui::{
     event, 
     derived_object
 };
-use rwa::vault::{RwaVault, RwaTransferRequest, VaultOwnerProof};
+use rwa::vault::{RwaVault, RwaTransferRequest};
 use rwa::rule::{Self, RwaRule};
 use rwa::registry::RwaRegistry;
 
@@ -37,8 +37,6 @@ const EValueZero: u64 = 5;
 const EInvalidLengthOfParameters: u64 = 6;
 /// Error code when the total locked value exceeds the issued value
 const EValueLockedLargerThanValue: u64 = 7;
-/// Error code when the specified address is not recognized as a wallet
-const ENotWallet: u64 = 8;
 /// Error code when there is not enough balance to perform the operation
 const ENotEnoughBalance: u64 = 9;
 
@@ -115,7 +113,7 @@ public(package) fun new<T: key>(
     treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
-    ctx: &mut TxContext,
+    ctx: &TxContext,
 ): Treasury<T> {
     // Assign abilities to roles
     auth.add_role_ability<T, Master, IssueTokens>(version,ctx);
@@ -160,7 +158,7 @@ public fun issue_tokens<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    compliance_config: &ComplianceConfig<T>,
+    compliance_config: &mut ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
     to: &mut RwaVault,
     to_address: address,
@@ -168,7 +166,6 @@ public fun issue_tokens<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
-    reason: String,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -177,11 +174,18 @@ public fun issue_tokens<T>(
     assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
     assert!(value > 0, EValueZero);
     assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
+    let timestamp_ms = clock.timestamp_ms();
+    let total_supply = dof::borrow<TreasuryCapKey, TreasuryCap<T>>(
+        &treasury.id,
+        TreasuryCapKey(),
+    ).total_supply();
     compliance_service::validate_issue(
         compliance_config,
         investors,
         to_address,
         value,
+        total_supply,
+        timestamp_ms,
         version,
     );
     let balance = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
@@ -233,7 +237,6 @@ public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    compliance_config: &ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
     from: &mut RwaVault,
     from_address: address,
@@ -287,7 +290,6 @@ public fun burn<T>(
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    compliance_config: &ComplianceConfig<T>,
     rwa_rule: &RwaRule<T>,
     from: &mut RwaVault,
     from_address: address,
@@ -351,8 +353,7 @@ public fun transfer<T>(
     rwa_rule: &RwaRule<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
-    clock: &Clock,
-    ctx: &mut TxContext,
+    clock: &Clock
 ) {
     version.check_is_valid();
     let from_address = request.request_from_address();

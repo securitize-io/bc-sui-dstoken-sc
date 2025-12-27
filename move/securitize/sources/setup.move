@@ -5,7 +5,6 @@ use sui::{
     coin_registry::CurrencyInitializer, 
     event, 
     vec_set::{Self, VecSet},
-    derived_object
 };
 use securitize::{
     version::Version, 
@@ -16,6 +15,7 @@ use securitize::{
     wallet_manager,
 };
 use rwa::registry::RwaRegistry;
+use securitize::lock_manager;
 
 // ==== Error Codes ====
 
@@ -89,6 +89,7 @@ public fun setup<T: key>(
     let investor_info = registry_service::new<T>(setup_registry.uid_mut(), &mut auth, version, ctx);
     let compliance = compliance_service::new<T>(setup_registry.uid_mut(), &mut auth, version, ctx);
     wallet_manager::new<T>(&mut auth, version, ctx);
+    lock_manager::new<T>(&mut auth, version, ctx);
     (auth, treasury, investor_info, compliance, SetupFinalize {})
 }
 
@@ -101,7 +102,6 @@ public fun finalize_setup<T: key>(
     investor_info: InvestorInfo<T>,
     compliance: ComplianceConfig<T>,
     version: &Version,
-    ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.share();

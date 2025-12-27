@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "405C94254CE9DB46644F15D68123B93C6F19A28250B6A0F7BC32A708EA1A611F"
+manifest_digest = "6112FC5BE00842DD4640CB668BB88280B04DA900EF48627020A79ECB71DCFCEA"
 deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Bridge", name = "Bridge" },
@@ -14,7 +14,7 @@ dependencies = [
 
 [[move.package]]
 id = "Bridge"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "4e8b6eda7d6411d80c62f39ac8a4f028e8d174c4", subdir = "crates/sui-framework/packages/bridge" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "61dcfdbe2ddc7ad05d27fc10cd09d4c6cc151acd", subdir = "crates/sui-framework/packages/bridge" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -24,11 +24,11 @@ dependencies = [
 
 [[move.package]]
 id = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "4e8b6eda7d6411d80c62f39ac8a4f028e8d174c4", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "61dcfdbe2ddc7ad05d27fc10cd09d4c6cc151acd", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
 id = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "4e8b6eda7d6411d80c62f39ac8a4f028e8d174c4", subdir = "crates/sui-framework/packages/sui-framework" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "61dcfdbe2ddc7ad05d27fc10cd09d4c6cc151acd", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -36,7 +36,7 @@ dependencies = [
 
 [[move.package]]
 id = "SuiSystem"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "4e8b6eda7d6411d80c62f39ac8a4f028e8d174c4", subdir = "crates/sui-framework/packages/sui-system" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "61dcfdbe2ddc7ad05d27fc10cd09d4c6cc151acd", subdir = "crates/sui-framework/packages/sui-system" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -45,7 +45,7 @@ dependencies = [
 
 [[move.package]]
 id = "rwa"
-source = { git = "git@github.com:MystenLabs/se-rwa-standard.git", rev = "main", subdir = "move/rwa" }
+source = { local = "../rwa" }
 
 dependencies = [
   { id = "Bridge", name = "Bridge" },
@@ -55,6 +55,6 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.61.2"
+compiler-version = "1.59.0"
 edition = "2024.beta"
 flavor = "sui"
