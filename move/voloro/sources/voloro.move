@@ -1,16 +1,16 @@
 module voloro::voloro;
 
+use rwa::registry::RwaRegistry;
 use securitize::{
-    setup::{Self, SetupRegistry, SetupFinalize},
-    version::Version,
-    trust_service::Auth,
+    compliance_service::ComplianceConfig,
     ds_token::Treasury,
     registry_service::InvestorInfo,
-    compliance_service::ComplianceConfig
+    setup::{Self, SetupRegistry, SetupFinalize},
+    trust_service::Auth,
+    version::Version
 };
-use rwa::registry::RwaRegistry;
+use std::string::String;
 use sui::coin_registry::{Self, CoinRegistry};
-use std::string::{String};
 
 public struct VOLORO has key {
     id: UID,
