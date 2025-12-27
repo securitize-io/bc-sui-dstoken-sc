@@ -81,7 +81,7 @@ public struct IssuanceInfo has copy, drop {
 
 /// Holds all relevant information about a party (sender or recipient) in a transfer/issuance
 public struct PartyInfo has copy, drop {
-    address: address,
+    addr: address,
     investor_id: Option<String>,
     country: String,
     region: u64,
@@ -397,7 +397,7 @@ fun get_party_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): P
 
     if (is_special) {
         return PartyInfo {
-            address: addr,
+            addr: addr,
             investor_id: option::none(),
             country: b"".to_string(),
             region: NONE,
@@ -422,7 +422,7 @@ fun get_party_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): P
     let is_new = balance == 0;
 
     PartyInfo {
-        address: addr,
+        addr: addr,
         investor_id: option::some(id),
         country,
         region,
@@ -516,7 +516,7 @@ public(package) fun record_issuance<T>(
     if (to.is_new_investor) {
         adjust_total_investors_counts<T>(
             registry,
-            to.address,
+            to.addr,
             to.is_special_wallet,
             true,
         );
@@ -548,7 +548,7 @@ public(package) fun record_transfer<T>(
     if (to.is_new_investor) {
         adjust_total_investors_counts<T>(
             registry,
-            to.address,
+            to.addr,
             to.is_special_wallet,
             true,
         );
@@ -558,7 +558,7 @@ public(package) fun record_transfer<T>(
     if (!same_investor && from.is_exit_investor) {
         adjust_total_investors_counts<T>(
             registry,
-            from.address,
+            from.addr,
             from.is_special_wallet,
             false,
         );
@@ -585,7 +585,7 @@ public(package) fun record_burn<T>(
     if (from.is_exit_investor) {
         adjust_total_investors_counts<T>(
             registry,
-            from.address,
+            from.addr,
             from.is_special_wallet,
             false,
         );
