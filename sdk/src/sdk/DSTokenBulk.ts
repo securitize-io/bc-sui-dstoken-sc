@@ -8,7 +8,7 @@ export class DSTokenBulk extends Bulk {
     private dsToken: DSToken;
 
     constructor(tokenAddress: string) {
-        super(165);
+        super(141);
         this.dsToken = new DSToken(tokenAddress);
     }
 
@@ -22,7 +22,7 @@ export class DSTokenBulk extends Bulk {
 
     private getIssuePTBs() {
         return (tokenIssue: TokenIssue, ptb: Transaction) => {
-            this.dsToken.issuePTB(tokenIssue.to, BigInt(tokenIssue.value), [], [], "", ptb);
+            this.dsToken.issuePTB(tokenIssue.to, BigInt(tokenIssue.value), [], [], ptb);
         };
     }
 

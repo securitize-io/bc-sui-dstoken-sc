@@ -106,7 +106,7 @@ describe('DSToken', () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('0')
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], 'reason'))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe('1000000')
@@ -147,7 +147,7 @@ describe('DSToken', () => {
 
     describe('transfer', () => {
         it('should transfer tokens', async () => {
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], 'reason'))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
             await assertInvestorBalance(tokenAddress, 'testInvestor', '1500000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '0')
 
@@ -164,9 +164,9 @@ describe('DSToken', () => {
         it('should seize tokens', async () => {
             const totalIssued = parseInt(await dsToken.getTotalIssued())
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], 'reason'))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
             await executeTxFunc(
-                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], 'reason')
+                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [])
             )
 
             const roles = new Roles(tokenAddress)

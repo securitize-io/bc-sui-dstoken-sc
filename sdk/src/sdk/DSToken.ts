@@ -142,7 +142,6 @@ export class DSToken {
         value: bigint,
         valuesLocked: number[],
         releaseTimes: number[],
-        reason: string,
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
@@ -159,7 +158,6 @@ export class DSToken {
             Config.vars.VERSION,
             valuesLocked,
             releaseTimes,
-            reason,
             CLOCK_ID,
         ]
         const argsTypes = [
@@ -174,7 +172,6 @@ export class DSToken {
             MoveType.object,
             MoveType.vec_u64,
             MoveType.vec_u64,
-            MoveType.string,
             MoveType.object,
         ]
         return this.buildSetPTB('issue_tokens', args, ptb, argsTypes)
@@ -186,9 +183,8 @@ export class DSToken {
         value: bigint,
         valuesLocked: number[],
         releaseTimes: number[],
-        reason: string,
     ) {
-        const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes, reason)
+        const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes)
         return this.buildSetBytes(ptb, signer)
     }
 
@@ -204,7 +200,6 @@ export class DSToken {
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
-            this.tokenDetails.complianceConfig,
             this.tokenDetails.rwaRule,
             rwaVault,
             from,
@@ -213,7 +208,6 @@ export class DSToken {
             Config.vars.VERSION,
         ]
         const argsTypes = [
-            MoveType.object,
             MoveType.object,
             MoveType.object,
             MoveType.object,
@@ -250,7 +244,6 @@ export class DSToken {
         const args = [
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
-            this.tokenDetails.complianceConfig,
             this.tokenDetails.rwaRule,
             fromRwaVault,
             from,
@@ -261,7 +254,6 @@ export class DSToken {
             Config.vars.VERSION,
         ]
         const argsTypes = [
-            MoveType.object,
             MoveType.object,
             MoveType.object,
             MoveType.object,
