@@ -1,8 +1,13 @@
-import {ADMIN_KEYPAIR, createFundedWallet, Roles} from '../src'
-import {deploy} from '../src/sdk/utils/deploy'
-import {assertInvestorBalance, createTestToken, executeTxFunc, registerInvestor, testTokenRequest,} from './test_utils'
-import {DSToken} from "../src";
-import {Keypair} from "@mysten/sui/cryptography";
+import { ADMIN_KEYPAIR, createFundedWallet, Roles, DSToken } from '../src'
+import { deploy } from '../src/sdk/utils/deploy'
+import {
+    assertInvestorBalance,
+    createTestToken,
+    executeTxFunc,
+    registerInvestor,
+    testTokenRequest,
+} from './test_utils'
+import { Keypair } from '@mysten/sui/cryptography'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -40,10 +45,10 @@ describe('DSToken', () => {
         })
 
         it('should update name', async () => {
-            await executeTxFunc(dsToken.setMetadata(sender, "new_name", undefined, undefined))
+            await executeTxFunc(dsToken.setMetadata(sender, 'new_name', undefined, undefined))
 
             const data = await dsToken.getMetadata(sender)
-            expect(data.name).toBe("new_name")
+            expect(data.name).toBe('new_name')
             expect(data.symbol).toBe(testTokenRequest.tokenDescription.symbol)
             expect(data.decimals).toBe(testTokenRequest.tokenDescription.decimals)
             expect(data.description).toBe(testTokenRequest.tokenDescription.description)
@@ -53,40 +58,44 @@ describe('DSToken', () => {
         })
 
         it('should update description', async () => {
-            await executeTxFunc(dsToken.setMetadata(sender, undefined, "new description", undefined))
+            await executeTxFunc(
+                dsToken.setMetadata(sender, undefined, 'new description', undefined)
+            )
 
             const data = await dsToken.getMetadata(sender)
-            expect(data.name).toBe("new_name")
+            expect(data.name).toBe('new_name')
             expect(data.symbol).toBe(testTokenRequest.tokenDescription.symbol)
             expect(data.decimals).toBe(testTokenRequest.tokenDescription.decimals)
-            expect(data.description).toBe("new description")
+            expect(data.description).toBe('new description')
             expect(data.iconUri).toBe(testTokenRequest.tokenDescription.iconUri)
             expect(data.totalIssued).toBe('0')
             expect(data.isPaused).toBe(false)
         })
 
         it('should update icon_url', async () => {
-            await executeTxFunc(dsToken.setMetadata(sender, undefined, undefined, "new iconUri"))
+            await executeTxFunc(dsToken.setMetadata(sender, undefined, undefined, 'new iconUri'))
 
             const data = await dsToken.getMetadata(sender)
-            expect(data.name).toBe("new_name")
+            expect(data.name).toBe('new_name')
             expect(data.symbol).toBe(testTokenRequest.tokenDescription.symbol)
             expect(data.decimals).toBe(testTokenRequest.tokenDescription.decimals)
-            expect(data.description).toBe("new description")
-            expect(data.iconUri).toBe("new iconUri")
+            expect(data.description).toBe('new description')
+            expect(data.iconUri).toBe('new iconUri')
             expect(data.totalIssued).toBe('0')
             expect(data.isPaused).toBe(false)
         })
 
         it('should update all', async () => {
-            await executeTxFunc(dsToken.setMetadata(sender, "all_name", "all description", "all iconUri"))
+            await executeTxFunc(
+                dsToken.setMetadata(sender, 'all_name', 'all description', 'all iconUri')
+            )
 
             const data = await dsToken.getMetadata(sender)
-            expect(data.name).toBe("all_name")
+            expect(data.name).toBe('all_name')
             expect(data.symbol).toBe(testTokenRequest.tokenDescription.symbol)
             expect(data.decimals).toBe(testTokenRequest.tokenDescription.decimals)
-            expect(data.description).toBe("all description")
-            expect(data.iconUri).toBe("all iconUri")
+            expect(data.description).toBe('all description')
+            expect(data.iconUri).toBe('all iconUri')
             expect(data.totalIssued).toBe('0')
             expect(data.isPaused).toBe(false)
         })
@@ -97,7 +106,7 @@ describe('DSToken', () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('0')
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], 'reason'))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe('1000000')
@@ -105,7 +114,7 @@ describe('DSToken', () => {
         })
 
         it('should burn tokens', async () => {
-            await executeTxFunc(dsToken.burn(sender, sender, 500_000n, "reason"))
+            await executeTxFunc(dsToken.burn(sender, sender, 500_000n, 'reason'))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe('500000')
@@ -127,7 +136,9 @@ describe('DSToken', () => {
             await executeTxFunc(dsToken.pause(sender))
             await expect(dsToken.isPaused(sender)).resolves.toBeTruthy()
 
-            await expect(executeTxFunc(dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n))).rejects.toThrow()
+            await expect(
+                executeTxFunc(dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n))
+            ).rejects.toThrow()
 
             await executeTxFunc(dsToken.unpause(sender))
             await expect(dsToken.isPaused(sender)).resolves.toBeFalsy()
@@ -136,11 +147,13 @@ describe('DSToken', () => {
 
     describe('transfer', () => {
         it('should transfer tokens', async () => {
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], 'reason'))
             await assertInvestorBalance(tokenAddress, 'testInvestor', '1500000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '0')
 
-            await executeTxFunc(dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n))
+            await executeTxFunc(
+                dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n)
+            )
 
             await assertInvestorBalance(tokenAddress, 'testInvestor', '1200000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '300000')
@@ -151,21 +164,35 @@ describe('DSToken', () => {
         it('should seize tokens', async () => {
             const totalIssued = parseInt(await dsToken.getTotalIssued())
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], "reason"))
-            await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], "reason"))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], 'reason'))
+            await executeTxFunc(
+                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], 'reason')
+            )
 
             const roles = new Roles(tokenAddress)
             await executeTxFunc(roles.setIssuer(issuer.toSuiAddress(), sender))
 
             await assertInvestorBalance(tokenAddress, 'issuer', '0')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
-            await expect(dsToken.getTotalIssued()).resolves.toBe((totalIssued + 1_000_000 + 500_000).toString())
+            await expect(dsToken.getTotalIssued()).resolves.toBe(
+                (totalIssued + 1_000_000 + 500_000).toString()
+            )
 
-            await executeTxFunc(dsToken.seize(sender, investor2.toSuiAddress(), issuer.toSuiAddress(), 300_000n, "reason"))
+            await executeTxFunc(
+                dsToken.seize(
+                    sender,
+                    investor2.toSuiAddress(),
+                    issuer.toSuiAddress(),
+                    300_000n,
+                    'reason'
+                )
+            )
 
             await assertInvestorBalance(tokenAddress, 'issuer', '300000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '200000')
-            await expect(dsToken.getTotalIssued()).resolves.toBe((totalIssued + 1_000_000 + 500_000).toString())
+            await expect(dsToken.getTotalIssued()).resolves.toBe(
+                (totalIssued + 1_000_000 + 500_000).toString()
+            )
         })
     })
 })

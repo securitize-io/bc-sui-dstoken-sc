@@ -1,8 +1,6 @@
-import {ADMIN_KEYPAIR} from '../src'
-import {deploy} from '../src/sdk/utils/deploy'
-import {createTestToken, executeTxFunc} from './test_utils'
-import {CountryCompliance} from '../src/sdk/CountryCompliance'
-import {ComplianceStatus} from "../src/sdk/domains/CountryComplianceStatus";
+import { ADMIN_KEYPAIR, CountryCompliance, ComplianceStatus } from '../src'
+import { deploy } from '../src/sdk/utils/deploy'
+import { createTestToken, executeTxFunc } from './test_utils'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -18,40 +16,38 @@ describe('CountryCompliance', () => {
 
     describe('Country Compliance Management', () => {
         it('should set country compliance', async () => {
-            await executeTxFunc(countryCompliance.set(sender, 'USA', "us"))
-            await expect(countryCompliance.get('USA', sender)).resolves.toBe("us")
+            await executeTxFunc(countryCompliance.set(sender, 'USA', 'us'))
+            await expect(countryCompliance.get('USA', sender)).resolves.toBe('us')
         })
 
         it('should update existing country compliance with different value', async () => {
             // Set initial compliance region
-            await executeTxFunc(countryCompliance.set(sender, 'GB', "eu"))
-            await expect(countryCompliance.get('GB', sender)).resolves.toBe("eu")
+            await executeTxFunc(countryCompliance.set(sender, 'GB', 'eu'))
+            await expect(countryCompliance.get('GB', sender)).resolves.toBe('eu')
 
             // Update compliance region
-            await executeTxFunc(countryCompliance.set(sender, 'GB', "jp"))
-            await expect(countryCompliance.get('GB', sender)).resolves.toBe("jp")
+            await executeTxFunc(countryCompliance.set(sender, 'GB', 'jp'))
+            await expect(countryCompliance.get('GB', sender)).resolves.toBe('jp')
 
             // Update compliance region with the same value
-            await expect(
-                executeTxFunc(countryCompliance.set(sender, 'GB', "jp"))
-            ).rejects.toThrow()
+            await expect(executeTxFunc(countryCompliance.set(sender, 'GB', 'jp'))).rejects.toThrow()
 
-            await expect(countryCompliance.get('GB', sender)).resolves.toBe("jp")
+            await expect(countryCompliance.get('GB', sender)).resolves.toBe('jp')
         })
 
         it('should be able to delete an existent country', async () => {
-            await executeTxFunc(countryCompliance.set(sender, 'GB', "eu"))
-            await expect(countryCompliance.get('GB', sender)).resolves.toBe("eu")
+            await executeTxFunc(countryCompliance.set(sender, 'GB', 'eu'))
+            await expect(countryCompliance.get('GB', sender)).resolves.toBe('eu')
 
             // delete existing country
-            await executeTxFunc(countryCompliance.set(sender, 'GB', "none"))
-            await expect(countryCompliance.get('GB', sender)).resolves.toBe("none")
+            await executeTxFunc(countryCompliance.set(sender, 'GB', 'none'))
+            await expect(countryCompliance.get('GB', sender)).resolves.toBe('none')
         })
 
         it('should not be able to delete an non existent country', async () => {
-            await expect(executeTxFunc(
-                countryCompliance.set(sender, 'GB', "none")
-            )).rejects.toThrow()
+            await expect(
+                executeTxFunc(countryCompliance.set(sender, 'GB', 'none'))
+            ).rejects.toThrow()
         })
 
         it('should return none for non-existent country compliance', async () => {
@@ -61,14 +57,16 @@ describe('CountryCompliance', () => {
 
         it('should handle multiple countries with different regions', async () => {
             const countryRegions = [
-                { country: 'CA', region: "us" },
-                { country: 'US', region: "us" },
-                { country: 'AU', region: "jp" },
-                { country: 'BR', region: "eu" },
+                { country: 'CA', region: 'us' },
+                { country: 'US', region: 'us' },
+                { country: 'AU', region: 'jp' },
+                { country: 'BR', region: 'eu' },
             ]
 
             for (const { country, region } of countryRegions) {
-                await executeTxFunc(countryCompliance.set(sender, country, region as ComplianceStatus))
+                await executeTxFunc(
+                    countryCompliance.set(sender, country, region as ComplianceStatus)
+                )
                 await expect(countryCompliance.get(country, sender)).resolves.toBe(region)
             }
         })
@@ -84,8 +82,8 @@ describe('CountryCompliance', () => {
 
     describe('Edge Cases', () => {
         it('should handle empty country code', async () => {
-            await executeTxFunc(countryCompliance.set(sender, '', "us"))
-            await expect(countryCompliance.get('', sender)).resolves.toBe("us")
+            await executeTxFunc(countryCompliance.set(sender, '', 'us'))
+            await expect(countryCompliance.get('', sender)).resolves.toBe('us')
         })
     })
 })

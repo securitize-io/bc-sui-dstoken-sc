@@ -1,9 +1,13 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
-import {newPTBDetails, PTBDetails} from "./domains/PTBDetails";
-import {fromRegionId, toRegionId} from "./domains";
-import {ComplianceStatus} from "./domains/CountryComplianceStatus";
+import {
+    newPTBDetails,
+    PTBDetails,
+    fromRegionId,
+    toRegionId,
+    ComplianceStatus,
+} from "./domains";
 
 export class CountryCompliance {
     private readonly tokenAddress: string;

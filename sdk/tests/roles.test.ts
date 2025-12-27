@@ -1,13 +1,8 @@
-import {
-    ADMIN_KEYPAIR,
-    Roles,
-    createWallet,
-    createFundedWallet
-} from '../src'
-import {deploy} from "../src/sdk/utils/deploy";
-import {createTestToken, executeTxFunc} from "./test_utils";
+import { ADMIN_KEYPAIR, Roles, createWallet, createFundedWallet } from '../src'
+import { deploy } from '../src/sdk/utils/deploy'
+import { createTestToken, executeTxFunc } from './test_utils'
 
-const sender = ADMIN_KEYPAIR!.toSuiAddress();
+const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
 describe('Roles', () => {
     let tokenAddress: string
@@ -97,7 +92,7 @@ describe('Roles', () => {
         })
 
         it('should transfer service ownership', async () => {
-            let newOwnerKP = await createFundedWallet();
+            let newOwnerKP = await createFundedWallet()
             const newOwner = newOwnerKP.toSuiAddress()
 
             // Transfer ownership from current master to new owner
@@ -236,9 +231,9 @@ describe('Roles', () => {
             await executeTxFunc(roles.setIssuer(testWallet, sender))
 
             // Try to update to the same role
-            await expect(
-                roles.updateRole(testWallet, 'issuer', sender)
-            ).rejects.toThrow('No direct role-to-role change')
+            await expect(roles.updateRole(testWallet, 'issuer', sender)).rejects.toThrow(
+                'No direct role-to-role change'
+            )
 
             // Clean up
             await executeTxFunc(roles.removeIssuer(testWallet, sender))
@@ -246,9 +241,9 @@ describe('Roles', () => {
 
         it('should throw error when trying to change master role', async () => {
             // Try to update master role (should fail)
-            await expect(
-                roles.updateRole(sender, 'issuer', sender)
-            ).rejects.toThrow('No direct role-to-role change')
+            await expect(roles.updateRole(sender, 'issuer', sender)).rejects.toThrow(
+                'No direct role-to-role change'
+            )
         })
 
         it('should handle multiple role updates sequentially', async () => {

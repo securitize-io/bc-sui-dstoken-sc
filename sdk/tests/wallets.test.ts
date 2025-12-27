@@ -1,13 +1,8 @@
-import {
-    ADMIN_KEYPAIR,
-    Wallets,
-    Investors,
-    createWallet
-} from '../src'
-import {deploy} from "../src/sdk/utils/deploy";
-import {createTestToken, executeTxFunc} from "./test_utils";
+import { ADMIN_KEYPAIR, Wallets, Investors, createWallet } from '../src'
+import { deploy } from '../src/sdk/utils/deploy'
+import { createTestToken, executeTxFunc } from './test_utils'
 
-const sender = ADMIN_KEYPAIR!.toSuiAddress();
+const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
 describe('Wallets', () => {
     let tokenAddress: string
@@ -84,7 +79,7 @@ describe('Wallets', () => {
     describe('Special Wallet Edge Cases', () => {
         it('should not allow adding issuer wallet that belongs to an investor', async () => {
             const testWallet = createWallet().toSuiAddress()
-            const testInvestorId = "TestInvestor1"
+            const testInvestorId = 'TestInvestor1'
 
             // First register an investor and add wallet
             await executeTxFunc(investors.registerInvestor(testInvestorId, sender))
@@ -105,7 +100,7 @@ describe('Wallets', () => {
 
         it('should not allow adding platform wallet that belongs to an investor', async () => {
             const testWallet = createWallet().toSuiAddress()
-            const testInvestorId = "TestInvestor2"
+            const testInvestorId = 'TestInvestor2'
 
             // First register an investor and add wallet
             await executeTxFunc(investors.registerInvestor(testInvestorId, sender))

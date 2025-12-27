@@ -5,23 +5,23 @@ import {
     createDSToken,
     DeploymentRequest,
     Investors,
-    SuiClient
-} from "../src";
-import {Keypair} from "@mysten/sui/cryptography";
+    SuiClient,
+} from '../src'
+import { Keypair } from '@mysten/sui/cryptography'
 
 export const testTokenRequest: DeploymentRequest = {
     tokenDescription: {
-        name: "VOLORO",
-        symbol: "VOLORO",
+        name: 'VOLORO',
+        symbol: 'VOLORO',
         decimals: 6,
         type: 'standard',
         tokenMultiplier: '',
         iconUri: 'https://strapi-dev.scand.app/uploads/sui_c07df05f00.png',
-        description: 'This is a test securitize token'
+        description: 'This is a test securitize token',
     },
     complianceType: 'regulated',
     lockManagerType: 'investor',
-    roles: []
+    roles: [],
 }
 
 export const complianceRules = {
@@ -30,10 +30,10 @@ export const complianceRules = {
     blockFlowbackEndTime: 1000000,
     worldWideForceFullTransfer: false,
     forceFullTransfer: false,
-    minUSTokens: "100000000",
-    minEUTokens: "100000000",
-    minimumHoldingsPerInvestor: "10000000",
-    maximumHoldingsPerInvestor: "10000000",
+    minUSTokens: '100000000',
+    minEUTokens: '100000000',
+    minimumHoldingsPerInvestor: '10000000',
+    maximumHoldingsPerInvestor: '10000000',
     totalInvestorsLimit: 1000000000000000,
     usInvestorsLimit: 1000000000000000,
     euRetailInvestorsLimit: 1000000000000000,
@@ -45,25 +45,25 @@ export const complianceRules = {
     nonUSLockPeriod: 1000000000,
     usLockPeriod: 1000,
     disallowBackDating: false,
-    authorizedSecurities: "10000",
+    authorizedSecurities: '10000',
 }
 
 export const countriesComplianceStatuses: CountryComplianceStatus[] = [
     {
-        countryName: "GR",
-        complianceStatus: "eu",
+        countryName: 'GR',
+        complianceStatus: 'eu',
     },
     {
-        countryName: "US",
-        complianceStatus: "us",
+        countryName: 'US',
+        complianceStatus: 'us',
     },
     {
-        countryName: "JP",
-        complianceStatus: "jp",
+        countryName: 'JP',
+        complianceStatus: 'jp',
     },
     {
-        countryName: "NK",
-        complianceStatus: "forbidden",
+        countryName: 'NK',
+        complianceStatus: 'forbidden',
     },
 ]
 
@@ -87,10 +87,10 @@ export async function registerInvestor(
     tokenAddress: string,
     investorId: string,
     wallets?: string[],
-    signer?: Keypair,
+    signer?: Keypair
 ) {
     signer ??= ADMIN_KEYPAIR!
-    const signerAddress= signer.toSuiAddress()
+    const signerAddress = signer.toSuiAddress()
     const investors = new Investors(tokenAddress)
     await executeTxFunc(investors.registerInvestor(investorId, signerAddress), signer)
 

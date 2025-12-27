@@ -1,5 +1,5 @@
-import {complianceRules, countriesComplianceStatuses, createTestToken} from "./test_utils";
-import {deploy} from "../src/sdk/utils/deploy";
+import { complianceRules, countriesComplianceStatuses, createTestToken } from './test_utils'
+import { deploy } from '../src/sdk/utils/deploy'
 
 describe('Ds token', () => {
     let tokenAddress: string

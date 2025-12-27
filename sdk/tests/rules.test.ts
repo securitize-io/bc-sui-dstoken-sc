@@ -1,17 +1,13 @@
-import {
-    ADMIN_KEYPAIR,
-    Rules,
-    ComplianceRules
-} from '../src'
-import {deploy} from "../src/sdk/utils/deploy";
-import {createTestToken, executeTxFunc} from "./test_utils";
-import {AccreditedOnly} from "../src/sdk/rules/AccreditedOnly";
-import {FlowbackRestriction} from "../src/sdk/rules/FlowbackRestriction";
-import {ForceFullTransfer} from "../src/sdk/rules/ForceFullTransfer";
-import {HoldingLimits} from "../src/sdk/rules/HoldingLimits";
-import {InvestorLimits} from "../src/sdk/rules/InvestorLimits";
+import { ADMIN_KEYPAIR, Rules, ComplianceRules } from '../src'
+import { deploy } from '../src/sdk/utils/deploy'
+import { createTestToken, executeTxFunc } from './test_utils'
+import { AccreditedOnly } from '../src/sdk/rules/AccreditedOnly'
+import { FlowbackRestriction } from '../src/sdk/rules/FlowbackRestriction'
+import { ForceFullTransfer } from '../src/sdk/rules/ForceFullTransfer'
+import { HoldingLimits } from '../src/sdk/rules/HoldingLimits'
+import { InvestorLimits } from '../src/sdk/rules/InvestorLimits'
 
-const sender = ADMIN_KEYPAIR!.toSuiAddress();
+const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
 async function cleanup(tokenAddress: string) {
     // Clean up all possible rules after each test
@@ -70,7 +66,7 @@ describe('Rules (Compliance)', () => {
                 jpInvestorsLimit: 100,
                 usAccreditedInvestorsLimit: 300,
                 nonAccreditedInvestorsLimit: 150,
-                maxUSInvestorsPercentage: 25
+                maxUSInvestorsPercentage: 25,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -101,7 +97,7 @@ describe('Rules (Compliance)', () => {
             const complianceRules: ComplianceRules = {
                 forceAccredited: true,
                 forceAccreditedUS: false,
-                totalInvestorsLimit: 1000
+                totalInvestorsLimit: 1000,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -122,7 +118,7 @@ describe('Rules (Compliance)', () => {
             const complianceRules: ComplianceRules = {
                 forceAccredited: true,
                 minimumHoldingsPerInvestor: '100',
-                maximumHoldingsPerInvestor: '500000'
+                maximumHoldingsPerInvestor: '500000',
             }
 
             const ptb = rules.updatePTB(complianceRules)
@@ -138,7 +134,7 @@ describe('Rules (Compliance)', () => {
             await cleanup(tokenAddress)
             const complianceRules: ComplianceRules = {
                 forceAccredited: true,
-                forceAccreditedUS: true
+                forceAccreditedUS: true,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -149,7 +145,7 @@ describe('Rules (Compliance)', () => {
 
         it('should update with FlowbackRestriction rules only', async () => {
             const complianceRules: ComplianceRules = {
-                blockFlowbackEndTime: Date.now() + 90 * 24 * 60 * 60 * 1000
+                blockFlowbackEndTime: Date.now() + 90 * 24 * 60 * 60 * 1000,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -161,7 +157,7 @@ describe('Rules (Compliance)', () => {
         it('should update with ForceFullTransfer rules only', async () => {
             const complianceRules: ComplianceRules = {
                 forceFullTransfer: true,
-                worldWideForceFullTransfer: false
+                worldWideForceFullTransfer: false,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -175,7 +171,7 @@ describe('Rules (Compliance)', () => {
                 minimumHoldingsPerInvestor: '100',
                 maximumHoldingsPerInvestor: '1000000',
                 minUSTokens: '500',
-                minEUTokens: '300'
+                minEUTokens: '300',
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -192,7 +188,7 @@ describe('Rules (Compliance)', () => {
                 nonAccreditedInvestorsLimit: 150,
                 jpInvestorsLimit: 100,
                 euRetailInvestorsLimit: 200,
-                maxUSInvestorsPercentage: 25
+                maxUSInvestorsPercentage: 25,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -210,7 +206,7 @@ describe('Rules (Compliance)', () => {
                 minimumHoldingsPerInvestor: '0',
                 maximumHoldingsPerInvestor: '1000000',
                 minUSTokens: '0',
-                minEUTokens: '0'
+                minEUTokens: '0',
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -227,7 +223,7 @@ describe('Rules (Compliance)', () => {
                 nonAccreditedInvestorsLimit: 0,
                 jpInvestorsLimit: 0,
                 euRetailInvestorsLimit: 0,
-                maxUSInvestorsPercentage: 0
+                maxUSInvestorsPercentage: 0,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -244,7 +240,7 @@ describe('Rules (Compliance)', () => {
                 nonAccreditedInvestorsLimit: 100000,
                 jpInvestorsLimit: 50000,
                 euRetailInvestorsLimit: 200000,
-                maxUSInvestorsPercentage: 100
+                maxUSInvestorsPercentage: 100,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
