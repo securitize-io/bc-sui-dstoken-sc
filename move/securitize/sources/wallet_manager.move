@@ -5,17 +5,14 @@
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
-use sui::event;
+use rwa::{registry::RwaRegistry, vault};
 use securitize::{
-    version::Version,
+    abilities::{SetIssuerWallet, SetPlatformWallet, RemoveSpecialWallet},
+    registry_service::InvestorInfo,
     trust_service::{Auth, Master, Issuer},
-    registry_service::{InvestorInfo},
+    version::Version
 };
-use rwa::registry::RwaRegistry;
-use rwa::vault;
-use securitize::abilities::SetIssuerWallet;
-use securitize::abilities::SetPlatformWallet;
-use securitize::abilities::RemoveSpecialWallet;
+use sui::event;
 
 // ==== Constants ====
 
@@ -52,11 +49,7 @@ public struct DSWalletManagerSpecialWalletRemoved<phantom T> has copy, drop {
 /// Initializes the Wallet Manager abilities for the given token type T.
 ///
 /// Called by the setup module during token deployment.
-public(package) fun new<T: key>(
-    auth: &mut Auth<T>,
-    version: &Version,
-    ctx: &TxContext,
-) {
+public(package) fun new<T: key>(auth: &mut Auth<T>, version: &Version, ctx: &TxContext) {
     // Assign abilities to roles
     auth.add_role_ability<T, Master, SetIssuerWallet>(version, ctx);
     auth.add_role_ability<T, Master, SetPlatformWallet>(version, ctx);
@@ -121,13 +114,11 @@ public fun remove_special_wallet<T>(
     auth.owner_has_ability<T, RemoveSpecialWallet>(ctx.sender());
     assert!(investor_info.is_special_wallet(wallet), ENotSpecialWallet);
     let old_type = investor_info.remove_special_wallet(wallet);
-    event::emit(
-        DSWalletManagerSpecialWalletRemoved<T> {
-            wallet,
-            old_type,
-            caller: ctx.sender(),
-        }
-    );
+    event::emit(DSWalletManagerSpecialWalletRemoved<T> {
+        wallet,
+        old_type,
+        caller: ctx.sender(),
+    });
 }
 
 /// Internal function to set a special wallet with the given type.
@@ -145,31 +136,21 @@ fun set_special_wallet<T>(
         vault::claim(registry, vault::owner_from_address(wallet));
     };
     investor_info.set_special_wallet(wallet, wallet_type);
-    event::emit(
-        DSWalletManagerSpecialWalletAdded<T> {
-            wallet,
-            wallet_type,
-            caller: ctx.sender(),
-        }
-    );
+    event::emit(DSWalletManagerSpecialWalletAdded<T> {
+        wallet,
+        wallet_type,
+        caller: ctx.sender(),
+    });
 }
 
 // ==== View Functions ====
 
 /// Returns whether the given wallet is a platform wallet.
-public fun is_platform_wallet<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): bool {
+public fun is_platform_wallet<T>(investor_info: &InvestorInfo<T>, wallet: address): bool {
     investor_info.get_special_wallet_type(wallet) == PLATFORM
 }
 
 /// Returns whether the given wallet is an issuer wallet.
-public fun is_issuer_wallet<T>(
-    investor_info: &InvestorInfo<T>,
-    wallet: address,
-): bool {
+public fun is_issuer_wallet<T>(investor_info: &InvestorInfo<T>, wallet: address): bool {
     investor_info.get_special_wallet_type(wallet) == ISSUER
 }
-
-

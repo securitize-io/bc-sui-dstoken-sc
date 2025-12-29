@@ -7,16 +7,21 @@
 module securitize::registry_service;
 
 use rwa::{registry::RwaRegistry, vault};
-use securitize::{trust_service::{Auth, Master, Issuer, Exchange}, version::Version};
+use securitize::{
+    abilities::{
+        RegisterInvestor,
+        RemoveInvestor,
+        UpdateInvestor,
+        SetCountry,
+        SetAttribute,
+        AddWallet,
+        RemoveWallet
+    },
+    trust_service::{Auth, Master, Issuer, Exchange},
+    version::Version
+};
 use std::string::{Self, String};
 use sui::{derived_object, event, table::{Self, Table}};
-use securitize::abilities::RegisterInvestor;
-use securitize::abilities::RemoveInvestor;
-use securitize::abilities::UpdateInvestor;
-use securitize::abilities::SetCountry;
-use securitize::abilities::SetAttribute;
-use securitize::abilities::AddWallet;
-use securitize::abilities::RemoveWallet;
 
 // ==== Error Codes ====
 
@@ -286,11 +291,16 @@ public fun register_investor<T: key>(
     };
     investor_info.investors.add(investor_id, investor);
     investor_info.investor_issuances.add(investor_id, vector[]);
-    investor_info.investor_locks.add(investor_id, InvestorLockState {
-        fully_locked: false,
-        liquidate_only: false,
-        locks: vector::empty(),
-    });
+    investor_info
+        .investor_locks
+        .add(
+            investor_id,
+            InvestorLockState {
+                fully_locked: false,
+                liquidate_only: false,
+                locks: vector::empty(),
+            },
+        );
     event::emit(DSRegistryServiceInvestorAdded<T> { investor_id, sender: ctx.sender() });
 }
 
