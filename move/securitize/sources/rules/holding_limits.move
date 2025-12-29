@@ -2,11 +2,9 @@
 /// Supports region-specific minimum holdings (US, EU) as per Aptos implementation.
 module securitize::holding_limits;
 
-use securitize::version::Version;
-use securitize::trust_service::Auth;
+use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
-use sui::vec_map::{Self, VecMap};
-use sui::event;
+use sui::{event, vec_map::{Self, VecMap}};
 
 // ==== Error Codes ====
 
@@ -15,10 +13,6 @@ const EAboveMaxHolding: u64 = 1;
 const ERegionNotFound: u64 = 2;
 const EInvalidMinimum: u64 = 3;
 const EInvalidMaximum: u64 = 4;
-
-// ==== Abilities ====
-
-public struct ManageHoldingLimits() has drop;
 
 // ==== Events ====
 
@@ -60,7 +54,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): HoldingLimits {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     let mut region_min_tokens = vec_map::empty();
 
     regions.zip_do!(region_mins, |region, min| {
@@ -93,7 +87,7 @@ public fun set_min_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     assert!(min >= 0, EInvalidMinimum);
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"min_holdings_per_investor".to_string(),
@@ -113,7 +107,7 @@ public fun set_max_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     assert!(max >= 0, EInvalidMaximum);
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"max_holdings_per_investor".to_string(),
@@ -134,7 +128,7 @@ public fun set_region_min_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     assert!(min > 0, EInvalidMinimum);
 
     let old_value = if (rule.region_min_tokens.contains(&region)) {
@@ -161,7 +155,7 @@ public fun remove_region_min_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);
@@ -188,7 +182,7 @@ public fun validate_holding_limits_for_transfer(
     // ---- SENDER ----
     if (!from_is_platform_wallet) {
         let from_balance_after = from_balance - amount;
-        if (from_balance_after > 0){
+        if (from_balance_after > 0) {
             rule.validate_min_holdings(from_balance_after, from_region);
         }
     };

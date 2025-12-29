@@ -1,7 +1,8 @@
 module securitize::lock_manager;
 
 use securitize::{
-    registry_service::{InvestorInfo},
+    abilities::{LockInvestor, UnlockInvestor, SetLiquidateOnly, AddLockRecord, RemoveLockRecord},
+    registry_service::InvestorInfo,
     trust_service::{Auth, Master, TransferAgent},
     version::Version
 };
@@ -46,24 +47,8 @@ public struct DSLockManagerLockRemoved<phantom T> has copy, drop {
     index: u64,
 }
 
-// ==== Lock Manager Abilities ====
-
-public struct LockInvestor has drop {}
-
-public struct UnlockInvestor has drop {}
-
-public struct SetLiquidateOnly has drop {}
-
-public struct AddLockRecord has drop {}
-
-public struct RemoveLockRecord has drop {}
-
 /// Called by the setup module during token deployment.
-public(package) fun new<T>(
-    auth: &mut Auth<T>,
-    version: &Version,
-    ctx: &TxContext,
-) {
+public(package) fun new<T>(auth: &mut Auth<T>, version: &Version, ctx: &TxContext) {
     // Register abilities for Master role
     auth.add_role_ability<T, Master, LockInvestor>(version, ctx);
     auth.add_role_ability<T, Master, UnlockInvestor>(version, ctx);

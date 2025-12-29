@@ -1,8 +1,7 @@
 /// Module: force_full_transfer
 module securitize::force_full_transfer;
 
-use securitize::version::Version;
-use securitize::trust_service::Auth;
+use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
@@ -11,10 +10,6 @@ const EPartialTransferNotAllowed: u64 = 0;
 // ==== TEMP Compliance Region Constants ====
 
 const US: u64 = 1;
-
-// ==== Abilities ====
-
-public struct ManageForceFullTransfer() has drop;
 
 // ==== Events ====
 
@@ -50,7 +45,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): ForceFullTransfer {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageForceFullTransfer>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceForceFullTransferRuleCreated<T> {
         force_full_transfer_us,
         force_full_transfer_worldwide,
@@ -72,7 +67,7 @@ public fun set_force_us<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageForceFullTransfer>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_us".to_string(),
         old_value: rule.force_full_transfer_us,
@@ -90,7 +85,7 @@ public fun set_force_worldwide<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageForceFullTransfer>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_worldwide".to_string(),
         old_value: rule.force_full_transfer_worldwide,

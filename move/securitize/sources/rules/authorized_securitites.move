@@ -7,18 +7,13 @@
 /// When max_supply is 0, the check is disabled (unlimited issuance allowed).
 module securitize::authorized_securities;
 
-use securitize::version::Version;
-use securitize::trust_service::Auth;
+use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
 // ==== Error Codes ====
 
 const EMaxAuthorizedSecuritiesExceeded: u64 = 0;
-
-// ==== Abilities ====
-
-public struct ManageAuthorizedSecurities() has drop;
 
 // ==== Events ====
 
@@ -50,7 +45,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): AuthorizedSecurities {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageAuthorizedSecurities>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceAuthorizedSecuritiesRuleCreated<T> {
         max_supply,
     });
@@ -70,7 +65,7 @@ public fun set_max_supply<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageAuthorizedSecurities>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceAuthorizedSecuritiesRuleSet<T, u64> {
         field: b"max_supply".to_string(),
         old_value: rule.max_supply,
@@ -82,18 +77,11 @@ public fun set_max_supply<T>(
 // ==================== Validation ====================
 
 /// Validate that issuance does not exceed max authorized securities
-public fun validate_rule(
-    rule: &AuthorizedSecurities,
-    total_supply: u64,
-    issuance_value: u64,
-) {
+public fun validate_rule(rule: &AuthorizedSecurities, total_supply: u64, issuance_value: u64) {
     // If max_supply is 0, check is disabled (unlimited)
     if (rule.max_supply == 0) return;
 
-    assert!(
-        total_supply + issuance_value <= rule.max_supply,
-        EMaxAuthorizedSecuritiesExceeded
-    );
+    assert!(total_supply + issuance_value <= rule.max_supply, EMaxAuthorizedSecuritiesExceeded);
 }
 
 // ==================== View Functions ====================

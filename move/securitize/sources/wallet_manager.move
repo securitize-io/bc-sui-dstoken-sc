@@ -13,6 +13,9 @@ use securitize::{
 };
 use rwa::registry::RwaRegistry;
 use rwa::vault;
+use securitize::abilities::SetIssuerWallet;
+use securitize::abilities::SetPlatformWallet;
+use securitize::abilities::RemoveSpecialWallet;
 
 // ==== Constants ====
 
@@ -29,17 +32,6 @@ const EWalletBelongsToInvestor: u64 = 0;
 const EDirectWalletChange: u64 = 1;
 /// The input wallet is not a special wallet
 const ENotSpecialWallet: u64 = 2;
-
-// ==== Wallet Manager Abilities ====
-
-/// Ability to set issuer wallets
-public struct SetIssuerWallet() has drop;
-
-/// Ability to set platform wallets
-public struct SetPlatformWallet() has drop;
-
-/// Ability to remove special wallets
-public struct RemoveSpecialWallet() has drop;
 
 // ==== Events ====
 

@@ -10,6 +10,13 @@ use rwa::{registry::RwaRegistry, vault};
 use securitize::{trust_service::{Auth, Master, Issuer, Exchange}, version::Version};
 use std::string::{Self, String};
 use sui::{derived_object, event, table::{Self, Table}};
+use securitize::abilities::RegisterInvestor;
+use securitize::abilities::RemoveInvestor;
+use securitize::abilities::UpdateInvestor;
+use securitize::abilities::SetCountry;
+use securitize::abilities::SetAttribute;
+use securitize::abilities::AddWallet;
+use securitize::abilities::RemoveWallet;
 
 // ==== Error Codes ====
 
@@ -147,29 +154,6 @@ public struct Attribute has copy, drop, store {
     /// Unix timestamp when this attribute expires
     expiration: u64,
 }
-
-// ==== Registry Service Abilities ====
-
-/// Ability to register new investors
-public struct RegisterInvestor() has drop;
-
-/// Ability to remove investors from the registry
-public struct RemoveInvestor() has drop;
-
-/// Ability to update investor information
-public struct UpdateInvestor() has drop;
-
-/// Ability to set investor country
-public struct SetCountry() has drop;
-
-/// Ability to set investor attributes
-public struct SetAttribute() has drop;
-
-/// Ability to add wallets to investors
-public struct AddWallet() has drop;
-
-/// Ability to remove wallets from investors
-public struct RemoveWallet() has drop;
 
 // ==== Events ====
 

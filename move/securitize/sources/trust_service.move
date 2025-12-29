@@ -8,6 +8,12 @@ module securitize::trust_service;
 use std::type_name::{Self, TypeName};
 use sui::{bag::{Self, Bag}, event, vec_map::{Self, VecMap}, vec_set::{Self, VecSet}, derived_object};
 use securitize::version::Version;
+use securitize::abilities::SetRoleTypes;
+use securitize::abilities::SetAbilities;
+use securitize::abilities::SetServiceOwner;
+use securitize::abilities::SetIssuer;
+use securitize::abilities::SetTransferAgent;
+use securitize::abilities::SetExchange;
 
 // ==== Error Codes ====
 /// Direct role to role change is not allowed.
@@ -81,21 +87,6 @@ public struct TransferAgent has drop {}
 public struct Exchange has drop {}
 /// None role Witness
 public struct None has drop {}
-
-// ==================== Trust Service Abilities ====================
-
-/// Change Master role
-public struct SetServiceOwner has drop {}
-/// Add/Remove Transfer Agent role
-public struct SetTransferAgent has drop {}
-/// Add/Remove Issuer role
-public struct SetIssuer has drop {}
-/// Add/Remove Exchange role
-public struct SetExchange has drop {}
-/// Add/Remove abilities from roles
-public struct SetAbilities has drop {}
-/// Add/Remove role types dynamically
-public struct SetRoleTypes has drop {}
 
 // ==================== Initialization Functions ====================
 

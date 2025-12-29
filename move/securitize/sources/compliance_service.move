@@ -2,14 +2,15 @@ module securitize::compliance_service;
 
 use rwa::vault::RwaTransferRequest;
 use securitize::{
-    accredited_only::{AccreditedOnly, ManageAccreditedOnly},
-    authorized_securities::{AuthorizedSecurities, ManageAuthorizedSecurities},
-    flowback_restriction::{FlowbackRestriction, ManageFlowbackRestriction},
-    force_full_transfer::{ForceFullTransfer, ManageForceFullTransfer},
-    holding_limits::{HoldingLimits, ManageHoldingLimits},
-    investor_limits::{InvestorLimits, ManageInvestorLimits},
+    abilities::{RegisterRule, UnregisterRule, SetCountryCompliance, ManageRules},
+    accredited_only::AccreditedOnly,
+    authorized_securities::AuthorizedSecurities,
+    flowback_restriction::FlowbackRestriction,
+    force_full_transfer::ForceFullTransfer,
+    holding_limits::HoldingLimits,
+    investor_limits::InvestorLimits,
     lock_manager,
-    lockup_restriction::{LockupRestriction, ManageLockupRestriction},
+    lockup_restriction::LockupRestriction,
     registry_service::{InvestorInfo, is_special_wallet, Issuance, new_issuance},
     trust_service::{Auth, TransferAgent, Master},
     version::Version,
@@ -111,16 +112,6 @@ public struct PartyInfo has copy, drop {
     is_special_wallet: bool,
 }
 
-// ==== Compliance Abilities ====
-
-public struct RegisterRule() has drop;
-
-public struct UnregisterRule() has drop;
-
-public struct SetCountryCompliance() has drop;
-
-public struct ManageRules() has drop;
-
 // ==================== Initialization Functions ====================
 
 /// Create a new ComplianceConfig for token type T
@@ -134,25 +125,11 @@ public(package) fun new<T>(
     auth.add_role_ability<T, Master, UnregisterRule>(version, ctx);
     auth.add_role_ability<T, Master, SetCountryCompliance>(version, ctx);
     auth.add_role_ability<T, Master, ManageRules>(version, ctx);
-    auth.add_role_ability<T, Master, ManageLockupRestriction>(version, ctx);
-    auth.add_role_ability<T, Master, ManageAccreditedOnly>(version, ctx);
-    auth.add_role_ability<T, Master, ManageForceFullTransfer>(version, ctx);
-    auth.add_role_ability<T, Master, ManageHoldingLimits>(version, ctx);
-    auth.add_role_ability<T, Master, ManageInvestorLimits>(version, ctx);
-    auth.add_role_ability<T, Master, ManageAuthorizedSecurities>(version, ctx);
-    auth.add_role_ability<T, Master, ManageFlowbackRestriction>(version, ctx);
 
     auth.add_role_ability<T, TransferAgent, RegisterRule>(version, ctx);
     auth.add_role_ability<T, TransferAgent, UnregisterRule>(version, ctx);
     auth.add_role_ability<T, TransferAgent, SetCountryCompliance>(version, ctx);
     auth.add_role_ability<T, TransferAgent, ManageRules>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageLockupRestriction>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageAccreditedOnly>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageForceFullTransfer>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageHoldingLimits>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageInvestorLimits>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageAuthorizedSecurities>(version, ctx);
-    auth.add_role_ability<T, TransferAgent, ManageFlowbackRestriction>(version, ctx);
 
     ComplianceConfig<T> {
         id: derived_object::claim(uid, ComplianceServiceKey<T>()),
@@ -195,7 +172,7 @@ public(package) fun validate_transfer<T>(
     // Build transfer context
     let transfer = TransferInfo {
         amount,
-        equal_country: from_info.country == to_info.country,
+        equal_country: &from_info.country == &to_info.country,
         timestamp_ms,
     };
 

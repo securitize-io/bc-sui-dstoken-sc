@@ -4,11 +4,9 @@
 /// during a specified Regulation S distribution period (flowback restriction).
 module securitize::flowback_restriction;
 
-use sui::clock::Clock;
-use securitize::version::Version;
-use securitize::trust_service::Auth;
+use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
-use sui::event;
+use sui::{clock::Clock, event};
 
 // ==== TEMP Compliance Region Constants ====
 
@@ -17,10 +15,6 @@ const US: u64 = 1;
 // ==== Error Codes ====
 
 const EFlowbackRestricted: u64 = 0;
-
-// ==== Abilities ====
-
-public struct ManageFlowbackRestriction() has drop;
 
 // ==== Events ====
 
@@ -52,7 +46,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): FlowbackRestriction {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageFlowbackRestriction>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> {
         block_flowback_end_time_ms,
     });
@@ -72,7 +66,7 @@ public fun set_flowback_end_time<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageFlowbackRestriction>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
         field: b"block_flowback_end_time_ms".to_string(),
         old_value: rule.block_flowback_end_time_ms,

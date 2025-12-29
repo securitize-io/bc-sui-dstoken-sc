@@ -4,8 +4,7 @@
 /// Can be configured globally or for specific jurisdictions.
 module securitize::accredited_only;
 
-use securitize::version::Version;
-use securitize::trust_service::Auth;
+use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
@@ -17,10 +16,6 @@ const ENotUSAccredited: u64 = 1;
 // ==== TEMP Compliance Region Constants ====
 
 const US: u64 = 1;
-
-// ==== Abilities ====
-
-public struct ManageAccreditedOnly() has drop;
 
 // ==== Events ====
 
@@ -56,7 +51,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): AccreditedOnly {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageAccreditedOnly>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceAccreditedOnlyRuleCreated<T> {
         force_accredited,
         force_us_accredited,
@@ -78,7 +73,7 @@ public fun set_force_accredited<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageAccreditedOnly>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
         field: b"force_accredited".to_string(),
         old_value: rule.force_accredited,
@@ -96,7 +91,7 @@ public fun set_force_us_accredited<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageAccreditedOnly>(ctx.sender());
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
     event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
         field: b"force_us_accredited".to_string(),
         old_value: rule.force_us_accredited,
