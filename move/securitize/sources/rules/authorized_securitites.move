@@ -8,10 +8,29 @@
 module securitize::authorized_securities;
 
 use securitize::version::Version;
+use securitize::trust_service::Auth;
+use std::string::String;
+use sui::event;
 
 // ==== Error Codes ====
 
 const EMaxAuthorizedSecuritiesExceeded: u64 = 0;
+
+// ==== Abilities ====
+
+public struct ManageAuthorizedSecurities() has drop;
+
+// ==== Events ====
+
+public struct DSComplianceAuthorizedSecuritiesRuleCreated<phantom T> has copy, drop {
+    max_supply: u64,
+}
+
+public struct DSComplianceAuthorizedSecuritiesRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -24,22 +43,39 @@ public struct AuthorizedSecurities has drop, store {
 
 /// Create a new AuthorizedSecurities rule
 /// Starts with max_supply of 0 (unlimited)
-public fun new(version: &Version): AuthorizedSecurities {
+public fun new<T>(
+    auth: &Auth<T>,
+    max_supply: u64,
+    version: &Version,
+    ctx: &TxContext,
+): AuthorizedSecurities {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageAuthorizedSecurities>(ctx.sender());
+    event::emit(DSComplianceAuthorizedSecuritiesRuleCreated<T> {
+        max_supply,
+    });
     AuthorizedSecurities {
-        max_supply: 0,
+        max_supply,
     }
 }
 
 // ==================== Rule Management ====================
 
 /// Set the maximum authorized securities (max supply)
-public fun set_max_supply(
+public fun set_max_supply<T>(
+    auth: &Auth<T>,
     rule: &mut AuthorizedSecurities,
     max_supply: u64,
     version: &Version,
+    ctx: &TxContext,
 ) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageAuthorizedSecurities>(ctx.sender());
+    event::emit(DSComplianceAuthorizedSecuritiesRuleSet<T, u64> {
+        field: b"max_supply".to_string(),
+        old_value: rule.max_supply,
+        new_value: max_supply,
+    });
     rule.max_supply = max_supply;
 }
 

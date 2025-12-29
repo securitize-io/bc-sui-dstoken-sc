@@ -5,6 +5,9 @@
 module securitize::accredited_only;
 
 use securitize::version::Version;
+use securitize::trust_service::Auth;
+use std::string::String;
+use sui::event;
 
 // ==== Error Codes ====
 
@@ -14,9 +17,23 @@ const ENotUSAccredited: u64 = 1;
 // ==== TEMP Compliance Region Constants ====
 
 const US: u64 = 1;
-const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
+
+// ==== Abilities ====
+
+public struct ManageAccreditedOnly() has drop;
+
+// ==== Events ====
+
+public struct DSComplianceAccreditedOnlyRuleCreated<phantom T> has copy, drop {
+    force_accredited: bool,
+    force_us_accredited: bool,
+}
+
+public struct DSComplianceAccreditedOnlyRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -31,12 +48,19 @@ public struct AccreditedOnly has drop, store {
 // ==================== Initialization ====================
 
 /// Create a new AccreditedOnly rule
-public fun new(
+public fun new<T>(
+    auth: &Auth<T>,
     force_accredited: bool,
     force_us_accredited: bool,
     version: &Version,
+    ctx: &TxContext,
 ): AccreditedOnly {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageAccreditedOnly>(ctx.sender());
+    event::emit(DSComplianceAccreditedOnlyRuleCreated<T> {
+        force_accredited,
+        force_us_accredited,
+    });
     AccreditedOnly {
         force_accredited,
         force_us_accredited,
@@ -46,14 +70,38 @@ public fun new(
 // ==================== Rule Management ====================
 
 /// Set global accreditation requirement
-public fun set_force_accredited(rule: &mut AccreditedOnly, force: bool, version: &Version) {
+public fun set_force_accredited<T>(
+    auth: &Auth<T>,
+    rule: &mut AccreditedOnly,
+    force: bool,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageAccreditedOnly>(ctx.sender());
+    event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
+        field: b"force_accredited".to_string(),
+        old_value: rule.force_accredited,
+        new_value: force,
+    });
     rule.force_accredited = force;
 }
 
 /// Set US accreditation requirement
-public fun set_force_us_accredited(rule: &mut AccreditedOnly, force: bool, version: &Version) {
+public fun set_force_us_accredited<T>(
+    auth: &Auth<T>,
+    rule: &mut AccreditedOnly,
+    force: bool,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageAccreditedOnly>(ctx.sender());
+    event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
+        field: b"force_us_accredited".to_string(),
+        old_value: rule.force_us_accredited,
+        new_value: force,
+    });
     rule.force_us_accredited = force;
 }
 

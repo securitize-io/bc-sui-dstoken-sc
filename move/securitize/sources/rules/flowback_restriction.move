@@ -6,17 +6,33 @@ module securitize::flowback_restriction;
 
 use sui::clock::Clock;
 use securitize::version::Version;
+use securitize::trust_service::Auth;
+use std::string::String;
+use sui::event;
 
 // ==== TEMP Compliance Region Constants ====
 
 const US: u64 = 1;
-const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
 
 // ==== Error Codes ====
 
 const EFlowbackRestricted: u64 = 0;
+
+// ==== Abilities ====
+
+public struct ManageFlowbackRestriction() has drop;
+
+// ==== Events ====
+
+public struct DSComplianceFlowbackRestrictionRuleCreated<phantom T> has copy, drop {
+    block_flowback_end_time_ms: u64,
+}
+
+public struct DSComplianceFlowbackRestrictionRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -29,8 +45,17 @@ public struct FlowbackRestriction has drop, store {
 // ==================== Initialization ====================
 
 /// Create a new FlowbackRestriction rule with an end time
-public fun new(block_flowback_end_time_ms: u64, version: &Version): FlowbackRestriction {
+public fun new<T>(
+    auth: &Auth<T>,
+    block_flowback_end_time_ms: u64,
+    version: &Version,
+    ctx: &TxContext,
+): FlowbackRestriction {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageFlowbackRestriction>(ctx.sender());
+    event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> {
+        block_flowback_end_time_ms,
+    });
     FlowbackRestriction {
         block_flowback_end_time_ms,
     }
@@ -39,8 +64,20 @@ public fun new(block_flowback_end_time_ms: u64, version: &Version): FlowbackRest
 // ==================== Rule Management ====================
 
 /// Set flowback end time
-public fun set_flowback_end_time(rule: &mut FlowbackRestriction, end_time: u64, version: &Version) {
+public fun set_flowback_end_time<T>(
+    auth: &Auth<T>,
+    rule: &mut FlowbackRestriction,
+    end_time: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageFlowbackRestriction>(ctx.sender());
+    event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
+        field: b"block_flowback_end_time_ms".to_string(),
+        old_value: rule.block_flowback_end_time_ms,
+        new_value: end_time,
+    });
     rule.block_flowback_end_time_ms = end_time;
 }
 

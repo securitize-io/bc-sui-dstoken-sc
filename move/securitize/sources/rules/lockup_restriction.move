@@ -10,14 +10,39 @@ module securitize::lockup_restriction;
 
 use securitize::version::Version;
 use securitize::registry_service::Issuance;
+use securitize::trust_service::Auth;
+use std::string::String;
+use sui::event;
 
 // ==== Constants ====
 
 const US: u64 = 1;
 
+/// Maximum lock period: 200 years in milliseconds
+/// This prevents the edge case of overflow when adding lock_period to issuance timestamps
+const MAX_LOCK_PERIOD_MS: u64 = 6_307_200_000_000; // 200 years
+
 // ==== Error Codes ====
 
 const EUnderLockup: u64 = 0;
+const ELockPeriodTooLong: u64 = 1;
+
+// ==== Abilities ====
+
+public struct ManageLockupRestriction() has drop;
+
+// ==== Events ====
+
+public struct DSComplianceLockupRestrictionRuleCreated<phantom T> has copy, drop {
+    us_lock_period_ms: u64,
+    non_us_lock_period_ms: u64,
+}
+
+public struct DSComplianceLockupRestrictionRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -32,12 +57,21 @@ public struct LockupRestriction has drop, store {
 // ==================== Initialization ====================
 
 /// Create a new LockupRestriction rule with configurable lock periods
-public fun new(
+public fun new<T>(
+    auth: &Auth<T>,
     us_lock_period_ms: u64,
     non_us_lock_period_ms: u64,
     version: &Version,
+    ctx: &TxContext,
 ): LockupRestriction {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageLockupRestriction>(ctx.sender());
+    assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    event::emit(DSComplianceLockupRestrictionRuleCreated<T> {
+        us_lock_period_ms,
+        non_us_lock_period_ms,
+    });
     LockupRestriction {
         us_lock_period_ms,
         non_us_lock_period_ms,
@@ -47,14 +81,40 @@ public fun new(
 // ==================== Rule Management ====================
 
 /// Set US lock period (in milliseconds)
-public fun set_us_lock_period(rule: &mut LockupRestriction, period_ms: u64, version: &Version) {
+public fun set_us_lock_period<T>(
+    auth: &Auth<T>,
+    rule: &mut LockupRestriction,
+    period_ms: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageLockupRestriction>(ctx.sender());
+    assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
+        field: b"us_lock_period_ms".to_string(),
+        old_value: rule.us_lock_period_ms,
+        new_value: period_ms,
+    });
     rule.us_lock_period_ms = period_ms;
 }
 
 /// Set non-US lock period (in milliseconds)
-public fun set_non_us_lock_period(rule: &mut LockupRestriction, period_ms: u64, version: &Version) {
+public fun set_non_us_lock_period<T>(
+    auth: &Auth<T>,
+    rule: &mut LockupRestriction,
+    period_ms: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageLockupRestriction>(ctx.sender());
+    assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
+        field: b"non_us_lock_period_ms".to_string(),
+        old_value: rule.non_us_lock_period_ms,
+        new_value: period_ms,
+    });
     rule.non_us_lock_period_ms = period_ms;
 }
 

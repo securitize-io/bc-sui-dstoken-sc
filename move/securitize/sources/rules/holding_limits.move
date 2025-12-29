@@ -3,7 +3,10 @@
 module securitize::holding_limits;
 
 use securitize::version::Version;
+use securitize::trust_service::Auth;
+use std::string::String;
 use sui::vec_map::{Self, VecMap};
+use sui::event;
 
 // ==== Error Codes ====
 
@@ -12,6 +15,26 @@ const EAboveMaxHolding: u64 = 1;
 const ERegionNotFound: u64 = 2;
 const EInvalidMinimum: u64 = 3;
 const EInvalidMaximum: u64 = 4;
+
+// ==== Abilities ====
+
+public struct ManageHoldingLimits() has drop;
+
+// ==== Events ====
+
+public struct DSComplianceHoldingLimitsRuleCreated<phantom T> has copy, drop {
+    min_holdings_per_investor: u64,
+    max_holdings_per_investor: u64,
+    regions: vector<u64>,
+    region_mins: vector<u64>,
+}
+
+public struct DSComplianceHoldingLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    region: Option<u64>,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -27,19 +50,29 @@ public struct HoldingLimits has drop, store {
 // ==================== Initialization ====================
 
 /// Create with region-specific minimums
-public fun new(
+public fun new<T>(
+    auth: &Auth<T>,
     min_holdings_per_investor: u64,
     max_holdings_per_investor: u64,
     regions: vector<u64>,
     region_mins: vector<u64>,
     version: &Version,
+    ctx: &TxContext,
 ): HoldingLimits {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
     let mut region_min_tokens = vec_map::empty();
 
     regions.zip_do!(region_mins, |region, min| {
         assert!(min > 0, EInvalidMinimum);
         region_min_tokens.insert(region, min);
+    });
+
+    event::emit(DSComplianceHoldingLimitsRuleCreated<T> {
+        min_holdings_per_investor,
+        max_holdings_per_investor,
+        regions,
+        region_mins,
     });
 
     HoldingLimits {
@@ -52,42 +85,92 @@ public fun new(
 // ==================== Rule Management ====================
 
 /// Set minimum holdings
-public fun set_min_holdings(rule: &mut HoldingLimits, min: u64, version: &Version) {
+public fun set_min_holdings<T>(
+    auth: &Auth<T>,
+    rule: &mut HoldingLimits,
+    min: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
     assert!(min >= 0, EInvalidMinimum);
+    event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
+        field: b"min_holdings_per_investor".to_string(),
+        region: option::none(),
+        old_value: rule.min_holdings_per_investor,
+        new_value: min,
+    });
     rule.min_holdings_per_investor = min;
 }
 
 /// Set maximum holdings
-public fun set_max_holdings(rule: &mut HoldingLimits, max: u64, version: &Version) {
+public fun set_max_holdings<T>(
+    auth: &Auth<T>,
+    rule: &mut HoldingLimits,
+    max: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
     assert!(max >= 0, EInvalidMaximum);
+    event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
+        field: b"max_holdings_per_investor".to_string(),
+        region: option::none(),
+        old_value: rule.max_holdings_per_investor,
+        new_value: max,
+    });
     rule.max_holdings_per_investor = max;
 }
 
 /// Set region-specific minimum holdings
-public fun set_region_min_holdings(
+public fun set_region_min_holdings<T>(
+    auth: &Auth<T>,
     rule: &mut HoldingLimits,
     region: u64,
     min: u64,
     version: &Version,
+    ctx: &TxContext,
 ) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
     assert!(min > 0, EInvalidMinimum);
 
-    // Remove existing entry if present, then insert new value
-    if (rule.region_min_tokens.contains(&region)) {
-        rule.region_min_tokens.remove(&region);
+    let old_value = if (rule.region_min_tokens.contains(&region)) {
+        let (_, old) = rule.region_min_tokens.remove(&region);
+        old
+    } else {
+        0
     };
     rule.region_min_tokens.insert(region, min);
+    event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
+        field: b"region_min_tokens".to_string(),
+        region: option::some(region),
+        old_value,
+        new_value: min,
+    });
 }
 
 /// Remove region-specific minimum
-public fun remove_region_min_holdings(rule: &mut HoldingLimits, region: u64, version: &Version) {
+public fun remove_region_min_holdings<T>(
+    auth: &Auth<T>,
+    rule: &mut HoldingLimits,
+    region: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageHoldingLimits>(ctx.sender());
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
-        rule.region_min_tokens.remove(&region);
+        let (_, old_value) = rule.region_min_tokens.remove(&region);
+        event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
+            field: b"region_min_tokens".to_string(),
+            region: option::some(region),
+            old_value,
+            new_value: 0,
+        });
     };
 }
 
