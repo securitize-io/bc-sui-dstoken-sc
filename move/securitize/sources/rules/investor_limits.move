@@ -23,7 +23,7 @@ const EMaxJPInvestorsExceeded: u64 = 4;
 const EMaxEURetailExceeded: u64 = 5;
 const EBelowMinimumInvestors: u64 = 6;
 
-// ==== TEMP Compliance Region Constants ====
+// ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 const EU: u64 = 2;
@@ -447,18 +447,12 @@ public fun validate_transfer_us_investors(
     to_is_new_us_investor: bool,
     equal_country: bool,
 ) {
-    if (rule.us_investors_limit == 0) return;
+    let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
+
+    if (limit == 0) return; 
 
     if (to_is_new_us_investor && (!equal_country || !from_is_exit_investor)) {
-        assert!(current_us_count < rule.us_investors_limit, EMaxUSInvestorsExceeded);
-
-        // Check percentage limit
-        if (rule.max_us_percentage > 0 && total_count > 0) {
-            assert!(
-                current_us_count * 100 < total_count * rule.max_us_percentage,
-                EMaxUSInvestorsExceeded,
-            );
-        };
+        assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
     }
 }
 
@@ -468,20 +462,16 @@ public fun validate_issuance_us_investors(
     current_us_count: u64,
     total_count: u64,
     is_new_us_investor: bool,
-) { if (rule.us_investors_limit == 0) return; if (is_new_us_investor) {
-        // Check absolute limit
-        if (rule.us_investors_limit > 0) {
-            assert!(current_us_count < rule.us_investors_limit, EMaxUSInvestorsExceeded);
-        };
+) { 
+    let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
 
-        // Check percentage limit
-        if (rule.max_us_percentage > 0 && total_count > 0) {
-            assert!(
-                current_us_count * 100 < total_count * rule.max_us_percentage,
-                EMaxUSInvestorsExceeded,
-            );
-        };
-    } }
+    if (limit == 0) return; 
+    
+    if (is_new_us_investor) {
+        // Check limit
+        assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
+    } 
+}
 
 /// Validate US accredited investor count
 public fun validate_transfer_us_accredited(
@@ -610,6 +600,29 @@ public fun validate_transfer_minimum_total_investors(
     if (from_is_exit_investor && !to_is_new_investor) {
         assert!(current_count > rule.minimum_total_investors, EBelowMinimumInvestors);
     };
+}
+
+/// Returns the effective US investor limit.
+/// - If both absolute and percentage limits are set, returns their minimum.
+/// - If only one is set, returns that one.
+/// - If both are zero, returns 0 (unlimited).
+/// Percentage limit uses floor(total * percentage / 100)
+public fun effective_us_limit(
+    absolute_limit: u64,
+    max_percentage: u64,
+    total: u64,
+): u64 {
+    let percentage_limit = if (max_percentage == 0) 0 else (((total as u128) * (max_percentage as u128)) / 100) as u64;
+
+    if (absolute_limit == 0) {
+        percentage_limit
+    } else if (percentage_limit == 0) {
+        absolute_limit
+    } else if (absolute_limit < percentage_limit) {
+        absolute_limit
+    } else {
+        percentage_limit
+    }
 }
 
 // ==================== View Functions ====================

@@ -125,12 +125,12 @@ public fun validate_rule(
     investor_issuances: &vector<Issuance>,
     amount: u64,
     from_region: u64,
-    from_is_platform_wallet: bool,
+    from_is_special_wallet: bool,
     current_transferable_balance: u64,
     timestamp_ms: u64,
 ) {
-    // Platform wallets are exempt from lockup restrictions
-    if (from_is_platform_wallet) return;
+    // Special wallets as senders are exempt from lockup restrictions
+    if (from_is_special_wallet) return;
 
     let transferable = compute_transferable_tokens(
         rule,
@@ -169,8 +169,9 @@ public fun compute_transferable_tokens(
 
     investor_issuances.do_ref!(|issuance| {
         // Check if issuance is still under lockup
-        let locked = // Global initial lock window
-        timestamp_ms < lock_period
+        let locked // Global initial lock window
+         =
+            timestamp_ms < lock_period
             // Issuance-relative lock window
             || issuance.issuance_time_ms() + lock_period > timestamp_ms;
 

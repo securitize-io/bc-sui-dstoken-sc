@@ -173,14 +173,14 @@ public fun remove_region_min_holdings<T>(
 public fun validate_holding_limits_for_transfer(
     rule: &HoldingLimits,
     amount: u64,
-    from_is_platform_wallet: bool,
+    from_is_special_wallet: bool,
     from_balance: u64,
     from_region: u64,
     to_balance: u64,
     to_region: u64,
 ) {
     // ---- SENDER ----
-    if (!from_is_platform_wallet) {
+    if (!from_is_special_wallet) {
         let from_balance_after = from_balance - amount;
         if (from_balance_after > 0) {
             rule.validate_min_holdings(from_balance_after, from_region);

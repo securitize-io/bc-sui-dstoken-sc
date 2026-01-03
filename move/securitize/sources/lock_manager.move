@@ -7,7 +7,7 @@ use securitize::{
     version::Version
 };
 use std::string::String;
-use sui::event;
+use sui::{clock::{Self, Clock}, event};
 
 const MAX_LOCKS: u64 = 30;
 
@@ -120,12 +120,13 @@ public fun add_lock<T>(
     release_time_ms: u64,
     auth: &Auth<T>,
     version: &Version,
+    clock: &Clock,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, AddLockRecord>(ctx.sender());
     assert!(value > 0, EInvalidValue);
-    assert!(release_time_ms > 0, EInvalidTime);
+    assert!(release_time_ms == 0 || release_time_ms > clock.timestamp_ms(), EInvalidTime);
 
     let lock_state = registry.get_investor_locks_mut(investor);
     let idx = lock_state.locks_length();

@@ -13,7 +13,7 @@ use sui::event;
 const ENotAccredited: u64 = 0;
 const ENotUSAccredited: u64 = 1;
 
-// ==== TEMP Compliance Region Constants ====
+// ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 

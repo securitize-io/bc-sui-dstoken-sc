@@ -8,7 +8,7 @@ use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::{clock::Clock, event};
 
-// ==== TEMP Compliance Region Constants ====
+// ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 
@@ -85,7 +85,7 @@ public fun validate_rule(
     rule: &FlowbackRestriction,
     from_region: u64,
     to_region: u64,
-    from_is_platform_wallet: bool,
+    from_is_special_wallet: bool,
     timestamp_ms: u64,
 ) {
     let end = rule.block_flowback_end_time_ms;
@@ -94,7 +94,7 @@ public fun validate_rule(
     let restriction_active = (end == 0) || (timestamp_ms < end);
 
     assert!(
-        !(is_non_us_to_us && !from_is_platform_wallet && restriction_active),
+        !(is_non_us_to_us && !from_is_special_wallet && restriction_active),
         EFlowbackRestricted,
     );
 }

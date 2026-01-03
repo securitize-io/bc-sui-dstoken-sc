@@ -14,7 +14,7 @@ use securitize::{
     registry_service::{InvestorInfo, is_special_wallet, Issuance, new_issuance},
     trust_service::{Auth, TransferAgent, Master},
     version::Version,
-    wallet_manager::{is_platform_wallet, is_issuer_wallet}
+    wallet_manager::is_issuer_wallet
 };
 use std::{string::String, type_name::{Self, TypeName}};
 use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object, event};
@@ -30,13 +30,10 @@ const ETokensLocked: u64 = 6;
 const EInvestorLiquidateOnly: u64 = 7;
 const ENotIssuerWallet: u64 = 8;
 
-// ==== TEMP Compliance Region Constants ====
+// ==== Compliance Region Constants ====
 
 const NONE: u64 = 0;
-const US: u64 = 1;
-const EU: u64 = 2;
 const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
 
 public struct ComplianceServiceKey<phantom T>() has copy, drop, store;
 
@@ -108,7 +105,6 @@ public struct PartyInfo has copy, drop {
     is_qualified: bool,
     is_exit_investor: bool,
     is_new_investor: bool,
-    is_platform_wallet: bool,
     is_special_wallet: bool,
 }
 
@@ -176,8 +172,9 @@ public(package) fun validate_transfer<T>(
         timestamp_ms,
     };
 
-    // === TO platform wallet ===
-    if (handle_to_platform_wallet_exit(config, registry, &transfer, &from_info, &to_info)) return;
+    // === TO special wallet ===
+    if (handle_transfer_to_special_wallet_exit(config, registry, &transfer, &from_info, &to_info))
+        return;
 
     // === Same Investor ===
     // Same investor: skip compliance, but exit invariant already enforced
@@ -191,10 +188,9 @@ public(package) fun validate_transfer<T>(
 
     // Validate recipient is not in liquidate-only mode
     assert_not_liquidate_only(registry, &to_info);
-
-    // Get sender's issuances for lockup rule validation
     let empty_issuances: vector<Issuance> = vector[];
-    let from_investor_issuances_ref = if (!from_info.is_special_wallet) {
+    // Get sender's issuances for lockup rule validation
+    let from_issuances_data = if (!from_info.is_special_wallet) {
         let from_id = from_info.investor_id.borrow();
         registry.get_investor_issuances(*from_id)
     } else {
@@ -210,7 +206,7 @@ public(package) fun validate_transfer<T>(
             &transfer,
             &from_info,
             &to_info,
-            from_investor_issuances_ref,
+            from_issuances_data,
         );
     });
 
@@ -239,18 +235,17 @@ public(package) fun validate_issue<T>(
 
     assert!(to_info.region != FORBIDDEN, EDestinationRestricted);
 
-    // Skip checks for platform wallets
-    if (to_info.is_platform_wallet) return;
-
-    // Validate recipient is not in liquidate-only mode
-    assert_not_liquidate_only(registry, &to_info);
-
     // Build issuance context
     let issuance = IssuanceInfo {
         amount,
         total_supply,
         timestamp_ms,
     };
+
+    if (handle_issuance_to_special_wallet_exit(config, &issuance, &to_info)) return;
+
+    // Validate recipient is not in liquidate-only mode
+    assert_not_liquidate_only(registry, &to_info);
 
     // Validate all configured rules
     config.rules.do_ref!(|rule| {
@@ -382,7 +377,7 @@ public fun get_country_compliance<T>(registry: &InvestorInfo<T>, country: String
 
 // ==================== Recorders ====================
 
-/// Record issuance and update investor counts
+/// Record issuance and update investor counts (handles both regular investors and special wallets)
 public(package) fun record_issuance<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
@@ -401,9 +396,14 @@ public(package) fun record_issuance<T>(
         );
     };
 
-    let to_id = to.investor_id.borrow();
-    record_investor_issuance(registry, *to_id, issuance.amount, issuance.timestamp_ms);
-    cleanup_investor_issuances(config, registry, *to_id, to.region, issuance.timestamp_ms);
+    // Record issuance based on wallet type
+    if (!to.is_special_wallet) {
+        let to_id = to.investor_id.borrow();
+        let issuances = registry.get_investor_issuances_mut(*to_id);
+        issuances.push_back(new_issuance(issuance.amount, issuance.timestamp_ms));
+    };
+
+    cleanup_party_issuances(config, registry, to, issuance.timestamp_ms);
 
     event::emit(DSComplianceIssuanceRecorded<T> {
         to: to.addr,
@@ -441,14 +441,8 @@ public(package) fun record_transfer<T>(
         );
     };
 
-    if (!from.is_special_wallet) {
-        let from_id = from.investor_id.borrow();
-        cleanup_investor_issuances(config, registry, *from_id, from.region, transfer.timestamp_ms)
-    };
-    if (!to.is_special_wallet) {
-        let to_id = to.investor_id.borrow();
-        cleanup_investor_issuances(config, registry, *to_id, to.region, transfer.timestamp_ms)
-    };
+    cleanup_party_issuances(config, registry, from, transfer.timestamp_ms);
+    cleanup_party_issuances(config, registry, to, transfer.timestamp_ms);
 
     event::emit(DSComplianceTransferRecorded<T> {
         from: from.addr,
@@ -542,31 +536,26 @@ public(package) fun record_investor_issuance<T>(
     issuances.push_back(issuance);
 }
 
-/// Cleanup expired issuances for an investor based on lock period
-/// Should be called during transfers to remove stale records
+/// Cleanup expired issuances for a party (investor or special wallet) based on lock period
 /// lock_period_ms == 0 means lockups are disabled:
 /// - all issuances are cleared
 /// - no transfer is ever blocked by lockup
-public(package) fun cleanup_investor_issuances<T>(
+fun cleanup_party_issuances<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
-    investor_id: String,
-    region: u64,
+    party: &PartyInfo,
     now_ms: u64,
 ) {
-    let lock_period_ms = if (has_rule<T, LockupRestriction>(config)) {
-        let rule: &LockupRestriction = config
-            .rules_bag
-            .borrow(type_name::with_defining_ids<LockupRestriction>());
-
-        rule.lock_period_for_region(region)
+    let issuances = if (!party.is_special_wallet) {
+        let id = party.investor_id.borrow();
+        registry.get_investor_issuances_mut(*id)
     } else {
-        0
+        return
     };
 
-    let issuances = registry.get_investor_issuances_mut(investor_id);
+    let lock_period_ms = get_lock_period_ms(config, party.region);
 
-    // Lock period of 0 means no lockup - clear all issuances but keep entry
+    // Lock period of 0 means no lockup - clear all issuances
     if (lock_period_ms == 0) {
         while (!issuances.is_empty()) {
             issuances.pop_back();
@@ -579,6 +568,18 @@ public(package) fun cleanup_investor_issuances<T>(
     })
 }
 
+/// Get lock period from LockupRestriction rule if registered, else 0
+fun get_lock_period_ms<T>(config: &ComplianceConfig<T>, region: u64): u64 {
+    if (has_rule<T, LockupRestriction>(config)) {
+        let rule: &LockupRestriction = config
+            .rules_bag
+            .borrow(type_name::with_defining_ids<LockupRestriction>());
+        rule.lock_period_for_region(region)
+    } else {
+        0
+    }
+}
+
 // ==================== Helper Functions ====================
 
 /// Validate a single transfer rule
@@ -589,7 +590,7 @@ fun validate_transfer_rule<T>(
     transfer: &TransferInfo,
     from: &PartyInfo,
     to: &PartyInfo,
-    investor_issuances: &vector<Issuance>,
+    from_issuances_data: &vector<Issuance>,
 ) {
     // Match on rule type and delegate to appropriate validator
     if (rule == type_name::with_defining_ids<AccreditedOnly>()) {
@@ -599,7 +600,7 @@ fun validate_transfer_rule<T>(
         let rule: &HoldingLimits = config.rules_bag.borrow(rule);
         rule.validate_holding_limits_for_transfer(
             transfer.amount,
-            from.is_platform_wallet,
+            from.is_special_wallet,
             from.balance,
             to.balance,
             from.region,
@@ -620,17 +621,17 @@ fun validate_transfer_rule<T>(
         );
     } else if (rule == type_name::with_defining_ids<ForceFullTransfer>()) {
         let rule: &ForceFullTransfer = config.rules_bag.borrow(rule);
-        rule.validate_rule(from.region, from.is_exit_investor);
+        rule.validate_rule(from.region, from.is_special_wallet, from.is_exit_investor);
     } else if (rule == type_name::with_defining_ids<FlowbackRestriction>()) {
         let rule: &FlowbackRestriction = config.rules_bag.borrow(rule);
-        rule.validate_rule(from.region, to.region, from.is_platform_wallet, transfer.timestamp_ms);
+        rule.validate_rule(from.region, to.region, from.is_special_wallet, transfer.timestamp_ms);
     } else if (rule == type_name::with_defining_ids<LockupRestriction>()) {
         let rule: &LockupRestriction = config.rules_bag.borrow(rule);
         rule.validate_rule(
-            investor_issuances,
+            from_issuances_data,
             transfer.amount,
             from.region,
-            from.is_platform_wallet,
+            from.is_special_wallet,
             from.transferable_balance,
             transfer.timestamp_ms,
         );
@@ -680,13 +681,12 @@ fun validate_issuance_rule<T>(
 /// balance = 0, investor_id = none).
 fun get_party_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): PartyInfo {
     let is_special = registry.is_special_wallet(addr);
-    let is_platform = is_platform_wallet(registry, addr);
 
     if (is_special) {
         return PartyInfo {
             addr: addr,
             investor_id: option::none(),
-            country: b"".to_string(),
+            country: std::string::utf8(b""),
             region: NONE,
             balance: 0,
             transferable_balance: 0,
@@ -694,7 +694,6 @@ fun get_party_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): P
             is_qualified: false,
             is_exit_investor: false,
             is_new_investor: false,
-            is_platform_wallet: is_platform,
             is_special_wallet: true,
         }
     };
@@ -719,7 +718,6 @@ fun get_party_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): P
         is_qualified: qualified,
         is_exit_investor: exit,
         is_new_investor: is_new,
-        is_platform_wallet: is_platform,
         is_special_wallet: false,
     }
 }
@@ -745,24 +743,41 @@ fun handle_same_investor_exit<T>(
     true
 }
 
-/// Handle transfer to platform wallet (only validate ForceFullTransfer). Returns true if handled.
-fun handle_to_platform_wallet_exit<T>(
+/// Handle transfer to special wallet (only validate ForceFullTransfer). Returns true if handled.
+fun handle_transfer_to_special_wallet_exit<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
     transfer: &TransferInfo,
     from: &PartyInfo,
     to: &PartyInfo,
 ): bool {
-    if (!to.is_platform_wallet) return false;
+    if (!to.is_special_wallet) return false;
 
     if (has_rule<T, ForceFullTransfer>(config)) {
         let rule: &ForceFullTransfer = config
             .rules_bag
             .borrow(type_name::with_defining_ids<ForceFullTransfer>());
-        rule.validate_rule(from.region, from.is_exit_investor);
+        rule.validate_rule(from.region, from.is_special_wallet, from.is_exit_investor);
     };
 
     record_transfer(config, registry, transfer, from, to);
+    true
+}
+
+/// Handle issuance to special wallet (only validate AuthorizedSecurities and BackDating). Returns true if handled.
+fun handle_issuance_to_special_wallet_exit<T>(
+    config: &ComplianceConfig<T>,
+    issuance: &IssuanceInfo,
+    to: &PartyInfo,
+): bool {
+    if (!to.is_special_wallet) return false;
+
+    if (has_rule<T, AuthorizedSecurities>(config)) {
+        let rule: &AuthorizedSecurities = config
+            .rules_bag
+            .borrow(type_name::with_defining_ids<AuthorizedSecurities>());
+        rule.validate_rule(issuance.total_supply, issuance.amount);
+    };
     true
 }
 
