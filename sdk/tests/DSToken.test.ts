@@ -165,9 +165,7 @@ describe('DSToken', () => {
             const totalIssued = parseInt(await dsToken.getTotalIssued())
 
             await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
-            await executeTxFunc(
-                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [])
-            )
+            await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], []))
 
             const roles = new Roles(tokenAddress)
             await executeTxFunc(roles.setIssuer(issuer.toSuiAddress(), sender))

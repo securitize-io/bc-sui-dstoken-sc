@@ -174,7 +174,10 @@ describe('DSTokenBulk', () => {
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe(
-                (BigInt(totalIssuedBefore) + tokensPerInvestor * BigInt(numberOfInvestors)).toString()
+                (
+                    BigInt(totalIssuedBefore) +
+                    tokensPerInvestor * BigInt(numberOfInvestors)
+                ).toString()
             )
 
             // Verify a few random wallets received their tokens
