@@ -107,9 +107,9 @@ export async function createDSToken(request: DeploymentRequest) {
 
 function handleError(e: any, tokenSymbol: string) {
     const abortError = e?.cause?.effects.abortError;
-    const error = abortError.error_code || -1
+    const error = abortError?.error_code || -1
 
-    let message = "A token deployment error occurred"
+    let message = `Token ${tokenSymbol} failed to deploy with error: ${e}`
 
     if (
         abortError?.module_id.endsWith("coin_registry") &&

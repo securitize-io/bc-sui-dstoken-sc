@@ -22,7 +22,7 @@ export class DSTokenBulk extends Bulk {
 
     private getIssuePTBs() {
         return (tokenIssue: TokenIssue, ptb: Transaction) => {
-            this.dsToken.issuePTB(tokenIssue.to, BigInt(tokenIssue.value), [], [], ptb);
+            this.dsToken.issuePTB(tokenIssue.to, tokenIssue.value, [], [], ptb);
         };
     }
 
@@ -36,7 +36,7 @@ export class DSTokenBulk extends Bulk {
 
     private getBurnTBs() {
         return (tokenIssue: TokenIssue, ptb: Transaction) => {
-            this.dsToken.burnPTB(tokenIssue.to, BigInt(tokenIssue.value), "", ptb);
+            this.dsToken.burnPTB(tokenIssue.to, tokenIssue.value, "", ptb);
         };
     }
 }
