@@ -153,6 +153,7 @@ public fun issue_tokens<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
+    issuance_time_ms: u64,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -173,6 +174,7 @@ public fun issue_tokens<T>(
         version,
         values_locked,
         release_times,
+        issuance_time_ms,
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
@@ -203,6 +205,7 @@ public fun issue_tokens_no_vault<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
+    issuance_time_ms: u64,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -222,6 +225,7 @@ public fun issue_tokens_no_vault<T>(
         version,
         values_locked,
         release_times,
+        issuance_time_ms,
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
@@ -245,18 +249,20 @@ fun issue_tokens_internal<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
+    issuance_time_ms: u64,
     clock: &Clock,
 ) {
     assert!(value > 0, EValueZero);
     assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
-    let timestamp_ms = clock.timestamp_ms();
+    let current_time_ms = clock.timestamp_ms();
     compliance_service::validate_issue(
         compliance_config,
         investors,
         to,
         value,
         total_supply,
-        timestamp_ms,
+        issuance_time_ms,
+        current_time_ms,
         version,
     );
     if (investors.is_wallet(to)) {
