@@ -4,9 +4,14 @@
 /// (total, accredited, non-accredited, by region, etc.)
 module securitize::investor_limits;
 
-use securitize::{version::Version};
-use securitize::registry_service::InvestorInfo;
+use securitize::{
+    abilities::ManageRules,
+    registry_service::InvestorInfo,
+    trust_service::Auth,
+    version::Version
+};
 use std::string::String;
+use sui::event;
 
 // ==== Error Codes ====
 
@@ -18,12 +23,30 @@ const EMaxJPInvestorsExceeded: u64 = 4;
 const EMaxEURetailExceeded: u64 = 5;
 const EBelowMinimumInvestors: u64 = 6;
 
-// ==== TEMP Compliance Region Constants ====
+// ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
+
+// ==== Events ====
+
+public struct DSComplianceInvestorLimitsRuleCreated<phantom T> has copy, drop {
+    total_investors_limit: u64,
+    minimum_total_investors: u64,
+    us_investors_limit: u64,
+    us_accredited_limit: u64,
+    non_accredited_limit: u64,
+    jp_investors_limit: u64,
+    eu_retail_limit: u64,
+    max_us_percentage: u64,
+}
+
+public struct DSComplianceInvestorLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -50,7 +73,8 @@ public struct InvestorLimits has drop, store {
 // ==================== Initialization ====================
 
 /// Create a new InvestorLimits rule
-public fun new(
+public fun new<T>(
+    auth: &Auth<T>,
     total_investors_limit: u64,
     minimum_total_investors: u64,
     us_investors_limit: u64,
@@ -60,8 +84,20 @@ public fun new(
     eu_retail_limit: u64,
     max_us_percentage: u64,
     version: &Version,
+    ctx: &TxContext,
 ): InvestorLimits {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleCreated<T> {
+        total_investors_limit,
+        minimum_total_investors,
+        us_investors_limit,
+        us_accredited_limit,
+        non_accredited_limit,
+        jp_investors_limit,
+        eu_retail_limit,
+        max_us_percentage,
+    });
     InvestorLimits {
         total_investors_limit,
         minimum_total_investors,
@@ -77,50 +113,146 @@ public fun new(
 // ==================== Rule Management ====================
 
 /// Set total investor limit
-public fun set_total_limit(rule: &mut InvestorLimits, limit: u64, version: &Version) {
+public fun set_total_limit<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    limit: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"total_investors_limit".to_string(),
+        old_value: rule.total_investors_limit,
+        new_value: limit,
+    });
     rule.total_investors_limit = limit;
 }
 
 /// Set minimum total investors
-public fun set_minimum_total_investors(rule: &mut InvestorLimits, minimum: u64, version: &Version) {
+public fun set_minimum_total_investors<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    minimum: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"minimum_total_investors".to_string(),
+        old_value: rule.minimum_total_investors,
+        new_value: minimum,
+    });
     rule.minimum_total_investors = minimum;
 }
 
 /// Set US investor limit
-public fun set_us_limit(rule: &mut InvestorLimits, limit: u64, version: &Version) {
+public fun set_us_limit<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    limit: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"us_investors_limit".to_string(),
+        old_value: rule.us_investors_limit,
+        new_value: limit,
+    });
     rule.us_investors_limit = limit;
 }
 
 /// Set US accredited limit
-public fun set_us_accredited_limit(rule: &mut InvestorLimits, limit: u64, version: &Version) {
+public fun set_us_accredited_limit<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    limit: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"us_accredited_limit".to_string(),
+        old_value: rule.us_accredited_limit,
+        new_value: limit,
+    });
     rule.us_accredited_limit = limit;
 }
 
 /// Set non-accredited limit
-public fun set_non_accredited_limit(rule: &mut InvestorLimits, limit: u64, version: &Version) {
+public fun set_non_accredited_limit<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    limit: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"non_accredited_limit".to_string(),
+        old_value: rule.non_accredited_limit,
+        new_value: limit,
+    });
     rule.non_accredited_limit = limit;
 }
 
 /// Set JP investor limit
-public fun set_jp_limit(rule: &mut InvestorLimits, limit: u64, version: &Version) {
+public fun set_jp_limit<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    limit: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"jp_investors_limit".to_string(),
+        old_value: rule.jp_investors_limit,
+        new_value: limit,
+    });
     rule.jp_investors_limit = limit;
 }
 
 /// Set EU retail limit
-public fun set_eu_retail_limit(rule: &mut InvestorLimits, limit: u64, version: &Version) {
+public fun set_eu_retail_limit<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    limit: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"eu_retail_limit".to_string(),
+        old_value: rule.eu_retail_limit,
+        new_value: limit,
+    });
     rule.eu_retail_limit = limit;
 }
 
 /// Set max US percentage
-public fun set_max_us_percentage(rule: &mut InvestorLimits, percentage: u64, version: &Version) {
+public fun set_max_us_percentage<T>(
+    auth: &Auth<T>,
+    rule: &mut InvestorLimits,
+    percentage: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
+        field: b"max_us_percentage".to_string(),
+        old_value: rule.max_us_percentage,
+        new_value: percentage,
+    });
     rule.max_us_percentage = percentage;
 }
 
@@ -139,7 +271,6 @@ public fun validate_investor_limits_for_transfer<T>(
     to_is_new_investor: bool,
     equal_country: bool,
 ) {
-
     let total_investors = registry.get_total_investors_count();
     limits_rule.validate_transfer_total_investors(
         total_investors,
@@ -316,18 +447,12 @@ public fun validate_transfer_us_investors(
     to_is_new_us_investor: bool,
     equal_country: bool,
 ) {
-    if (rule.us_investors_limit == 0) return;
+    let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
+
+    if (limit == 0) return; 
 
     if (to_is_new_us_investor && (!equal_country || !from_is_exit_investor)) {
-        assert!(current_us_count < rule.us_investors_limit, EMaxUSInvestorsExceeded);
-
-        // Check percentage limit
-        if (rule.max_us_percentage > 0 && total_count > 0) {
-            assert!(
-                current_us_count * 100 < total_count * rule.max_us_percentage,
-                EMaxUSInvestorsExceeded,
-            );
-        };
+        assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
     }
 }
 
@@ -337,20 +462,16 @@ public fun validate_issuance_us_investors(
     current_us_count: u64,
     total_count: u64,
     is_new_us_investor: bool,
-) { if (rule.us_investors_limit == 0) return; if (is_new_us_investor) {
-        // Check absolute limit
-        if (rule.us_investors_limit > 0) {
-            assert!(current_us_count < rule.us_investors_limit, EMaxUSInvestorsExceeded);
-        };
+) { 
+    let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
 
-        // Check percentage limit
-        if (rule.max_us_percentage > 0 && total_count > 0) {
-            assert!(
-                current_us_count * 100 < total_count * rule.max_us_percentage,
-                EMaxUSInvestorsExceeded,
-            );
-        };
-    } }
+    if (limit == 0) return; 
+    
+    if (is_new_us_investor) {
+        // Check limit
+        assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
+    } 
+}
 
 /// Validate US accredited investor count
 public fun validate_transfer_us_accredited(
@@ -479,6 +600,29 @@ public fun validate_transfer_minimum_total_investors(
     if (from_is_exit_investor && !to_is_new_investor) {
         assert!(current_count > rule.minimum_total_investors, EBelowMinimumInvestors);
     };
+}
+
+/// Returns the effective US investor limit.
+/// - If both absolute and percentage limits are set, returns their minimum.
+/// - If only one is set, returns that one.
+/// - If both are zero, returns 0 (unlimited).
+/// Percentage limit uses floor(total * percentage / 100)
+public fun effective_us_limit(
+    absolute_limit: u64,
+    max_percentage: u64,
+    total: u64,
+): u64 {
+    let percentage_limit = if (max_percentage == 0) 0 else (((total as u128) * (max_percentage as u128)) / 100) as u64;
+
+    if (absolute_limit == 0) {
+        percentage_limit
+    } else if (percentage_limit == 0) {
+        absolute_limit
+    } else if (absolute_limit < percentage_limit) {
+        absolute_limit
+    } else {
+        percentage_limit
+    }
 }
 
 // ==================== View Functions ====================

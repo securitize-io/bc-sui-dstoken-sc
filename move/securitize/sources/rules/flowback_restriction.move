@@ -4,19 +4,29 @@
 /// during a specified Regulation S distribution period (flowback restriction).
 module securitize::flowback_restriction;
 
-use sui::clock::Clock;
-use securitize::version::Version;
+use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
+use std::string::String;
+use sui::{clock::Clock, event};
 
-// ==== TEMP Compliance Region Constants ====
+// ==== Compliance Region Constants ====
 
 const US: u64 = 1;
-const EU: u64 = 2;
-const FORBIDDEN: u64 = 4;
-const JP: u64 = 8;
 
 // ==== Error Codes ====
 
 const EFlowbackRestricted: u64 = 0;
+
+// ==== Events ====
+
+public struct DSComplianceFlowbackRestrictionRuleCreated<phantom T> has copy, drop {
+    block_flowback_end_time_ms: u64,
+}
+
+public struct DSComplianceFlowbackRestrictionRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -29,8 +39,17 @@ public struct FlowbackRestriction has drop, store {
 // ==================== Initialization ====================
 
 /// Create a new FlowbackRestriction rule with an end time
-public fun new(block_flowback_end_time_ms: u64, version: &Version): FlowbackRestriction {
+public fun new<T>(
+    auth: &Auth<T>,
+    block_flowback_end_time_ms: u64,
+    version: &Version,
+    ctx: &TxContext,
+): FlowbackRestriction {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> {
+        block_flowback_end_time_ms,
+    });
     FlowbackRestriction {
         block_flowback_end_time_ms,
     }
@@ -39,8 +58,20 @@ public fun new(block_flowback_end_time_ms: u64, version: &Version): FlowbackRest
 // ==================== Rule Management ====================
 
 /// Set flowback end time
-public fun set_flowback_end_time(rule: &mut FlowbackRestriction, end_time: u64, version: &Version) {
+public fun set_flowback_end_time<T>(
+    auth: &Auth<T>,
+    rule: &mut FlowbackRestriction,
+    end_time: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
+        field: b"block_flowback_end_time_ms".to_string(),
+        old_value: rule.block_flowback_end_time_ms,
+        new_value: end_time,
+    });
     rule.block_flowback_end_time_ms = end_time;
 }
 
@@ -54,7 +85,7 @@ public fun validate_rule(
     rule: &FlowbackRestriction,
     from_region: u64,
     to_region: u64,
-    from_is_platform_wallet: bool,
+    from_is_special_wallet: bool,
     timestamp_ms: u64,
 ) {
     let end = rule.block_flowback_end_time_ms;
@@ -63,7 +94,7 @@ public fun validate_rule(
     let restriction_active = (end == 0) || (timestamp_ms < end);
 
     assert!(
-        !(is_non_us_to_us && !from_is_platform_wallet && restriction_active),
+        !(is_non_us_to_us && !from_is_special_wallet && restriction_active),
         EFlowbackRestricted,
     );
 }

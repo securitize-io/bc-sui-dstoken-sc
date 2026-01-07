@@ -8,16 +8,40 @@
 /// (transferable) tokens based on issuance timestamps tracked in InvestorInfo.
 module securitize::lockup_restriction;
 
-use securitize::version::Version;
-use securitize::registry_service::Issuance;
+use securitize::{
+    abilities::ManageRules,
+    registry_service::Issuance,
+    trust_service::Auth,
+    version::Version
+};
+use std::string::String;
+use sui::event;
 
 // ==== Constants ====
 
 const US: u64 = 1;
 
+/// Maximum lock period: 200 years in milliseconds
+/// This prevents the edge case of overflow when adding lock_period to issuance timestamps
+const MAX_LOCK_PERIOD_MS: u64 = 6_307_200_000_000; // 200 years
+
 // ==== Error Codes ====
 
 const EUnderLockup: u64 = 0;
+const ELockPeriodTooLong: u64 = 1;
+
+// ==== Events ====
+
+public struct DSComplianceLockupRestrictionRuleCreated<phantom T> has copy, drop {
+    us_lock_period_ms: u64,
+    non_us_lock_period_ms: u64,
+}
+
+public struct DSComplianceLockupRestrictionRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
 
 // ==== Structs ====
 
@@ -32,12 +56,21 @@ public struct LockupRestriction has drop, store {
 // ==================== Initialization ====================
 
 /// Create a new LockupRestriction rule with configurable lock periods
-public fun new(
+public fun new<T>(
+    auth: &Auth<T>,
     us_lock_period_ms: u64,
     non_us_lock_period_ms: u64,
     version: &Version,
+    ctx: &TxContext,
 ): LockupRestriction {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    event::emit(DSComplianceLockupRestrictionRuleCreated<T> {
+        us_lock_period_ms,
+        non_us_lock_period_ms,
+    });
     LockupRestriction {
         us_lock_period_ms,
         non_us_lock_period_ms,
@@ -47,14 +80,40 @@ public fun new(
 // ==================== Rule Management ====================
 
 /// Set US lock period (in milliseconds)
-public fun set_us_lock_period(rule: &mut LockupRestriction, period_ms: u64, version: &Version) {
+public fun set_us_lock_period<T>(
+    auth: &Auth<T>,
+    rule: &mut LockupRestriction,
+    period_ms: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
+        field: b"us_lock_period_ms".to_string(),
+        old_value: rule.us_lock_period_ms,
+        new_value: period_ms,
+    });
     rule.us_lock_period_ms = period_ms;
 }
 
 /// Set non-US lock period (in milliseconds)
-public fun set_non_us_lock_period(rule: &mut LockupRestriction, period_ms: u64, version: &Version) {
+public fun set_non_us_lock_period<T>(
+    auth: &Auth<T>,
+    rule: &mut LockupRestriction,
+    period_ms: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
     version.check_is_valid();
+    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
+        field: b"non_us_lock_period_ms".to_string(),
+        old_value: rule.non_us_lock_period_ms,
+        new_value: period_ms,
+    });
     rule.non_us_lock_period_ms = period_ms;
 }
 
@@ -66,12 +125,12 @@ public fun validate_rule(
     investor_issuances: &vector<Issuance>,
     amount: u64,
     from_region: u64,
-    from_is_platform_wallet: bool,
+    from_is_special_wallet: bool,
     current_transferable_balance: u64,
     timestamp_ms: u64,
 ) {
-    // Platform wallets are exempt from lockup restrictions
-    if (from_is_platform_wallet) return;
+    // Special wallets as senders are exempt from lockup restrictions
+    if (from_is_special_wallet) return;
 
     let transferable = compute_transferable_tokens(
         rule,
@@ -110,8 +169,8 @@ public fun compute_transferable_tokens(
 
     investor_issuances.do_ref!(|issuance| {
         // Check if issuance is still under lockup
-        let locked =
-            // Global initial lock window
+        let locked // Global initial lock window
+         =
             timestamp_ms < lock_period
             // Issuance-relative lock window
             || issuance.issuance_time_ms() + lock_period > timestamp_ms;

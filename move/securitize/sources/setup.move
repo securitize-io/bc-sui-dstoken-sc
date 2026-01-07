@@ -1,21 +1,16 @@
 module securitize::setup;
 
-use sui::{
-    coin::TreasuryCap, 
-    coin_registry::CurrencyInitializer, 
-    event, 
-    vec_set::{Self, VecSet},
-};
-use securitize::{
-    version::Version, 
-    ds_token::{Self, Treasury}, 
-    trust_service::{Self, Auth}, 
-    registry_service::{Self, InvestorInfo},
-    compliance_service::{Self, ComplianceConfig},
-    wallet_manager,
-};
 use rwa::registry::RwaRegistry;
-use securitize::lock_manager;
+use securitize::{
+    compliance_service::{Self, ComplianceConfig},
+    ds_token::{Self, Treasury},
+    lock_manager,
+    registry_service::{Self, InvestorInfo},
+    trust_service::{Self, Auth},
+    version::Version,
+    wallet_manager
+};
+use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
 
 // ==== Error Codes ====
 
@@ -85,7 +80,15 @@ public fun setup<T: key>(
     assert!(setup_registry.deployers.contains(&ctx.sender()), ENotDeployer);
     let metadata_cap = currency.finalize(ctx);
     let mut auth = trust_service::new<T>(setup_registry.uid_mut(), ctx);
-    let treasury = ds_token::new<T>(setup_registry.uid_mut(), &mut auth, rwa_registry, treasury_cap, metadata_cap, version, ctx);
+    let treasury = ds_token::new<T>(
+        setup_registry.uid_mut(),
+        &mut auth,
+        rwa_registry,
+        treasury_cap,
+        metadata_cap,
+        version,
+        ctx,
+    );
     let investor_info = registry_service::new<T>(setup_registry.uid_mut(), &mut auth, version, ctx);
     let compliance = compliance_service::new<T>(setup_registry.uid_mut(), &mut auth, version, ctx);
     wallet_manager::new<T>(&mut auth, version, ctx);
@@ -93,7 +96,7 @@ public fun setup<T: key>(
     (auth, treasury, investor_info, compliance, SetupFinalize {})
 }
 
-/// Finalizes the setup process by sharing the Auth, Treasury, InvestorInfo 
+/// Finalizes the setup process by sharing the Auth, Treasury, InvestorInfo
 /// and ComplianceConfig objects, and by resolving the SetupFinalize hot potato.
 public fun finalize_setup<T: key>(
     finalize: SetupFinalize,
@@ -159,12 +162,10 @@ public fun switch_admin(
     version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.admin = new_admin;
-    event::emit(
-        AdminSwitched {
-            old_admin: ctx.sender(),
-            new_admin
-        }
-    );
+    event::emit(AdminSwitched {
+        old_admin: ctx.sender(),
+        new_admin,
+    });
 }
 
 // ==== View Functions ====

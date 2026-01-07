@@ -7,7 +7,19 @@
 module securitize::registry_service;
 
 use rwa::{registry::RwaRegistry, vault};
-use securitize::{trust_service::{Auth, Master, Issuer, Exchange}, version::Version};
+use securitize::{
+    abilities::{
+        RegisterInvestor,
+        RemoveInvestor,
+        UpdateInvestor,
+        SetCountry,
+        SetAttribute,
+        AddWallet,
+        RemoveWallet
+    },
+    trust_service::{Auth, Master, Issuer, Exchange},
+    version::Version
+};
 use std::string::{Self, String};
 use sui::{derived_object, event, table::{Self, Table}};
 
@@ -148,29 +160,6 @@ public struct Attribute has copy, drop, store {
     expiration: u64,
 }
 
-// ==== Registry Service Abilities ====
-
-/// Ability to register new investors
-public struct RegisterInvestor() has drop;
-
-/// Ability to remove investors from the registry
-public struct RemoveInvestor() has drop;
-
-/// Ability to update investor information
-public struct UpdateInvestor() has drop;
-
-/// Ability to set investor country
-public struct SetCountry() has drop;
-
-/// Ability to set investor attributes
-public struct SetAttribute() has drop;
-
-/// Ability to add wallets to investors
-public struct AddWallet() has drop;
-
-/// Ability to remove wallets from investors
-public struct RemoveWallet() has drop;
-
 // ==== Events ====
 
 /// Emitted when a new investor is registered
@@ -301,6 +290,17 @@ public fun register_investor<T: key>(
         total_balance: 0,
     };
     investor_info.investors.add(investor_id, investor);
+    investor_info.investor_issuances.add(investor_id, vector[]);
+    investor_info
+        .investor_locks
+        .add(
+            investor_id,
+            InvestorLockState {
+                fully_locked: false,
+                liquidate_only: false,
+                locks: vector::empty(),
+            },
+        );
     event::emit(DSRegistryServiceInvestorAdded<T> { investor_id, sender: ctx.sender() });
 }
 
@@ -332,6 +332,9 @@ public fun remove_investor<T: key>(
         total_balance: _,
     } = investor_info.investors.remove(investor_id);
     attributes.drop();
+    // Clean up issuances and locks
+    let _issuances: vector<Issuance> = investor_info.investor_issuances.remove(investor_id);
+    let _locks: InvestorLockState = investor_info.investor_locks.remove(investor_id);
     event::emit(DSRegistryServiceInvestorRemoved<T> { investor_id, sender: ctx.sender() });
 }
 
@@ -699,11 +702,6 @@ public fun get_eu_retail_investor_count<T>(
     option::none()
 }
 
-/// Check if investor has any issuances
-public fun has_investor_issuances<T>(investor_info: &InvestorInfo<T>, investor_id: String): bool {
-    investor_info.investor_issuances.contains(investor_id)
-}
-
 /// Creates a new Issuance record
 public fun new_issuance(amount: u64, issuance_time_ms: u64): Issuance {
     Issuance { amount, issuance_time_ms }
@@ -826,15 +824,6 @@ public(package) fun get_investor_issuances_mut<T>(
     investor_info.investor_issuances.borrow_mut(investor_id)
 }
 
-/// Returns a mutable reference to the investor issuances for a given investor ID.
-public(package) fun add_investor_issuances<T>(
-    investor_info: &mut InvestorInfo<T>,
-    investor_id: String,
-    issuances: vector<Issuance>,
-) {
-    investor_info.investor_issuances.add(investor_id, issuances)
-}
-
 /// Returns a reference to the investor lock state for a given investor ID.
 public(package) fun get_investor_locks<T>(
     investor_info: &InvestorInfo<T>,
@@ -849,27 +838,6 @@ public(package) fun get_investor_locks_mut<T>(
     investor_id: String,
 ): &mut InvestorLockState {
     investor_info.investor_locks.borrow_mut(investor_id)
-}
-
-/// Checks if an investor has a lock state entry
-public(package) fun has_investor_locks<T>(
-    investor_info: &InvestorInfo<T>,
-    investor_id: String,
-): bool {
-    investor_info.investor_locks.contains(investor_id)
-}
-
-/// Creates a new investor lock state and adds it to the registry
-public(package) fun create_investor_lock_state<T>(
-    investor_info: &mut InvestorInfo<T>,
-    investor_id: String,
-) {
-    let state = InvestorLockState {
-        fully_locked: false,
-        liquidate_only: false,
-        locks: vector::empty(),
-    };
-    investor_info.investor_locks.add(investor_id, state);
 }
 
 // ==== InvestorLockState Accessors ====
