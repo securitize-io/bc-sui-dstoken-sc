@@ -5,6 +5,7 @@ use securitize::{
     abilities::{RegisterRule, UnregisterRule, SetCountryCompliance, ManageRules},
     accredited_only::AccreditedOnly,
     authorized_securities::AuthorizedSecurities,
+    backdating_issuance::BackdatingIssuance,
     flowback_restriction::FlowbackRestriction,
     force_full_transfer::ForceFullTransfer,
     holding_limits::HoldingLimits,
@@ -147,7 +148,7 @@ public(package) fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
     request: &RwaTransferRequest<T>,
-    timestamp_ms: u64,
+    current_time_ms: u64,
     version: &Version,
 ) {
     version.check_is_valid();
@@ -169,7 +170,7 @@ public(package) fun validate_transfer<T>(
     let transfer = TransferInfo {
         amount,
         equal_country: &from_info.country == &to_info.country,
-        timestamp_ms,
+        timestamp_ms: current_time_ms,
     };
 
     // === TO special wallet ===
@@ -184,7 +185,7 @@ public(package) fun validate_transfer<T>(
 
     // Validate sender lock constraints and get transferable balance
     from_info.transferable_balance =
-        assert_and_compute_transferable_balance(registry, &from_info, amount, timestamp_ms);
+        assert_and_compute_transferable_balance(registry, &from_info, amount, current_time_ms);
 
     // Validate recipient is not in liquidate-only mode
     assert_not_liquidate_only(registry, &to_info);
@@ -220,7 +221,8 @@ public(package) fun validate_issue<T>(
     to_address: address,
     amount: u64,
     total_supply: u64,
-    timestamp_ms: u64,
+    issuance_time_ms: u64,
+    current_time_ms: u64,
     version: &Version,
 ) {
     version.check_is_valid();
@@ -235,11 +237,14 @@ public(package) fun validate_issue<T>(
 
     assert!(to_info.region != FORBIDDEN, EDestinationRestricted);
 
+    // Resolve effective issuance timestamp based on backdating rule
+    let effective_time_ms = resolve_issuance_time(config, issuance_time_ms, current_time_ms);
+
     // Build issuance context
     let issuance = IssuanceInfo {
         amount,
         total_supply,
-        timestamp_ms,
+        timestamp_ms: effective_time_ms,
     };
 
     if (handle_issuance_to_special_wallet_exit(config, &issuance, &to_info)) return;
@@ -578,6 +583,26 @@ fun get_lock_period_ms<T>(config: &ComplianceConfig<T>, region: u64): u64 {
     } else {
         0
     }
+}
+
+/// Resolve the effective issuance timestamp.
+///
+/// Returns issuance_time_ms only if BackdatingIssuance rule exists AND allows backdating.
+/// Otherwise returns current_time_ms (safe default).
+fun resolve_issuance_time<T>(
+    config: &ComplianceConfig<T>,
+    issuance_time_ms: u64,
+    current_time_ms: u64,
+): u64 {
+    if (!has_rule<T, BackdatingIssuance>(config)) {
+        return current_time_ms
+    };
+
+    let rule: &BackdatingIssuance = config
+        .rules_bag
+        .borrow(type_name::with_defining_ids<BackdatingIssuance>());
+
+    if (rule.is_backdating_allowed()) issuance_time_ms else current_time_ms
 }
 
 // ==================== Helper Functions ====================
