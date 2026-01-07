@@ -1,12 +1,13 @@
 module securitize::lock_manager;
 
 use securitize::{
-    registry_service::{InvestorInfo},
+    abilities::{LockInvestor, UnlockInvestor, SetLiquidateOnly, AddLockRecord, RemoveLockRecord},
+    registry_service::InvestorInfo,
     trust_service::{Auth, Master, TransferAgent},
     version::Version
 };
 use std::string::String;
-use sui::event;
+use sui::{clock::{Self, Clock}, event};
 
 const MAX_LOCKS: u64 = 30;
 
@@ -19,20 +20,20 @@ const EInvalidTime: u64 = 6;
 
 // ==== Events ====
 
-public struct InvestorFullyLockedEvent has copy, drop {
+public struct DSLockManagerInvestorFullyLocked<phantom T> has copy, drop {
     investor: String,
 }
 
-public struct InvestorFullyUnlockedEvent has copy, drop {
+public struct DSLockManagerInvestorFullyUnlocked<phantom T> has copy, drop {
     investor: String,
 }
 
-public struct InvestorLiquidateOnlyEvent has copy, drop {
+public struct DSLockManagerLiquidateOnlySet<phantom T> has copy, drop {
     investor: String,
     enabled: bool,
 }
 
-public struct LockAddedEvent has copy, drop {
+public struct DSLockManagerLockAdded<phantom T> has copy, drop {
     investor: String,
     index: u64,
     value: u64,
@@ -41,29 +42,13 @@ public struct LockAddedEvent has copy, drop {
     release_time_ms: u64,
 }
 
-public struct LockRemovedEvent has copy, drop {
+public struct DSLockManagerLockRemoved<phantom T> has copy, drop {
     investor: String,
     index: u64,
 }
 
-// ==== Lock Manager Abilities ====
-
-public struct LockInvestor has drop {}
-
-public struct UnlockInvestor has drop {}
-
-public struct SetLiquidateOnly has drop {}
-
-public struct AddLockRecord has drop {}
-
-public struct RemoveLockRecord has drop {}
-
 /// Called by the setup module during token deployment.
-public(package) fun new<T>(
-    auth: &mut Auth<T>,
-    version: &Version,
-    ctx: &TxContext,
-) {
+public(package) fun new<T>(auth: &mut Auth<T>, version: &Version, ctx: &TxContext) {
     // Register abilities for Master role
     auth.add_role_ability<T, Master, LockInvestor>(version, ctx);
     auth.add_role_ability<T, Master, UnlockInvestor>(version, ctx);
@@ -90,11 +75,10 @@ public fun lock_investor<T>(
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, LockInvestor>(ctx.sender());
-    ensure_lock_state_exists(registry, investor);
     let lock_state = registry.get_investor_locks_mut(investor);
     assert!(!lock_state.is_fully_locked(), EAlreadyLocked);
     lock_state.set_fully_locked(true);
-    event::emit(InvestorFullyLockedEvent { investor });
+    event::emit(DSLockManagerInvestorFullyLocked<T> { investor });
 }
 
 public fun unlock_investor<T>(
@@ -106,11 +90,10 @@ public fun unlock_investor<T>(
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, UnlockInvestor>(ctx.sender());
-    ensure_lock_state_exists(registry, investor);
     let lock_state = registry.get_investor_locks_mut(investor);
     assert!(lock_state.is_fully_locked(), ENotLocked);
     lock_state.set_fully_locked(false);
-    event::emit(InvestorFullyUnlockedEvent { investor });
+    event::emit(DSLockManagerInvestorFullyUnlocked<T> { investor });
 }
 
 public fun set_liquidate_only<T>(
@@ -123,10 +106,9 @@ public fun set_liquidate_only<T>(
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetLiquidateOnly>(ctx.sender());
-    ensure_lock_state_exists(registry, investor);
     let lock_state = registry.get_investor_locks_mut(investor);
     lock_state.set_liquidate_only(enabled);
-    event::emit(InvestorLiquidateOnlyEvent { investor, enabled });
+    event::emit(DSLockManagerLiquidateOnlySet<T> { investor, enabled });
 }
 
 public fun add_lock<T>(
@@ -138,21 +120,21 @@ public fun add_lock<T>(
     release_time_ms: u64,
     auth: &Auth<T>,
     version: &Version,
+    clock: &Clock,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, AddLockRecord>(ctx.sender());
     assert!(value > 0, EInvalidValue);
-    assert!(release_time_ms > 0, EInvalidTime);
+    assert!(release_time_ms == 0 || release_time_ms > clock.timestamp_ms(), EInvalidTime);
 
-    ensure_lock_state_exists(registry, investor);
     let lock_state = registry.get_investor_locks_mut(investor);
     let idx = lock_state.locks_length();
     assert!(idx < MAX_LOCKS, ETooManyLocks);
 
     lock_state.add_lock(value, reason_code, reason_string, release_time_ms);
 
-    event::emit(LockAddedEvent {
+    event::emit(DSLockManagerLockAdded<T> {
         investor,
         index: idx,
         value,
@@ -172,14 +154,13 @@ public fun remove_lock<T>(
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, RemoveLockRecord>(ctx.sender());
-    ensure_lock_state_exists(registry, investor);
     let lock_state = registry.get_investor_locks_mut(investor);
     let len = lock_state.locks_length();
     assert!(index < len, EIndexOutOfRange);
 
     lock_state.remove_lock(index);
 
-    event::emit(LockRemovedEvent { investor, index });
+    event::emit(DSLockManagerLockRemoved<T> { investor, index });
 }
 
 public fun compute_transferable<T>(
@@ -188,11 +169,10 @@ public fun compute_transferable<T>(
     balance: u64,
     timestamp_ms: u64,
 ): u64 {
-    // Fully locked → transferable = 0
-    if (is_investor_locked(registry, investor)) return 0;
-
-    if (!registry.has_investor_locks(investor)) return balance;
     let lock_state = registry.get_investor_locks(investor);
+
+    // Fully locked → transferable = 0
+    if (lock_state.is_fully_locked()) return 0;
 
     let locked_sum = lock_state.compute_locked_sum(timestamp_ms);
 
@@ -200,30 +180,19 @@ public fun compute_transferable<T>(
     if (locked_sum >= balance) 0 else balance - locked_sum
 }
 
-// ==== Private Functions ====
-
-fun ensure_lock_state_exists<T>(registry: &mut InvestorInfo<T>, investor: String) {
-    if (!registry.has_investor_locks(investor)) {
-        registry.create_investor_lock_state(investor);
-    };
-}
-
 // ==== View Functions ====
 
 public fun is_liquidate_only<T>(registry: &InvestorInfo<T>, investor: String): bool {
-    if (!registry.has_investor_locks(investor)) return false;
     let lock_state = registry.get_investor_locks(investor);
     lock_state.is_liquidate_only()
 }
 
 public fun is_investor_locked<T>(registry: &InvestorInfo<T>, investor: String): bool {
-    if (!registry.has_investor_locks(investor)) return false;
     let lock_state = registry.get_investor_locks(investor);
     lock_state.is_fully_locked()
 }
 
 public fun lock_count<T>(registry: &InvestorInfo<T>, investor: String): u64 {
-    if (!registry.has_investor_locks(investor)) return 0;
     let lock_state = registry.get_investor_locks(investor);
     lock_state.locks_length()
 }

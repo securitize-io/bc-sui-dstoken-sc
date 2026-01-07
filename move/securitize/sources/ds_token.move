@@ -1,23 +1,22 @@
 module securitize::ds_token;
 
-use std::string::{String};
+use rwa::{registry::RwaRegistry, rule::{Self, RwaRule}, vault::{RwaVault, RwaTransferRequest}};
 use securitize::{
-    version::Version, 
-    trust_service::{Auth, Master, Issuer, TransferAgent},
-    registry_service::InvestorInfo,
+    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser},
     compliance_service::{Self, ComplianceConfig},
+    registry_service::InvestorInfo,
+    trust_service::{Auth, Master, Issuer, TransferAgent},
+    version::Version
 };
+use std::string::String;
 use sui::{
-    coin::TreasuryCap, 
+    clock::Clock,
+    coin::TreasuryCap,
     coin_registry::{Currency, MetadataCap},
-    clock::Clock, 
-    dynamic_object_field as dof, 
-    event, 
-    derived_object
+    derived_object,
+    dynamic_object_field as dof,
+    event
 };
-use rwa::vault::{RwaVault, RwaTransferRequest};
-use rwa::rule::{Self, RwaRule};
-use rwa::registry::RwaRegistry;
 
 // ==== Error Codes ====
 
@@ -58,18 +57,6 @@ public struct Treasury<phantom T> has key {
 
 /// Key used to store the TreasuryCap<T> in the RwaRule<T>.
 public struct TreasuryCapKey() has copy, drop, store;
-
-// ==== Ds Token Abilities ====
-
-public struct IssueTokens() has drop;
-
-public struct BurnTokens() has drop;
-
-public struct SeizeTokens() has drop;
-
-public struct MetadataUpdate() has drop;
-
-public struct Pauser() has drop;
 
 // ==== Events ====
 
@@ -116,18 +103,18 @@ public(package) fun new<T: key>(
     ctx: &TxContext,
 ): Treasury<T> {
     // Assign abilities to roles
-    auth.add_role_ability<T, Master, IssueTokens>(version,ctx);
-    auth.add_role_ability<T, Master, BurnTokens>(version,ctx);
-    auth.add_role_ability<T, Master, SeizeTokens>(version,ctx);
-    auth.add_role_ability<T, Master, MetadataUpdate>(version,ctx);
-    auth.add_role_ability<T, Master, Pauser>(version,ctx);
+    auth.add_role_ability<T, Master, IssueTokens>(version, ctx);
+    auth.add_role_ability<T, Master, BurnTokens>(version, ctx);
+    auth.add_role_ability<T, Master, SeizeTokens>(version, ctx);
+    auth.add_role_ability<T, Master, MetadataUpdate>(version, ctx);
+    auth.add_role_ability<T, Master, Pauser>(version, ctx);
 
-    auth.add_role_ability<T, Issuer, IssueTokens>(version,ctx);
-    auth.add_role_ability<T, Issuer, BurnTokens>(version,ctx);
+    auth.add_role_ability<T, Issuer, IssueTokens>(version, ctx);
+    auth.add_role_ability<T, Issuer, BurnTokens>(version, ctx);
 
-    auth.add_role_ability<T, TransferAgent, BurnTokens>(version,ctx);
-    auth.add_role_ability<T, TransferAgent, SeizeTokens>(version,ctx);
-    auth.add_role_ability<T, TransferAgent, Pauser>(version,ctx);
+    auth.add_role_ability<T, TransferAgent, BurnTokens>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, SeizeTokens>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, Pauser>(version, ctx);
     // Initialize the Treasury
     let mut treasury = Treasury {
         id: derived_object::claim(uid, DsTokenKey<T>()),
@@ -166,6 +153,7 @@ public fun issue_tokens<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
+    issuance_time_ms: u64,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -186,6 +174,7 @@ public fun issue_tokens<T>(
         version,
         values_locked,
         release_times,
+        issuance_time_ms,
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
@@ -216,6 +205,7 @@ public fun issue_tokens_no_vault<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
+    issuance_time_ms: u64,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -235,6 +225,7 @@ public fun issue_tokens_no_vault<T>(
         version,
         values_locked,
         release_times,
+        issuance_time_ms,
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
@@ -258,18 +249,20 @@ fun issue_tokens_internal<T>(
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
+    issuance_time_ms: u64,
     clock: &Clock,
 ) {
     assert!(value > 0, EValueZero);
     assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
-    let timestamp_ms = clock.timestamp_ms();
+    let current_time_ms = clock.timestamp_ms();
     compliance_service::validate_issue(
         compliance_config,
         investors,
         to,
         value,
         total_supply,
-        timestamp_ms,
+        issuance_time_ms,
+        current_time_ms,
         version,
     );
     if (investors.is_wallet(to)) {
@@ -339,20 +332,16 @@ public fun burn<T>(
         let total_balance = investors.investor_wallet_balance_total(id);
         investors.update_investor_total_balance(id, total_balance - value);
     };
-    event::emit(
-        Burn<T> {
-            burner: from_address,
-            value: value,
-            reason: reason,
-        }
-    );
-    event::emit(
-        Transfer<T> {
-            from: from_address,
-            to: @0x0,
-            value
-        }
-    );
+    event::emit(Burn<T> {
+        burner: from_address,
+        value: value,
+        reason: reason,
+    });
+    event::emit(Transfer<T> {
+        from: from_address,
+        to: @0x0,
+        value,
+    });
 }
 
 /// Seizes tokens from one vault and transfers them to another vault.
@@ -397,21 +386,17 @@ public fun seize<T>(
         let total_balance = investors.investor_wallet_balance_total(id);
         investors.update_investor_total_balance(id, total_balance - value);
     };
-    event::emit(
-        Seize<T> {
-            from: from_address,
-            to: to_address,
-            value,
-            reason: reason,
-        }
-    );
-    event::emit(
-        Transfer<T> {
-            from: from_address,
-            to: to_address,
-            value,
-        }
-    );
+    event::emit(Seize<T> {
+        from: from_address,
+        to: to_address,
+        value,
+        reason: reason,
+    });
+    event::emit(Transfer<T> {
+        from: from_address,
+        to: to_address,
+        value,
+    });
 }
 
 /// Processes a token transfer request between vaults.
@@ -426,7 +411,7 @@ public fun transfer<T>(
     rwa_rule: &RwaRule<T>,
     request: RwaTransferRequest<T>,
     version: &Version,
-    clock: &Clock
+    clock: &Clock,
 ) {
     version.check_is_valid();
     let from_address = request.request_from_address();
@@ -435,19 +420,25 @@ public fun transfer<T>(
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
     if (treasury.is_paused()) {
-        assert!(!(investors.is_wallet(from_address) && investors.is_wallet(to_address)), ETreasuryPaused);
+        assert!(
+            !(investors.is_wallet(from_address) && investors.is_wallet(to_address)),
+            ETreasuryPaused,
+        );
     };
     assert!(
-        !(investors.is_wallet(from_address) && 
+        !(
+            investors.is_wallet(from_address) && 
         investors.is_wallet(to_address) &&
-        treasury.is_paused()), ETreasuryPaused
+        treasury.is_paused(),
+        ),
+        ETreasuryPaused,
     );
     compliance_service::validate_transfer(
-        compliance_config, 
-        investors, 
-        &request, 
-        clock.timestamp_ms(), 
-        version
+        compliance_config,
+        investors,
+        &request,
+        clock.timestamp_ms(),
+        version,
     );
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
@@ -461,13 +452,11 @@ public fun transfer<T>(
     };
     // Resolve the request
     rule::resolve_transfer(rwa_rule, request, DsProtocol());
-    event::emit(
-        Transfer<T> {
-            from: from_address,
-            to: to_address,
-            value,
-        }
-    );
+    event::emit(Transfer<T> {
+        from: from_address,
+        to: to_address,
+        value,
+    });
 }
 
 /// Updates the token's metadata (name, description, and/or icon URL).
@@ -489,9 +478,9 @@ public fun set_metadata<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, MetadataUpdate>(ctx.sender()), ENotAuthorized);
     let metadata_cap = &treasury.metadata_cap;
-    name.do!(|n| {currency.set_name<T>(metadata_cap, n);});
-    description.do!(|d| {currency.set_description<T>(metadata_cap, d);});
-    icon_url.do!(|i| {currency.set_icon_url<T>(metadata_cap, i);});
+    name.do!(|n| { currency.set_name<T>(metadata_cap, n); });
+    description.do!(|d| { currency.set_description<T>(metadata_cap, d); });
+    icon_url.do!(|i| { currency.set_icon_url<T>(metadata_cap, i); });
 }
 
 /// Pauses the treasury, preventing token operations.
@@ -509,12 +498,10 @@ public fun pause<T>(
     assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(!treasury.is_paused(), ETreasuryAlreadyPaused);
     treasury.paused = true;
-    event::emit( 
-        Pause<T> {
-            pauser: ctx.sender(),
-            is_paused: true,
-        } 
-    );
+    event::emit(Pause<T> {
+        pauser: ctx.sender(),
+        is_paused: true,
+    });
 }
 
 /// Unpauses the treasury, allowing token operations to resume.
@@ -532,12 +519,10 @@ public fun unpause<T>(
     assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
-    event::emit( 
-        Pause<T> {
-            pauser: ctx.sender(),
-            is_paused: false,
-        } 
-    );
+    event::emit(Pause<T> {
+        pauser: ctx.sender(),
+        is_paused: false,
+    });
 }
 
 // ==== View Functions ====
