@@ -159,31 +159,23 @@ public fun issue_tokens<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, IssueTokens>(ctx.sender()), ENotAuthorized);
     assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
-    assert!(value > 0, EValueZero);
-    assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
-    let timestamp_ms = clock.timestamp_ms();
-    let total_supply = dof::borrow<TreasuryCapKey, TreasuryCap<T>>(
-        &treasury.id,
+    let treasury_cap = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
+        &mut treasury.id,
         TreasuryCapKey(),
-    ).total_supply();
-    compliance_service::validate_issue(
-        compliance_config,
+    );
+    let total_supply = treasury_cap.total_supply();
+    issue_tokens_internal(
         investors,
+        compliance_config,
         to_address,
         value,
         total_supply,
-        timestamp_ms,
         version,
+        values_locked,
+        release_times,
+        clock,
     );
-    let balance = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
-        &mut treasury.id,
-        TreasuryCapKey(),
-    ).mint_balance(value);
-    if (investors.is_wallet(to_address)) {
-        let id = investors.get_investor_id_by_wallet(to_address);
-        let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
-    };
+    let balance = treasury_cap.mint_balance(value);
     // Deposit to the investor's vault
     rule::deposit_to_vault(
         rwa_rule,
@@ -191,6 +183,87 @@ public fun issue_tokens<T>(
         balance,
         DsProtocol(),
     );
+}
+
+/// Issues new tokens and deposits them to the vault derived by the provided address.
+/// Meant to be used in combination with the investor registration when investors' vault is not yet created.
+/// Only authorized addresses with the IssueTokens ability can call this function.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
+public fun issue_tokens_no_vault<T>(
+    treasury: &mut Treasury<T>,
+    auth: &Auth<T>,
+    investors: &mut InvestorInfo<T>,
+    compliance_config: &mut ComplianceConfig<T>,
+    rwa_rule: &RwaRule<T>,
+    registry: &RwaRegistry,
+    to: address,
+    value: u64,
+    version: &Version,
+    values_locked: vector<u64>,
+    release_times: vector<u64>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, IssueTokens>(ctx.sender()), ENotAuthorized);
+    let treasury_cap = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
+        &mut treasury.id,
+        TreasuryCapKey(),
+    );
+    let total_supply = treasury_cap.total_supply();
+    issue_tokens_internal(
+        investors,
+        compliance_config,
+        to,
+        value,
+        total_supply,
+        version,
+        values_locked,
+        release_times,
+        clock,
+    );
+    let balance = treasury_cap.mint_balance(value);
+    // Deposit to the investor's vault
+    rule::deposit(
+        registry,
+        rwa_rule,
+        to,
+        balance,
+        DsProtocol(),
+        ctx,
+    );
+}
+
+fun issue_tokens_internal<T>(
+    investors: &mut InvestorInfo<T>,
+    compliance_config: &mut ComplianceConfig<T>,
+    to: address,
+    value: u64,
+    total_supply: u64,
+    version: &Version,
+    values_locked: vector<u64>,
+    release_times: vector<u64>,
+    clock: &Clock,
+) {
+    assert!(value > 0, EValueZero);
+    assert!(values_locked.length() == release_times.length(), EInvalidLengthOfParameters);
+    let timestamp_ms = clock.timestamp_ms();
+    compliance_service::validate_issue(
+        compliance_config,
+        investors,
+        to,
+        value,
+        total_supply,
+        timestamp_ms,
+        version,
+    );
+    if (investors.is_wallet(to)) {
+        let id = investors.get_investor_id_by_wallet(to);
+        let total_balance = investors.investor_wallet_balance_total(id);
+        investors.update_investor_total_balance(id, total_balance + value);
+    };
     let mut total_locked = 0;
     let mut i = 0;
     while (i < values_locked.length()) {
@@ -199,16 +272,20 @@ public fun issue_tokens<T>(
         i = i + 1;
     };
     assert!(total_locked <= value, EValueLockedLargerThanValue);
-    event::emit(Issue<T> {
-        to: to_address,
-        value,
-        value_locked: total_locked,
-    });
-    event::emit(Transfer<T> {
-        from: @0x0,
-        to: to_address,
-        value,
-    });
+    event::emit(
+        Issue<T> {
+            to,
+            value,
+            value_locked: total_locked,
+        }
+    );
+    event::emit(
+        Transfer<T> {
+            from: @0x0,
+            to,
+            value
+        }
+    );
 }
 
 /// Burns tokens from the specified vault, reducing the total supply.
