@@ -1,44 +1,29 @@
 export interface ComplianceRules {
-  /** Total limit of investors */
-  totalInvestorsLimit?: number;
-  /** Minimum tokens for US investors */
-  minUSTokens?: string;
-  /** Minimum tokens for EU investors */
-  minEUTokens?: string;
-  /** Limit of US investors */
-  usInvestorsLimit?: number;
-  /** Limit of EU retail investors */
-  euRetailInvestorsLimit?: number;
-  /** Limit of JP investors */
-  jpInvestorsLimit?: number;
-  /** Limit of US accredited investors */
-  usAccreditedInvestorsLimit?: number;
-  /** Limit of non-accredited investors */
-  nonAccreditedInvestorsLimit?: number;
-  /** Maximum percentage of US investors */
-  maxUSInvestorsPercentage?: number;
-  /** Block flowback end time (timestamp) */
-  blockFlowbackEndTime?: number;
-  /** Non-US lock period (in seconds) */
-  nonUSLockPeriod?: number;
-  /** Minimum total number of investors */
-  minimumTotalInvestors?: number;
-  /** Minimum holdings per investor */
-  minimumHoldingsPerInvestor?: string;
-  /** Maximum holdings per investor */
-  maximumHoldingsPerInvestor?: string;
-  /** US lock period (in seconds) */
-  usLockPeriod?: number;
-  /** Authorized securities */
-  authorizedSecurities?: string;
-  /** Force full transfer flag */
-  forceFullTransfer?: boolean;
-  /** Force accredited flag */
-  forceAccredited?: boolean;
-  /** Force accredited for US investors flag */
-  forceAccreditedUS?: boolean;
-  /** Worldwide force full transfer flag */
-  worldWideForceFullTransfer?: boolean;
-  /** Disallow back dating flag */
-  disallowBackDating?: boolean;
+  forceAccredited?: boolean; // Mapped to AccreditedOnly.force_accredited
+  forceAccreditedUS?: boolean; // Mapped to AccreditedOnly.force_us_accredited
+
+  blockFlowbackEndTime?: number; // Mapped to FlowbackRestriction.block_flowback_end_time_ms
+
+  worldWideForceFullTransfer?: boolean; // Mapped to ForceFullTransfer.force_full_transfer_worldwide
+  forceFullTransfer?: boolean; // Mapped to ForceFullTransfer.force_full_transfer_us
+
+  minUSTokens?: string; // Mapped to HoldingLimits.region_mins
+  minEUTokens?: string; // Mapped to HoldingLimits.region_mins
+  minimumHoldingsPerInvestor?: string; // Mapped to HoldingLimits.min_holdings_per_investor
+  maximumHoldingsPerInvestor?: string; // Mapped to HoldingLimits.max_holdings_per_investor
+
+  totalInvestorsLimit?: number; // Mapped to InvestorLimits.total_investors_limit
+  usInvestorsLimit?: number; // Mapped to InvestorLimits.us_investors_limit
+  euRetailInvestorsLimit?: number; // Mapped to InvestorLimits.eu_retail_limit
+  jpInvestorsLimit?: number; // Mapped to InvestorLimits.jp_investors_limit
+  usAccreditedInvestorsLimit?: number; // Mapped to InvestorLimits.us_accredited_limit
+  nonAccreditedInvestorsLimit?: number; // Mapped to InvestorLimits.non_accredited_limit
+  maxUSInvestorsPercentage?: number; // Mapped to InvestorLimits.max_us_percentage
+  minimumTotalInvestors?: number; // Mapped to InvestorLimits.minimum_total_investors
+
+  nonUSLockPeriod?: number; // TODO: Haris to add LOCK rules
+  usLockPeriod?: number; // TODO: Haris to add LOCK rules
+  disallowBackDating?: boolean; // TODO: Haris to add LOCK rules
+
+  authorizedSecurities?: string; // TODO: Haris to add the rule
 }

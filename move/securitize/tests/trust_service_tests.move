@@ -1,18 +1,20 @@
 #[test_only]
 module securitize::trust_service_tests;
 
-use securitize::trust_service::{
-    Self,
-    Auth,
-    Master,
-    Issuer,
-    SetAbilities,
-    SetIssuer,
-    SetTransferAgent,
-    SetServiceOwner
+use securitize::{
+    trust_service::{
+        Self,
+        Auth,
+        Master,
+        Issuer,
+        SetAbilities,
+        SetIssuer,
+        SetTransferAgent,
+        SetServiceOwner
+    },
+    version::{Self, Version}
 };
 use sui::test_scenario::{Self as ts, Scenario};
-use securitize::version::{Self, Version};
 
 const ADMIN: address = @0xCAFE;
 
@@ -182,7 +184,11 @@ fun test_add_and_remove_abilities() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
     let version = ts.take_shared<Version>();
-    trust_service::add_role_ability<TestWitness, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
+    trust_service::add_role_ability<TestWitness, Issuer, CustomAbility>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -196,7 +202,11 @@ fun test_add_and_remove_abilities() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TestWitness>>();
     let version = ts.take_shared<Version>();
-    trust_service::remove_role_ability<TestWitness, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
+    trust_service::remove_role_ability<TestWitness, Issuer, CustomAbility>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 

@@ -92,10 +92,11 @@ export class PublishSingleton {
             fs.unlinkSync(`${packagePath}/Move.lock`)
         }
         fs.rmSync(`${packagePath}/build`, { recursive: true, force: true })
-
-        let buildCommand = `sui move build --dump-bytecode-as-base64 --path ${packagePath}`
         const network = Config.vars.NETWORK
-        if (network === 'localnet' || network === 'devnet') {
+
+        const e = network === 'mainnet' ? 'mainnet' : 'testnet'
+        let buildCommand = `sui move build -e ${e} --dump-bytecode-as-base64 --path ${packagePath}`
+        if (network === 'localnet' || network === 'devnet' || network === 'testnet') { // TODO: remove testnet
             buildCommand += ' --with-unpublished-dependencies'
         }
 

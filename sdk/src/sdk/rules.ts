@@ -1,0 +1,107 @@
+import {SuiClient} from "../easysui";
+import {ComplianceRules, Regions} from "./domains";
+import {AccreditedOnly} from "./rules/AccreditedOnly";
+import {FlowbackRestriction} from "./rules/FlowbackRestriction";
+import {ForceFullTransfer} from "./rules/ForceFullTransfer";
+import {HoldingLimits} from "./rules/HoldingLimits";
+import {InvestorLimits} from "./rules/InvestorLimits";
+import {newPTBDetails, PTBDetails} from "./domains/PTBDetails";
+import {getTokenDetails} from "./token";
+
+export class Rules {
+    private readonly tokenAddress: string;
+
+    constructor(tokenAddress: string) {
+        this.tokenAddress = tokenAddress;
+    }
+
+    // ==== View Functions ====
+
+    async getRules(): Promise<ComplianceRules> {
+        const complianceConfig = getTokenDetails(this.tokenAddress).complianceConfig
+        const complianceInfo = await SuiClient.getObject(complianceConfig)
+        const rulesBagId = (complianceInfo.data?.content as any)?.fields.rules_bag.fields.id.id
+
+        const rulesBag = await SuiClient.client.getDynamicFields({
+            parentId: rulesBagId
+        })
+
+        let allFields: any = {}
+        for (const rule of rulesBag.data as any[]) {
+            const ruleData = await SuiClient.getObject(rule.objectId)
+            const fields = (ruleData.data?.content as any).fields.value.fields
+            allFields = {...allFields, ...fields}
+        }
+
+        const rules: ComplianceRules = {
+            forceAccredited: allFields.force_accredited,
+            forceAccreditedUS: allFields.force_us_accredited,
+            blockFlowbackEndTime: parseInt(allFields.block_flowback_end_time_ms),
+            worldWideForceFullTransfer: allFields.force_full_transfer_worldwide,
+            forceFullTransfer: allFields.force_full_transfer_us,
+            minimumHoldingsPerInvestor: allFields.min_holdings_per_investor,
+            maximumHoldingsPerInvestor: allFields.max_holdings_per_investor,
+            totalInvestorsLimit: allFields.total_investors_limit && parseInt(allFields.total_investors_limit),
+            usInvestorsLimit: allFields.us_investors_limit && parseInt(allFields.us_investors_limit),
+            euRetailInvestorsLimit: allFields.eu_retail_limit && parseInt(allFields.eu_retail_limit),
+            jpInvestorsLimit: allFields.jp_investors_limit && parseInt(allFields.jp_investors_limit),
+            usAccreditedInvestorsLimit: allFields.us_accredited_limit && parseInt(allFields.us_accredited_limit),
+            nonAccreditedInvestorsLimit: allFields.non_accredited_limit && parseInt(allFields.non_accredited_limit),
+            maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage)
+        }
+
+        const regionMinTokens = allFields?.region_min_tokens?.fields?.contents?.map((c: any) => c.fields)
+        if (regionMinTokens) {
+            const us = regionMinTokens.find((c: any) => c.key === Regions.US.toString())
+            if (us) {
+                rules.minUSTokens = us.value
+            }
+            const eu = regionMinTokens.find((c: any) => c.key === Regions.EU.toString())
+            if (eu) {
+                rules.minEUTokens = eu.value
+            }
+        }
+
+        return rules
+    }
+
+    // ==== Rule Management Functions ====
+
+    updatePTB(
+        rules: ComplianceRules,
+        ptbDetails?: PTBDetails,
+    ) {
+        ptbDetails ??= newPTBDetails()
+
+       new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
+       new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
+       new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
+       new HoldingLimits(this.tokenAddress).registerPTB(
+            BigInt(rules.minimumHoldingsPerInvestor || 0),
+            BigInt(rules.maximumHoldingsPerInvestor || 0),
+            BigInt(rules.minUSTokens || 0),
+            BigInt(rules.minEUTokens || 0),
+            ptbDetails,
+        )
+        new InvestorLimits(this.tokenAddress).registerPTB(
+            rules.totalInvestorsLimit,
+            rules.minimumTotalInvestors,
+            rules.usInvestorsLimit,
+            rules.usAccreditedInvestorsLimit,
+            rules.nonAccreditedInvestorsLimit,
+            rules.jpInvestorsLimit,
+            rules.euRetailInvestorsLimit,
+            rules.maxUSInvestorsPercentage,
+            ptbDetails,
+        )
+        return ptbDetails.ptb
+    }
+
+    async update(
+        signer: string,
+        rules: ComplianceRules,
+    ) {
+        const ptb = this.updatePTB(rules)
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+}

@@ -1,16 +1,16 @@
 module voloro::voloro;
 
+use pas::namespace::Namespace;
 use securitize::{
-    setup::{Self, SetupRegistry, SetupFinalize},
-    version::Version,
-    trust_service::Auth,
+    compliance_service::ComplianceConfig,
     ds_token::Treasury,
     registry_service::InvestorInfo,
-    compliance_service::ComplianceConfig
+    setup::{Self, SetupRegistry, SetupFinalize},
+    trust_service::Auth,
+    version::Version
 };
-use pas::namespace::Namespace;
+use std::string::String;
 use sui::coin_registry::{Self, CoinRegistry};
-use std::string::{String};
 
 public struct VOLORO has key {
     id: UID,
@@ -20,6 +20,7 @@ public fun create_ds_token(
     name: String,
     symbol: String,
     url: String,
+    description: String,
     decimals: u8,
     setup_registry: &mut SetupRegistry,
     namespace: &mut Namespace,
@@ -32,7 +33,7 @@ public fun create_ds_token(
         decimals,
         name,
         symbol,
-        b"This is a Securitize RWA Token".to_string(),
+        description,
         url,
         ctx,
     );

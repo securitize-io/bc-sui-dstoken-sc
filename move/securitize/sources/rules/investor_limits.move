@@ -449,7 +449,7 @@ public fun validate_transfer_us_investors(
 ) {
     let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
 
-    if (limit == 0) return; 
+    if (limit == 0) return;
 
     if (to_is_new_us_investor && (!equal_country || !from_is_exit_investor)) {
         assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
@@ -462,15 +462,15 @@ public fun validate_issuance_us_investors(
     current_us_count: u64,
     total_count: u64,
     is_new_us_investor: bool,
-) { 
+) {
     let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
 
-    if (limit == 0) return; 
-    
+    if (limit == 0) return;
+
     if (is_new_us_investor) {
         // Check limit
         assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
-    } 
+    }
 }
 
 /// Validate US accredited investor count
@@ -607,12 +607,9 @@ public fun validate_transfer_minimum_total_investors(
 /// - If only one is set, returns that one.
 /// - If both are zero, returns 0 (unlimited).
 /// Percentage limit uses floor(total * percentage / 100)
-public fun effective_us_limit(
-    absolute_limit: u64,
-    max_percentage: u64,
-    total: u64,
-): u64 {
-    let percentage_limit = if (max_percentage == 0) 0 else (((total as u128) * (max_percentage as u128)) / 100) as u64;
+public fun effective_us_limit(absolute_limit: u64, max_percentage: u64, total: u64): u64 {
+    let percentage_limit = if (max_percentage == 0) 0
+    else (((total as u128) * (max_percentage as u128)) / 100) as u64;
 
     if (absolute_limit == 0) {
         percentage_limit

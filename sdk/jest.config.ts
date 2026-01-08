@@ -18,9 +18,7 @@ const config: Config.InitialOptions = {
   },
   // setupFilesAfterEnv: ['./setup-jest.ts'],
   testMatch: [
-    "**/publish.test.ts", // Run publish.test.ts first
     "<rootDir>/tests/**/*.test.ts", // Then run all other test files
-    "**/*.steps.ts", // Finally run step files
   ],
   testTimeout: 600000, // Set timeout to 300 seconds per test
 };

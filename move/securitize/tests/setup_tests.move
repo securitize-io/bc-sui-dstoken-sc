@@ -1,9 +1,9 @@
 #[test_only]
 module securitize::setup_tests;
 
-use sui::test_scenario as ts;
-use std::unit_test::destroy;
 use securitize::{setup::{Self, SetupAuth}, version::{Self, Version}};
+use std::unit_test::destroy;
+use sui::test_scenario as ts;
 
 const ADMIN: address = @0xCAFE;
 const DEPLOYER1: address = @0xBEEF;

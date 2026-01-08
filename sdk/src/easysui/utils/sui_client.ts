@@ -1,11 +1,12 @@
 import { SuiClient as SC } from '@mysten/sui/client'
-import { toBase64, fromBase64 } from '@mysten/sui/utils'
+import { toBase64, fromBase64, fromHex } from '@mysten/sui/utils'
 import { Config } from '../config/config'
 import { Transaction } from '@mysten/sui/transactions'
 import { Keypair } from '@mysten/sui/cryptography'
 import { bcs } from '@mysten/sui/bcs'
 import { analyze_cost } from './cost_analyzer'
 import type {SuiTransactionBlockResponse} from "@mysten/sui/jsonRpc";
+import {FORMAT_TYPES, hexToBase64, isHex, toFormatType} from "./byte_utils";
 
 export enum MoveType {
     u8 = 1,
@@ -16,10 +17,12 @@ export enum MoveType {
     u256,
     bool,
     string,
+    string_opt,
     object,
     address,
     address_opt,
     vec_address,
+    vec_u64,
 }
 
 const txOptions = {
@@ -50,35 +53,25 @@ export class SuiClient {
     private static async waitForTransaction(
         ptb: Transaction,
         resp: SuiTransactionBlockResponse,
-        errorHandler: (e: any) => string = (e) => e
     ) {
-        try {
-            await SuiClient.client.waitForTransaction({ digest: resp.digest })
-            if (resp.effects?.status.status !== 'success') {
-                throw new Error(JSON.stringify(resp))
-            }
-            analyze_cost(ptb, resp)
-            return resp
-        } catch (e) {
-            throw new Error(errorHandler(e))
+        await SuiClient.client.waitForTransaction({ digest: resp.digest })
+        if (resp.effects?.status.status !== 'success') {
+            throw new Error(JSON.stringify(resp))
         }
+        analyze_cost(ptb, resp)
+        return resp
     }
 
     public static async signAndExecute(
         ptb: Transaction,
         signer: Keypair,
-        errorHandler: (e: any) => string = (e) => e
     ) {
-        try {
-            const resp = await SuiClient.client.signAndExecuteTransaction({
-                transaction: ptb,
-                signer,
-                options: txOptions,
-            })
-            return SuiClient.waitForTransaction(ptb, resp, errorHandler)
-        } catch (e) {
-            throw new Error(errorHandler(e))
-        }
+        const resp = await SuiClient.client.signAndExecuteTransaction({
+            transaction: ptb,
+            signer,
+            options: txOptions,
+        })
+        return SuiClient.waitForTransaction(ptb, resp)
     }
 
     public static toMoveArg(ptb: Transaction, value: any, type?: MoveType) {
@@ -109,10 +102,12 @@ export class SuiClient {
             [MoveType.u256]: (v: any) => ptb.pure.u256(v),
             [MoveType.bool]: (v: any) => ptb.pure.bool(v),
             [MoveType.string]: (v: any) => ptb.pure.string(v),
+            [MoveType.string_opt]: (v: any) => ptb.pure.option('string', v),
             [MoveType.object]: (v: any) => ptb.object(v),
             [MoveType.address]: (v: any) => ptb.pure.address(v),
             [MoveType.address_opt]: (v: any) => ptb.pure.option('address', v),
             [MoveType.vec_address]: (v: any) => ptb.pure.vector('address', v),
+            [MoveType.vec_u64]: (v: any) => ptb.pure.vector('u64', v),
         }
 
         return factory[type!](value)
@@ -124,7 +119,6 @@ export class SuiClient {
         typeArgs = [],
         args = [],
         argTypes = [],
-        errorHandler = (e) => e,
         ptb,
         withTransfer = false,
     }: {
@@ -133,13 +127,12 @@ export class SuiClient {
         typeArgs?: string[]
         args?: any[]
         argTypes?: MoveType[]
-        errorHandler?: (e: any) => string
         ptb?: Transaction
         withTransfer?: boolean
     }) {
-        ptb = this.getPTB(target, typeArgs, args, argTypes, withTransfer, signer.toSuiAddress(), ptb);
+        ptb = this.getPTB(target, typeArgs, args, argTypes, signer.toSuiAddress(), withTransfer, ptb);
 
-        return SuiClient.signAndExecute(ptb, signer, errorHandler)
+        return SuiClient.signAndExecute(ptb, signer)
     }
 
     public static async getMoveCallBytes({
@@ -148,76 +141,80 @@ export class SuiClient {
         typeArgs = [],
         args = [],
         argTypes = [],
-        errorHandler = (e) => e,
         ptb,
         withTransfer = false,
         gasOwner,
-        asBase64 = false
+        format = FORMAT_TYPES.hex
     }: {
         signer: string
         target: string
         typeArgs?: string[]
         args?: any[]
         argTypes?: MoveType[]
-        errorHandler?: (e: any) => string
         ptb?: Transaction
         withTransfer?: boolean
         gasOwner?: string
-        asBase64?: boolean
+        format?: FORMAT_TYPES
     }) {
-        ptb = this.getPTB(target, typeArgs, args, argTypes, withTransfer, signer, ptb);
-        try {
-            ptb.setSender(signer)
-            gasOwner ??= signer
-            ptb.setGasOwner(gasOwner || signer)
-            const bytes = await ptb.build({ client: SuiClient.client, onlyTransactionKind: false });
-            return asBase64 ? toBase64(bytes) : bytes
-        } catch (e) {
-            throw new Error(errorHandler(e))
-        }
+        ptb = this.getPTB(target, typeArgs, args, argTypes, signer, withTransfer, ptb);
+        return await this.getMoveCallBytesFromPTB(ptb, signer, gasOwner, format);
     }
 
-    public static async getSignature(signatureOrKeypair: string | Keypair, bytes: Uint8Array | string) {
-        if (typeof bytes === 'string') {
-            bytes = fromBase64(bytes)
-        }
+    public static async getMoveCallBytesFromPTB(ptb: Transaction, signer: string, gasOwner?: string, format: FORMAT_TYPES = FORMAT_TYPES.hex) {
+        ptb.setSender(signer)
+        gasOwner ??= signer
+        ptb.setGasOwner(gasOwner || signer)
+        const bytes = await ptb.build({client: SuiClient.client, onlyTransactionKind: false});
+        return toFormatType(format, bytes)
+    }
 
+    public static toBytes(bytes: Uint8Array | string) {
+        if (typeof bytes === 'string') {
+            return isHex(bytes) ? fromHex(bytes) : fromBase64(bytes)
+        }
+        return bytes
+    }
+
+    public static async getSignature(signatureOrKeypair: string | Keypair, bytes: Uint8Array) {
         if (typeof signatureOrKeypair !== 'string') {
             const signature = await signatureOrKeypair.signTransaction(bytes)
             return signature.signature
         }
 
-        return signatureOrKeypair
+        return isHex(signatureOrKeypair) ? hexToBase64(signatureOrKeypair) : signatureOrKeypair
     }
 
     public static async executeMoveCallBytes(
         bytes: Uint8Array | string,
         senderSignature: string | Keypair,
         gasOwnerSignature?: string | Keypair,
-        errorHandler: (e: any) => string = (e) => e,
     ) {
-        try {
-            senderSignature = await this.getSignature(senderSignature, bytes)
+        const transactionBlock = this.toBytes(bytes)
+        senderSignature = await this.getSignature(senderSignature, transactionBlock)
 
-            const signature = [senderSignature]
-            if (gasOwnerSignature) {
-                gasOwnerSignature = await this.getSignature(gasOwnerSignature, bytes)
-                signature.push(gasOwnerSignature)
-            }
-            
-            const resp = await SuiClient.client.executeTransactionBlock({
-                transactionBlock: bytes,
-                signature,
-                options: txOptions
-            })
-            const ptb = Transaction.from(bytes)
-            return SuiClient.waitForTransaction(ptb, resp, errorHandler)
-        } catch (e) {
-            throw new Error(errorHandler(e))
+        const signature = [senderSignature]
+        if (gasOwnerSignature) {
+            gasOwnerSignature = await this.getSignature(gasOwnerSignature, transactionBlock)
+            signature.push(gasOwnerSignature)
         }
+        const resp = await SuiClient.client.executeTransactionBlock({
+            transactionBlock: toBase64(transactionBlock),
+            signature,
+            options: txOptions
+        })
+        const ptb = Transaction.from(toBase64(transactionBlock))
+        return SuiClient.waitForTransaction(ptb, resp)
     }
 
-    private static getPTB(target: string, typeArgs: string[], args: any[], argTypes: MoveType[], withTransfer: boolean, signer: string, ptb?: Transaction) {
+    public static getPTB(
+        target: string,
+        typeArgs: string[] = [],
+        args: any[] = [],
+        argTypes: MoveType[] = [],
+        signer?: string,
+        withTransfer: boolean = false,
+        ptb?: Transaction
+    ) {
         ptb = ptb || new Transaction()
         const obj = ptb.moveCall({
             target,
@@ -225,7 +222,7 @@ export class SuiClient {
             arguments: args.map((arg, i) => SuiClient.toMoveArg(ptb, arg, argTypes[i])),
         })
 
-        if (withTransfer) {
+        if (withTransfer && signer) {
             ptb.transferObjects([obj], signer)
         }
         return ptb;
@@ -268,10 +265,23 @@ export class SuiClient {
         return '0x' + Buffer.from(bytes).toString('hex')
     }
 
+    public static async devInspectString(ptb: Transaction, sender: string) {
+        const value = await this.devInspectRaw(ptb, sender)
+        if (!value) {
+            return ''
+        }
+        return bcs.string().parse(new Uint8Array(value!))
+    }
+
     public static async getObject(id: string) {
         return SuiClient.client.getObject({
             id,
-            options: { showContent: true },
+            options: {
+                showContent: true,
+                showType: true,
+                showDisplay: true,
+                showBcs: true,
+            },
         })
     }
 
