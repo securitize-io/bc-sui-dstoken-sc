@@ -1,6 +1,6 @@
 module securitize::setup;
 
-use rwa::registry::RwaRegistry;
+use pas::namespace::Namespace;
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
     ds_token::{Self, Treasury},
@@ -70,7 +70,7 @@ fun init(ctx: &mut TxContext) {
 /// * `ENotDeployer` - If the caller is not in the authorized deployers list
 public fun setup<T: key>(
     setup_registry: &mut SetupRegistry,
-    rwa_registry: &mut RwaRegistry,
+    namespace: &mut Namespace,
     currency: CurrencyInitializer<T>,
     treasury_cap: TreasuryCap<T>,
     version: &Version,
@@ -83,7 +83,7 @@ public fun setup<T: key>(
     let treasury = ds_token::new<T>(
         setup_registry.uid_mut(),
         &mut auth,
-        rwa_registry,
+        namespace,
         treasury_cap,
         metadata_cap,
         version,

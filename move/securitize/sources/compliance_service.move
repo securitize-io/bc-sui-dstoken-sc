@@ -1,6 +1,6 @@
 module securitize::compliance_service;
 
-use rwa::vault::RwaTransferRequest;
+use pas::transfer_funds_request::TransferFundsRequest;
 use securitize::{
     abilities::{RegisterRule, UnregisterRule, SetCountryCompliance, ManageRules},
     accredited_only::AccreditedOnly,
@@ -147,15 +147,15 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 public(package) fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
-    request: &RwaTransferRequest<T>,
+    request: &TransferFundsRequest<T>,
     current_time_ms: u64,
     version: &Version,
 ) {
     version.check_is_valid();
 
-    let from_address = request.request_from_address();
-    let to_address = request.request_to_address();
-    let amount = request.request_amount();
+    let from_address = request.from();
+    let to_address = request.to();
+    let amount = request.amount();
 
     assert!(
         registry.is_special_wallet(to_address) || registry.is_wallet(to_address),

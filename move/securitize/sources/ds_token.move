@@ -1,6 +1,11 @@
 module securitize::ds_token;
 
-use rwa::{registry::RwaRegistry, rule::{Self, RwaRule}, vault::{RwaVault, RwaTransferRequest}};
+use pas::{
+    namespace::Namespace,
+    rule::{Self, Rule},
+    transfer_funds_request::TransferFundsRequest,
+    vault::Vault
+};
 use securitize::{
     abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser},
     compliance_service::{Self, ComplianceConfig},
@@ -96,7 +101,7 @@ public struct Pause<phantom T> has copy, drop {
 public(package) fun new<T: key>(
     uid: &mut UID,
     auth: &mut Auth<T>,
-    rwa_registry: &mut RwaRegistry,
+    namespace: &mut Namespace,
     treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
@@ -123,7 +128,7 @@ public(package) fun new<T: key>(
     };
     // Register the RwaRule
     let clawback_allowed = true;
-    rule::new(rwa_registry, &treasury_cap, clawback_allowed, DsProtocol());
+    rule::new(namespace, &treasury_cap, clawback_allowed, DsProtocol());
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
     treasury
 }
@@ -146,8 +151,8 @@ public fun issue_tokens<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    rwa_rule: &RwaRule<T>,
-    to: &mut RwaVault,
+    rule: &Rule<T>,
+    to: &Vault,
     to_address: address,
     value: u64,
     version: &Version,
@@ -159,7 +164,7 @@ public fun issue_tokens<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, IssueTokens>(ctx.sender()), ENotAuthorized);
-    assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
+    assert!(to.owner() == to_address, EVaultOwnerMismatch);
     let treasury_cap = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
         TreasuryCapKey(),
@@ -179,8 +184,7 @@ public fun issue_tokens<T>(
     );
     let balance = treasury_cap.mint_balance(value);
     // Deposit to the investor's vault
-    rule::deposit_to_vault(
-        rwa_rule,
+    rule.deposit(
         to,
         balance,
         DsProtocol(),
@@ -198,8 +202,8 @@ public fun issue_tokens_no_vault<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    rwa_rule: &RwaRule<T>,
-    registry: &RwaRegistry,
+    rule: &Rule<T>,
+    namespace: &Namespace,
     to: address,
     value: u64,
     version: &Version,
@@ -230,11 +234,10 @@ public fun issue_tokens_no_vault<T>(
     );
     let balance = treasury_cap.mint_balance(value);
     // Deposit to the investor's vault
-    rule::deposit(
-        registry,
-        rwa_rule,
-        to,
+    rule.unsafe_deposit(
+        namespace,
         balance,
+        to,
         DsProtocol(),
         ctx,
     );
@@ -242,7 +245,7 @@ public fun issue_tokens_no_vault<T>(
 
 fun issue_tokens_internal<T>(
     investors: &mut InvestorInfo<T>,
-    compliance_config: &mut ComplianceConfig<T>,
+    compliance_config: &ComplianceConfig<T>,
     to: address,
     value: u64,
     total_supply: u64,
@@ -278,20 +281,16 @@ fun issue_tokens_internal<T>(
         i = i + 1;
     };
     assert!(total_locked <= value, EValueLockedLargerThanValue);
-    event::emit(
-        Issue<T> {
-            to,
-            value,
-            value_locked: total_locked,
-        }
-    );
-    event::emit(
-        Transfer<T> {
-            from: @0x0,
-            to,
-            value
-        }
-    );
+    event::emit(Issue<T> {
+        to,
+        value,
+        value_locked: total_locked,
+    });
+    event::emit(Transfer<T> {
+        from: @0x0,
+        to,
+        value,
+    });
 }
 
 /// Burns tokens from the specified vault, reducing the total supply.
@@ -303,8 +302,8 @@ public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    rwa_rule: &RwaRule<T>,
-    from: &mut RwaVault,
+    rule: &Rule<T>,
+    from: &mut Vault,
     from_address: address,
     value: u64,
     reason: String,
@@ -313,11 +312,12 @@ public fun burn<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
-    assert!(from.owner_address() == from_address, EVaultOwnerMismatch);
-    assert!(from.balance<T>() >= value, ENotEnoughBalance);
+    assert!(from.owner() == from_address, EVaultOwnerMismatch);
+
+    // TODO: Bring back once we have object balance reads.
+    // assert!(from.balance<T>() >= value, ENotEnoughBalance);
     compliance_service::validate_burn(investors, from_address, value);
-    let balance = rule::clawback(
-        rwa_rule,
+    let balance = rule.unsafe_clawback(
         from,
         value,
         DsProtocol(),
@@ -352,10 +352,10 @@ public fun burn<T>(
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    rwa_rule: &RwaRule<T>,
-    from: &mut RwaVault,
+    rule: &Rule<T>,
+    from: &mut Vault,
     from_address: address,
-    to: &mut RwaVault,
+    to: &Vault,
     to_address: address,
     value: u64,
     reason: String,
@@ -364,13 +364,14 @@ public fun seize<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
-    assert!(from.owner_address() == from_address, EVaultOwnerMismatch);
-    assert!(to.owner_address() == to_address, EVaultOwnerMismatch);
-    assert!(from.balance<T>() >= value, ENotEnoughBalance);
+    assert!(from.owner() == from_address, EVaultOwnerMismatch);
+    assert!(to.owner() == to_address, EVaultOwnerMismatch);
+
+    // TODO: Bring back once we have object balance reads.
+    // assert!(from.balance<T>() >= value, ENotEnoughBalance);
     compliance_service::validate_seize(investors, from_address, to_address, value);
     // Withdraw from the investor's vault and deposit to the treasury's vault
-    rule::clawback_to_vault(
-        rwa_rule,
+    rule.clawback(
         from,
         to,
         value,
@@ -408,15 +409,15 @@ public fun transfer<T>(
     treasury: &Treasury<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &ComplianceConfig<T>,
-    rwa_rule: &RwaRule<T>,
-    request: RwaTransferRequest<T>,
+    rule: &Rule<T>,
+    request: TransferFundsRequest<T>,
     version: &Version,
     clock: &Clock,
 ) {
     version.check_is_valid();
-    let from_address = request.request_from_address();
-    let to_address = request.request_to_address();
-    let value = request.request_amount();
+    let from_address = request.from();
+    let to_address = request.to();
+    let value = request.amount();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
     if (treasury.is_paused()) {
@@ -451,7 +452,7 @@ public fun transfer<T>(
         investors.update_investor_total_balance(id, total_balance - value);
     };
     // Resolve the request
-    rule::resolve_transfer(rwa_rule, request, DsProtocol());
+    rule.resolve_transfer(request, DsProtocol());
     event::emit(Transfer<T> {
         from: from_address,
         to: to_address,

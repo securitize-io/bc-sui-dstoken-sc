@@ -7,7 +7,7 @@ use securitize::{
     version::Version
 };
 use std::string::String;
-use sui::{clock::{Self, Clock}, event};
+use sui::{clock::Clock, event};
 
 const MAX_LOCKS: u64 = 30;
 
