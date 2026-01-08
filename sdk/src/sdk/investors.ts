@@ -235,7 +235,7 @@ export class Investors {
         signer: string,
     ) {
         const args = [
-            Config.vars.RWA_REGISTRY,
+            Config.vars.PAS_NAMESPACE,
             investorId,
             country,
             wallets,
@@ -264,7 +264,7 @@ export class Investors {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        return this._buildSetPTB('add_wallet', [Config.vars.RWA_REGISTRY, investorId, walletAddr], [], ptb)
+        return this._buildSetPTB('add_wallet', [Config.vars.PAS_NAMESPACE, investorId, walletAddr], [], ptb)
     }
 
     async addWallet(

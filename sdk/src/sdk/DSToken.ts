@@ -2,7 +2,7 @@ import {CLOCK_ID, deriveObjectId, MoveType, SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails, TokenDetails} from "./token";
 import {Transaction} from "@mysten/sui/transactions";
-import {TokenMetadata} from "./domains/TokenMetadata";
+import {TokenMetadata} from "./domains";
 import {bcs} from "@mysten/sui/bcs";
 
 export class DSToken {
@@ -131,10 +131,10 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    getRwaVault(address: string) {
-        const key = 'RwaVaultKey'
+    getPASVault(address: string) {
+        const key = 'VaultKey'
         const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
-        return deriveObjectId(Config.vars.RWA_REGISTRY, 'vault', key, Config.vars.RWA_PACKAGE_ID, undefined, serializedBcs)
+        return deriveObjectId(Config.vars.PAS_NAMESPACE, 'vault', key, Config.vars.PAS_PACKAGE_ID, undefined, serializedBcs)
     }
 
     issuePTB(
@@ -142,22 +142,24 @@ export class DSToken {
         value: bigint,
         valuesLocked: number[],
         releaseTimes: number[],
+        issuanceTimeMS: number,
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const rwaVault = this.getRwaVault(to);
+        const pasVault = this.getPASVault(to);
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            this.tokenDetails.rwaRule,
-            rwaVault,
+            this.tokenDetails.pasRule,
+            pasVault,
             to,
             value,
             Config.vars.VERSION,
             valuesLocked,
             releaseTimes,
+            issuanceTimeMS,
             CLOCK_ID,
         ]
         const argsTypes = [
@@ -172,6 +174,7 @@ export class DSToken {
             MoveType.object,
             MoveType.vec_u64,
             MoveType.vec_u64,
+            MoveType.u64,
             MoveType.object,
         ]
         return this.buildSetPTB('issue_tokens', args, ptb, argsTypes)
@@ -183,8 +186,9 @@ export class DSToken {
         value: bigint,
         valuesLocked: number[],
         releaseTimes: number[],
+        issuanceTimeMS: number,
     ) {
-        const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes)
+        const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes, issuanceTimeMS)
         return this.buildSetBytes(ptb, signer)
     }
 
@@ -195,13 +199,13 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const rwaVault = this.getRwaVault(from);
+        const pasVault = this.getPASVault(from);
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
-            this.tokenDetails.rwaRule,
-            rwaVault,
+            this.tokenDetails.pasRule,
+            pasVault,
             from,
             value,
             reason,
@@ -239,15 +243,15 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const fromRwaVault = this.getRwaVault(from);
-        const toRwaVault = this.getRwaVault(to);
+        const fromPASVault = this.getPASVault(from);
+        const toVault = this.getPASVault(to);
         const args = [
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
-            this.tokenDetails.rwaRule,
-            fromRwaVault,
+            this.tokenDetails.pasRule,
+            fromPASVault,
             from,
-            toRwaVault,
+            toVault,
             to,
             value,
             reason,
@@ -316,18 +320,19 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const fromRwaVault = this.getRwaVault(from);
-        const vaultOwnerProof = ptb.moveCall({
-            target: `${Config.vars.RWA_PACKAGE_ID}::vault::proof_as_sender`,
+        const fromRwaVault = this.getPASVault(from)
+        const toRwaVault = this.getPASVault(to)
+        const auth = ptb.moveCall({
+            target: `${Config.vars.PAS_PACKAGE_ID}::vault::new_auth`,
         })
         const transferRequest = ptb.moveCall({
-            target: `${Config.vars.RWA_PACKAGE_ID}::vault::transfer`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::vault::transfer`,
             typeArguments: [this.tokenAddress],
             arguments: [
                 ptb.object(fromRwaVault),
-                vaultOwnerProof,
+                auth,
+                ptb.object(toRwaVault),
                 ptb.pure.u64(amount),
-                ptb.pure.address(to)
             ],
         })
 
@@ -335,7 +340,7 @@ export class DSToken {
             this.tokenDetails.treasury,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            this.tokenDetails.rwaRule,
+            this.tokenDetails.pasRule,
             transferRequest,
             Config.vars.VERSION,
             CLOCK_ID,

@@ -25,10 +25,14 @@ export class Rule {
         return `${Config.vars.PACKAGE_ID}::${this.ruleModule}::new`
     }
 
-    protected newRule(ptb: Transaction, args: any[]) {
+    protected newRule(ptb: Transaction, args: any[], ptbDetails: PTBDetails) {
         return ptb.moveCall({
             target: this.getTargetNew(),
+            typeArguments: [
+                this.tokenAddress
+            ],
             arguments: [
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
                 ...args,
                 ptb.object(Config.vars.VERSION)
             ],

@@ -41,7 +41,7 @@ export async function createDSToken(request: DeploymentRequest) {
                 ptb.pure.string(tokenDescription.description),
                 ptb.pure.u8(tokenDescription.decimals),
                 ptb.object(Config.vars.SETUP_REGISTRY),
-                ptb.object(Config.vars.RWA_REGISTRY),
+                ptb.object(Config.vars.PAS_NAMESPACE),
                 ptb.object(normalizeSuiAddress('0xc')),
                 ptb.object(Config.vars.VERSION),
             ],
@@ -101,7 +101,8 @@ export async function createDSToken(request: DeploymentRequest) {
             id: tokenAddress,
         }
     } catch (e: any) {
-        throw handleError(e, tokenSymbol)
+        throw e
+        // throw handleError(e, tokenSymbol)
     }
 }
 

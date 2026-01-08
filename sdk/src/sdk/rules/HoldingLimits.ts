@@ -35,7 +35,8 @@ export class HoldingLimits extends Rule {
             ptb.pure.u64(min_holdings_per_investor || 0),
             ptb.pure.u64(max_holdings_per_investor || 0),
             ptb.pure.vector('u64', regions),
-            ptb.pure.vector('u64', regionMins),        ])
+            ptb.pure.vector('u64', regionMins),
+        ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
     }

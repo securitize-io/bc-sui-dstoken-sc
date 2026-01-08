@@ -19,7 +19,7 @@ export class ForceFullTransfer extends Rule {
         const rule = this.newRule(ptb, [
             ptb.pure.bool(!!force_full_transfer_us),
             ptb.pure.bool(!!force_full_transfer_worldwide),
-        ])
+        ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
     }

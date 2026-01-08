@@ -18,7 +18,7 @@ export class AccreditedOnly extends Rule {
         const rule = this.newRule(ptb, [
             ptb.pure.bool(!!force_accredited),
             ptb.pure.bool(!!force_us_accredited)
-        ])
+        ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
     }

@@ -13,7 +13,7 @@ export async function deploy<
     const newConfig = {
         ...vars,
         PACKAGE_ID: PublishSingleton.packageId,
-        RWA_PACKAGE_ID: PublishSingleton.packageId, // TODO: Remove this when RWA is deployed
+        PAS_PACKAGE_ID: PublishSingleton.packageId, // TODO: Remove this when PAS is deployed
         UPGRADE_CAP_ID: PublishSingleton.upgradeCapId,
     } as TConfigVars
 

@@ -16,7 +16,7 @@ export class FlowbackRestriction extends Rule {
 
         const rule = this.newRule(ptb, [
             ptb.pure.u64(block_flowback_end_time_ms || 0),
-        ])
+        ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
     }

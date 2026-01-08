@@ -1,4 +1,4 @@
-import { ADMIN_KEYPAIR, createFundedWallet, Roles, DSToken } from '../src'
+import {ADMIN_KEYPAIR, createFundedWallet, DSToken, Wallets} from '../src'
 import { deploy } from '../src/sdk/utils/deploy'
 import {
     assertInvestorBalance,
@@ -16,16 +16,17 @@ describe('DSToken', () => {
     let dsToken: DSToken
     let investor2: Keypair
     let issuer: Keypair
+    let issuanceTimeMS: number
 
     beforeAll(async () => {
         await deploy()
+        issuanceTimeMS = new Date().getTime()
         tokenAddress = await createTestToken()
         dsToken = new DSToken(tokenAddress)
         investor2 = await createFundedWallet()
         issuer = await createFundedWallet()
         await registerInvestor(tokenAddress, 'testInvestor')
         await registerInvestor(tokenAddress, 'testInvestor2', [investor2.toSuiAddress()])
-        await registerInvestor(tokenAddress, 'issuer', [issuer.toSuiAddress()])
     })
 
     describe('metadata', () => {
@@ -106,7 +107,7 @@ describe('DSToken', () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('0')
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe('1000000')
@@ -147,7 +148,7 @@ describe('DSToken', () => {
 
     describe('transfer', () => {
         it('should transfer tokens', async () => {
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
             await assertInvestorBalance(tokenAddress, 'testInvestor', '1500000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '0')
 
@@ -164,13 +165,12 @@ describe('DSToken', () => {
         it('should seize tokens', async () => {
             const totalIssued = parseInt(await dsToken.getTotalIssued())
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], []))
-            await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], []))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
+            await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], issuanceTimeMS))
 
-            const roles = new Roles(tokenAddress)
-            await executeTxFunc(roles.setIssuer(issuer.toSuiAddress(), sender))
+            const wallets = new Wallets(tokenAddress)
+            await executeTxFunc(wallets.addIssuerWallet(issuer.toSuiAddress(), sender))
 
-            await assertInvestorBalance(tokenAddress, 'issuer', '0')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
             await expect(dsToken.getTotalIssued()).resolves.toBe(
                 (totalIssued + 1_000_000 + 500_000).toString()
@@ -186,7 +186,6 @@ describe('DSToken', () => {
                 )
             )
 
-            await assertInvestorBalance(tokenAddress, 'issuer', '300000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '200000')
             await expect(dsToken.getTotalIssued()).resolves.toBe(
                 (totalIssued + 1_000_000 + 500_000).toString()
