@@ -5,7 +5,7 @@
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
-use rwa::{registry::RwaRegistry, vault};
+use pas::{namespace::Namespace, vault};
 use securitize::{
     abilities::{SetIssuerWallet, SetPlatformWallet, RemoveSpecialWallet},
     registry_service::InvestorInfo,
@@ -69,14 +69,14 @@ public(package) fun new<T: key>(auth: &mut Auth<T>, version: &Version, ctx: &TxC
 public fun add_issuer_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
-    registry: &mut RwaRegistry,
+    namespace: &mut Namespace,
     wallet: address,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetIssuerWallet>(ctx.sender());
-    set_special_wallet(investor_info, registry, wallet, ISSUER, ctx);
+    set_special_wallet(investor_info, namespace, wallet, ISSUER, ctx);
 }
 
 /// Adds a wallet address as a platform wallet.
@@ -88,14 +88,14 @@ public fun add_issuer_wallet<T>(
 public fun add_platform_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
-    registry: &mut RwaRegistry,
+    namespace: &mut Namespace,
     wallet: address,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, SetPlatformWallet>(ctx.sender());
-    set_special_wallet(investor_info, registry, wallet, PLATFORM, ctx);
+    set_special_wallet(investor_info, namespace, wallet, PLATFORM, ctx);
 }
 
 /// Removes a special wallet from the registry.
@@ -125,15 +125,15 @@ public fun remove_special_wallet<T>(
 /// Validates that the wallet is not already an investor wallet or special wallet.
 fun set_special_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
-    registry: &mut RwaRegistry,
+    namespace: &mut Namespace,
     wallet: address,
     wallet_type: u64,
     ctx: &TxContext,
 ) {
     assert!(!investor_info.is_wallet(wallet), EWalletBelongsToInvestor);
     assert!(!investor_info.is_special_wallet(wallet), EDirectWalletChange);
-    if (!vault::vault_exists(registry, wallet)) {
-        vault::claim(registry, vault::owner_from_address(wallet));
+    if (!vault::exists(namespace, wallet)) {
+        vault::create_and_share(namespace, wallet);
     };
     investor_info.set_special_wallet(wallet, wallet_type);
     event::emit(DSWalletManagerSpecialWalletAdded<T> {
