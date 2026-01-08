@@ -1,4 +1,4 @@
-import {ADMIN_KEYPAIR, createFundedWallet, DSToken, Wallets} from '../src'
+import { ADMIN_KEYPAIR, createFundedWallet, DSToken, Wallets } from '../src'
 import { deploy } from '../src/sdk/utils/deploy'
 import {
     assertInvestorBalance,
@@ -166,7 +166,9 @@ describe('DSToken', () => {
             const totalIssued = parseInt(await dsToken.getTotalIssued())
 
             await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
-            await executeTxFunc(dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], issuanceTimeMS))
+            await executeTxFunc(
+                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], issuanceTimeMS)
+            )
 
             const wallets = new Wallets(tokenAddress)
             await executeTxFunc(wallets.addIssuerWallet(issuer.toSuiAddress(), sender))
