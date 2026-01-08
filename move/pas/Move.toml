@@ -1,0 +1,5 @@
+[package]
+name = "pas"
+edition = "2024.beta"
+
+[dependencies]

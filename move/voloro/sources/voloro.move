@@ -8,7 +8,7 @@ use securitize::{
     registry_service::InvestorInfo,
     compliance_service::ComplianceConfig
 };
-use rwa::registry::RwaRegistry;
+use pas::namespace::Namespace;
 use sui::coin_registry::{Self, CoinRegistry};
 use std::string::{String};
 
@@ -21,8 +21,8 @@ public fun create_ds_token(
     symbol: String,
     url: String,
     decimals: u8,
-    setup_auth: &SetupRegistry,
-    rwa_registry: &mut RwaRegistry,
+    setup_registry: &mut SetupRegistry,
+    namespace: &mut Namespace,
     registry: &mut CoinRegistry,
     version: &Version,
     ctx: &mut TxContext,
@@ -37,5 +37,5 @@ public fun create_ds_token(
         ctx,
     );
 
-    setup::setup(setup_auth, rwa_registry, currency, treasury_cap, version, ctx)
+    setup::setup(setup_registry, namespace, currency, treasury_cap, version, ctx)
 }
