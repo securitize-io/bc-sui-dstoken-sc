@@ -173,7 +173,7 @@ describe('DSToken', () => {
             const wallets = new Wallets(tokenAddress)
             await executeTxFunc(wallets.addIssuerWallet(issuer.toSuiAddress(), sender))
 
-            await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor2', '800000')
             await expect(dsToken.getTotalIssued()).resolves.toBe(
                 (totalIssued + 1_000_000 + 500_000).toString()
             )
@@ -188,7 +188,7 @@ describe('DSToken', () => {
                 )
             )
 
-            await assertInvestorBalance(tokenAddress, 'testInvestor2', '200000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
             await expect(dsToken.getTotalIssued()).resolves.toBe(
                 (totalIssued + 1_000_000 + 500_000).toString()
             )
