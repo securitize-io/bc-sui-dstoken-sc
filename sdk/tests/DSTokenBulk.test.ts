@@ -76,9 +76,9 @@ describe('DSTokenBulk', () => {
 
         // it('should burn tokens from multiple investors in a single transaction', async () => {
         //     const tokenBurns: TokenIssue[] = [
-        //         {to: investor1.toSuiAddress(), value: 500_000},
-        //         {to: investor2.toSuiAddress(), value: 500_000},
-        //         {to: investor3.toSuiAddress(), value: 200_000}
+        //         {to: investor1.toSuiAddress(), value: 500_000n},
+        //         {to: investor2.toSuiAddress(), value: 500_000n},
+        //         {to: investor3.toSuiAddress(), value: 200_000n}
         //     ]
         //     await executeTxFunc(dsTokenBulk.burnBulk(tokenBurns, sender))
         //
@@ -90,9 +90,9 @@ describe('DSTokenBulk', () => {
         //     await assertInvestorBalance(tokenAddress, 'investor3', '50000')
         //
         //     const tokenIssues: TokenIssue[] = [
-        //         {to: investor1.toSuiAddress(), value: 500_000},
-        //         {to: investor2.toSuiAddress(), value: 500_000},
-        //         {to: investor3.toSuiAddress(), value: 200_000}
+        //         {to: investor1.toSuiAddress(), value: 500_000n},
+        //         {to: investor2.toSuiAddress(), value: 500_000n},
+        //         {to: investor3.toSuiAddress(), value: 200_000n}
         //     ]
         //     await executeTxFunc(dsTokenBulk.issueBulk(tokenIssues, sender))
         // })

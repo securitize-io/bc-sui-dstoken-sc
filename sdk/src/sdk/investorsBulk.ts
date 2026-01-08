@@ -8,7 +8,7 @@ export class InvestorsBulk extends Bulk {
     private investors: Investors;
 
     constructor(tokenAddress: string) {
-        super(249)
+        super(165)
         this.investors = new Investors(tokenAddress)
     }
 

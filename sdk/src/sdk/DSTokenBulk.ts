@@ -28,14 +28,14 @@ export class DSTokenBulk extends Bulk {
     }
 
     async burnBulk(tokenIssues: TokenIssue[], signer: string) {
-        return this.bulkCall(tokenIssues, signer, this.getBurnTBs())
+        return this.bulkCall(tokenIssues, signer, this.getBurnPTBs())
     }
 
     async burnExecution(tokenIssues: TokenIssue[], signer: Keypair) {
-        return this.bulkExecution(tokenIssues, signer, this.getBurnTBs())
+        return this.bulkExecution(tokenIssues, signer, this.getBurnPTBs())
     }
 
-    private getBurnTBs() {
+    private getBurnPTBs() {
         return (tokenIssue: TokenIssue, ptb: Transaction) => {
             this.dsToken.burnPTB(tokenIssue.to, tokenIssue.value, "", ptb);
         };
