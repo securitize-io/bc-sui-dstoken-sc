@@ -7,7 +7,7 @@
     "coverage": "pnpm test --coverage && sui move coverage summary -p ./voloro",
     "lint": "npx prettier-move -c ../**/*.move",
     "fix": "pnpm lint --write",
-    "clean": "rm -rf ./node_modules && rm -rf ./voloro/build"
+    "clean": "rm -rf ./node_modules && rm -rf ./*/build"
   },
   "devDependencies": {
     "@mysten/prettier-plugin-move": "^0.3.1",
