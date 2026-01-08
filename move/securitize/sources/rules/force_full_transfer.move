@@ -97,15 +97,18 @@ public fun set_force_worldwide<T>(
 // ==================== Validation ====================
 
 /// Validate that transfer complies with force full transfer rules
-public fun validate_rule(rule: &ForceFullTransfer, from_region: u64, from_is_special_wallet: bool, from_is_exit_investor: bool) {
-
+public fun validate_rule(
+    rule: &ForceFullTransfer,
+    from_region: u64,
+    from_is_special_wallet: bool,
+    from_is_exit_investor: bool,
+) {
     // Special wallets as senders are exempt from force full transfer rule
-    if (from_is_special_wallet) return
-    // Check worldwide restriction first (applies to all)
-    assert!(
-        !rule.force_full_transfer_worldwide || from_is_exit_investor,
-        EPartialTransferNotAllowed,
-    );
+    if (from_is_special_wallet) return // Check worldwide restriction first (applies to all)
+            assert!(
+                !rule.force_full_transfer_worldwide || from_is_exit_investor,
+                EPartialTransferNotAllowed,
+            );
 
     // Check US-specific restriction
     let is_us_investor = from_region == US;

@@ -1,15 +1,15 @@
 #[test_only]
 module securitize::ds_token_tests;
 
-use sui::{coin_registry, test_scenario::{Self as ts, Scenario}};
+use rwa::registry::create_for_testing;
 use securitize::{
-    ds_token::{Self, Treasury}, 
-    setup::{Self, SetupAuth}, 
-    version::{Self, Version},
-    trust_service::{Auth}
+    ds_token::{Self, Treasury},
+    setup::{Self, SetupAuth},
+    trust_service::Auth,
+    version::{Self, Version}
 };
 use std::unit_test::destroy;
-use rwa::registry::create_for_testing;
+use sui::{coin_registry, test_scenario::{Self as ts, Scenario}};
 
 const ADMIN: address = @0xCAFE;
 

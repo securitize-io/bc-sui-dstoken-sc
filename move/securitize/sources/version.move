@@ -6,7 +6,7 @@ use sui::package::Publisher;
 /// Used as input to force the end-user to use the latest contract version.
 public struct Version has key {
     id: UID,
-    version: u64
+    version: u64,
 }
 
 const EInvalidPackageVersion: u64 = 0;
