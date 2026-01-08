@@ -2,7 +2,7 @@
 ///
 /// This is the main module for role management. The core structure here is Auth
 /// as an independent shared object.
-/// three main (administrative) roles: Master, Issuer, and TransferAgent.
+/// three main administrative roles: Master, Issuer, and TransferAgent.
 module securitize::trust_service;
 
 use securitize::{
@@ -165,8 +165,11 @@ public fun get_role<T>(self: &Auth<T>, owner: address): TypeName {
     }
 }
 
-/// Set/grant a role Exchange to an owner address
-/// Creates an AddressKey and stores it in the roles Bag
+/// Set/grant a role Exchange to an owner address.
+/// Creates an AddressKey and stores it in the roles Bag.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetExchange ability
 public fun set_exchange<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -178,7 +181,10 @@ public fun set_exchange<T>(
     internal_assign_role<T, Exchange>(self, owner, ctx);
 }
 
-/// Remove a role Exchange from an owner address
+/// Remove a role Exchange from an owner address.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetExchange ability
 public fun remove_exchange<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -190,8 +196,11 @@ public fun remove_exchange<T>(
     internal_remove_role<T, Exchange>(self, owner, ctx);
 }
 
-/// Set/grant a role TransferAgent to an owner address
-/// Creates an AddressKey and stores it in the roles Bag
+/// Set/grant a role TransferAgent to an owner address.
+/// Creates an AddressKey and stores it in the roles Bag.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetTransferAgent ability
 public fun set_transfer_agent<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -203,7 +212,10 @@ public fun set_transfer_agent<T>(
     internal_assign_role<T, TransferAgent>(self, owner, ctx);
 }
 
-/// Remove a role TransferAgent from an owner address
+/// Remove a role TransferAgent from an owner address.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetTransferAgent ability
 public fun remove_transfer_agent<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -215,8 +227,11 @@ public fun remove_transfer_agent<T>(
     internal_remove_role<T, TransferAgent>(self, owner, ctx);
 }
 
-/// Set/grant a role Issuer to an owner address
-/// Creates an AddressKey and stores it in the roles Bag
+/// Set/grant a role Issuer to an owner address.
+/// Creates an AddressKey and stores it in the roles Bag.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetIssuer ability
 public fun set_issuer<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -228,7 +243,10 @@ public fun set_issuer<T>(
     internal_assign_role<T, Issuer>(self, owner, ctx);
 }
 
-/// Remove a role Issuer from an owner address
+/// Remove a role Issuer from an owner address.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetIssuer ability
 public fun remove_issuer<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -240,7 +258,11 @@ public fun remove_issuer<T>(
     internal_remove_role<T, Issuer>(self, owner, ctx);
 }
 
-/// Set/transfer service ownership (reassigns Master role)
+/// Set/transfer service ownership (reassigns Master role).
+///
+/// # Aborts
+/// * `ESelfTransferNotAllowed` - If attempting to transfer ownership to self
+/// * `ENotEnoughPermissions` - If the sender does not have the SetServiceOwner ability
 public fun set_service_owner<T>(
     self: &mut Auth<T>,
     owner: address,
@@ -307,8 +329,14 @@ public(package) fun internal_remove_role<T, R: drop>(
 
 // ==================== Ability Management Functions ====================
 
-/// Add an ability A to role R
-/// This grants all holders of role R the ability to perform actions requiring A
+/// Add an ability A to role R.
+/// This grants all holders of role R the ability to perform actions requiring A.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetAbilities ability
+/// * `ERoleNotFound` - If the role type R is not registered
+/// * `ERoleAbilitiesNotFound` - If the role's abilities mapping is not found
+/// * `EAbilityAlreadyExists` - If the ability A is already assigned to role R
 public fun add_role_ability<T, R: drop, A: drop>(
     self: &mut Auth<T>,
     version: &Version,
@@ -329,8 +357,15 @@ public fun add_role_ability<T, R: drop, A: drop>(
     abilities.insert(ability_type);
 }
 
-/// Remove an ability A from role R
-/// This revokes the ability to perform actions requiring A from all holders of role R
+/// Remove an ability A from role R.
+/// This revokes the ability to perform actions requiring A from all holders of role R.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetAbilities ability
+/// * `ECannotRemoveMaster` - If attempting to remove SetAbilities from Master role
+/// * `ERoleNotFound` - If the role type R is not registered
+/// * `ERoleAbilitiesNotFound` - If the role's abilities mapping is not found
+/// * `EAbilityNotFound` - If the ability A is not found for role R
 public fun remove_role_ability<T, R: drop, A: drop>(
     self: &mut Auth<T>,
     version: &Version,
@@ -382,8 +417,12 @@ public(package) fun owner_has_ability<T, A: drop>(self: &Auth<T>, owner: address
     abilities.contains(&ability_type)
 }
 
-/// Add a new role type R to the system
-/// When a new role is added, Master automatically gets the ability to set it
+/// Add a new role type R to the system.
+/// When a new role is added, Master automatically gets the ability to set it.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetRoleTypes ability
+/// * `ERoleAlreadyExists` - If the role type R already exists
 public fun add_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx: &mut TxContext) {
     version.check_is_valid();
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);
@@ -405,9 +444,17 @@ public fun add_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx: &m
     master_abilities.insert(set_ability);
 }
 
-/// Remove a role type R from the system
-/// Can only remove if no addresses currently have this role (counter == 0)
-/// Also cleans up the role's abilities and removes it from Master's abilities
+/// Remove a role type R from the system.
+/// Can only remove if no addresses currently have this role (counter == 0).
+/// Also cleans up the role's abilities and removes it from Master's abilities.
+///
+/// # Aborts
+/// * `ENotEnoughPermissions` - If the sender does not have the SetRoleTypes ability
+/// * `ECannotRemoveMaster` - If attempting to remove the Master role
+/// * `ERoleNotFound` - If the role type R is not registered
+/// * `ERoleHasActiveMembers` - If the role has active members (counter > 0)
+/// * `ERoleAbilitiesNotFound` - If the role's abilities mapping is not found
+/// * `EAbilityNotFound` - If the set ability A is not found in Master's abilities
 public fun remove_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx: &mut TxContext) {
     version.check_is_valid();
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);

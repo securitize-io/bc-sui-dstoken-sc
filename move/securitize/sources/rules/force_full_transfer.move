@@ -1,15 +1,30 @@
 /// Module: force_full_transfer
+///
+/// Rule that requires investors to transfer their entire token balance.
+/// Can be configured separately for US investors or applied worldwide.
 module securitize::force_full_transfer;
 
 use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
+// ==== Error Codes ====
+
 const EPartialTransferNotAllowed: u64 = 0;
 
 // ==== Compliance Region Constants ====
 
 const US: u64 = 1;
+
+// ==== Structs ====
+
+/// Force full transfer configuration
+public struct ForceFullTransfer has drop, store {
+    /// Require US investors to transfer entire balance
+    force_full_transfer_us: bool,
+    /// Require all investors worldwide to transfer entire balance
+    force_full_transfer_worldwide: bool,
+}
 
 // ==== Events ====
 
@@ -22,16 +37,6 @@ public struct DSComplianceForceFullTransferRuleSet<phantom T, V: copy + drop> ha
     field: String,
     old_value: V,
     new_value: V,
-}
-
-// ==== Structs ====
-
-/// Force full transfer configuration
-public struct ForceFullTransfer has drop, store {
-    /// Require US investors to transfer entire balance
-    force_full_transfer_us: bool,
-    /// Require all investors worldwide to transfer entire balance
-    force_full_transfer_worldwide: bool,
 }
 
 // ==================== Initialization ====================
@@ -96,7 +101,10 @@ public fun set_force_worldwide<T>(
 
 // ==================== Validation ====================
 
-/// Validate that transfer complies with force full transfer rules
+/// Validate that transfer complies with force full transfer rules.
+///
+/// # Aborts
+/// * `EPartialTransferNotAllowed` - If partial transfer when full transfer is required
 public fun validate_rule(
     rule: &ForceFullTransfer,
     from_region: u64,

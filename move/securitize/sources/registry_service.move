@@ -1,9 +1,8 @@
 /// Module: registry_service
 ///
-/// This module manages the investor registry for security tokens.
-/// It provides functionality to register, remove, and update investors,
-/// manage their wallets, and track compliance-related attributes such as
-/// country, accreditation status, and qualification status.
+/// Manages investor registration and their associated wallets.
+/// Stores investor attributes, country information, and tracks wallet-to-investor mappings
+/// for compliance verification during token transfers.
 module securitize::registry_service;
 
 use pas::{namespace::Namespace, vault};
@@ -54,22 +53,27 @@ const EComplianceUnchanged: u64 = 12;
 
 // ==== Attribute Constants ====
 
-// TODO: Think about making these Enums
 const NONE: u64 = 0;
+#[allow(unused_const)]
 const KYC_APPROVED: u64 = 1;
 const ACCREDITED: u64 = 2;
 const QUALIFIED: u64 = 4;
+#[allow(unused_const)]
 const PROFESSIONAL: u64 = 8;
 
 // ==== Attribute Status Constants ====
 
+#[allow(unused_const)]
 const PENDING: u64 = 0;
+#[allow(unused_const)]
 const APPROVED: u64 = 1;
+#[allow(unused_const)]
 const REJECTED: u64 = 2;
 
 // ==== TEMP Compliance Region Constants ====
 const US: u64 = 1;
 const EU: u64 = 2;
+#[allow(unused_const)]
 const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
 

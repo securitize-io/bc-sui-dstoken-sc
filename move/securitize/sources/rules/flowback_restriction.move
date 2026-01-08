@@ -1,20 +1,28 @@
 /// Module: flowback_restriction
 ///
 /// Rule that prevents non-US investors from transferring tokens to US investors
-/// during a specified Regulation S distribution period (flowback restriction).
+/// during a specified Regulation S distribution period flowback restriction.
 module securitize::flowback_restriction;
 
 use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::{clock::Clock, event};
 
+// ==== Error Codes ====
+
+const EFlowbackRestricted: u64 = 0;
+
 // ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 
-// ==== Error Codes ====
+// ==== Structs ====
 
-const EFlowbackRestricted: u64 = 0;
+/// Flowback restriction configuration
+public struct FlowbackRestriction has drop, store {
+    /// End time (in ms) for the flowback restriction period (0 = transfer restriction)
+    block_flowback_end_time_ms: u64,
+}
 
 // ==== Events ====
 
@@ -26,14 +34,6 @@ public struct DSComplianceFlowbackRestrictionRuleSet<phantom T, V: copy + drop> 
     field: String,
     old_value: V,
     new_value: V,
-}
-
-// ==== Structs ====
-
-/// Flowback restriction configuration
-public struct FlowbackRestriction has drop, store {
-    /// End time (in ms) for the flowback restriction period (0 = transfer restriction)
-    block_flowback_end_time_ms: u64,
 }
 
 // ==================== Initialization ====================
@@ -77,10 +77,13 @@ public fun set_flowback_end_time<T>(
 
 // ==================== Validation ====================
 
-/// Validate that flowback restriction doesn't apply to this transfer
+/// Validate that flowback restriction doesn't apply to this transfer.
 ///
 /// This checks if a non-US investor is trying to transfer to a US investor
 /// during the restricted period.
+///
+/// # Aborts
+/// * `EFlowbackRestricted` - If non-US to US transfer during active restriction period
 public fun validate_rule(
     rule: &FlowbackRestriction,
     from_region: u64,

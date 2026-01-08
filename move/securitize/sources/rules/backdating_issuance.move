@@ -9,6 +9,14 @@ use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
+// ==== Structs ====
+
+/// Backdating issuance rule configuration
+public struct BackdatingIssuance has drop, store {
+    /// Whether backdating is allowed for issuances
+    allow_backdating: bool,
+}
+
 // ==== Events ====
 
 public struct DSComplianceBackdatingIssuanceRuleCreated<phantom T> has copy, drop {
@@ -19,14 +27,6 @@ public struct DSComplianceBackdatingIssuanceRuleSet<phantom T, V: copy + drop> h
     field: String,
     old_value: V,
     new_value: V,
-}
-
-// ==== Structs ====
-
-/// Backdating issuance rule configuration
-public struct BackdatingIssuance has drop, store {
-    /// Whether backdating is allowed for issuances
-    allow_backdating: bool,
 }
 
 // ==================== Initialization ====================

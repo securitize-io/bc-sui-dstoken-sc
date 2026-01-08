@@ -1,3 +1,7 @@
+/// Module: lock_manager
+///
+/// Manages token locks for investors, including full account locks, liquidate-only
+/// restrictions, and time-based lock records for specific token amounts.
 module securitize::lock_manager;
 
 use securitize::{
@@ -66,6 +70,10 @@ public(package) fun new<T>(auth: &mut Auth<T>, version: &Version, ctx: &TxContex
 
 // ==== Public Functions ====
 
+/// Fully locks an investor's account, preventing all transfers.
+///
+/// # Aborts
+/// * `EAlreadyLocked` - If the investor is already fully locked
 public fun lock_investor<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -81,6 +89,10 @@ public fun lock_investor<T>(
     event::emit(DSLockManagerInvestorFullyLocked<T> { investor });
 }
 
+/// Unlocks a fully locked investor's account, allowing transfers again.
+///
+/// # Aborts
+/// * `ENotLocked` - If the investor is not fully locked
 public fun unlock_investor<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -96,6 +108,8 @@ public fun unlock_investor<T>(
     event::emit(DSLockManagerInvestorFullyUnlocked<T> { investor });
 }
 
+/// Sets the liquidate-only restriction for an investor.
+/// When enabled, the investor can only transfer tokens to the issuer wallet.
 public fun set_liquidate_only<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -111,6 +125,12 @@ public fun set_liquidate_only<T>(
     event::emit(DSLockManagerLiquidateOnlySet<T> { investor, enabled });
 }
 
+/// Adds a time-based lock record for a specific token amount.
+///
+/// # Aborts
+/// * `EInvalidValue` - If the value is zero
+/// * `EInvalidTime` - If the release time is non-zero and in the past
+/// * `ETooManyLocks` - If the investor already has the maximum number of locks
 public fun add_lock<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -144,6 +164,10 @@ public fun add_lock<T>(
     });
 }
 
+/// Removes a lock record at the specified index.
+///
+/// # Aborts
+/// * `EIndexOutOfRange` - If the index is out of range
 public fun remove_lock<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,

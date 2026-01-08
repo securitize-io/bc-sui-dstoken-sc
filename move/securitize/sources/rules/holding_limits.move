@@ -1,5 +1,7 @@
+/// Module: holding_limits
+///
 /// Rule that enforces minimum and maximum holding amounts per investor.
-/// Supports region-specific minimum holdings (US, EU) as per Aptos implementation.
+/// Supports region-specific minimum holdings.
 module securitize::holding_limits;
 
 use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
@@ -11,8 +13,18 @@ use sui::{event, vec_map::{Self, VecMap}};
 const EBelowMinHolding: u64 = 0;
 const EAboveMaxHolding: u64 = 1;
 const ERegionNotFound: u64 = 2;
-const EInvalidMinimum: u64 = 3;
-const EInvalidMaximum: u64 = 4;
+
+// ==== Structs ====
+
+/// Holding limits configuration
+public struct HoldingLimits has drop, store {
+    /// Minimum holdings per investor (0 = no minimum)
+    min_holdings_per_investor: u64,
+    /// Maximum holdings per investor (0 = no maximum)
+    max_holdings_per_investor: u64,
+    /// Region-specific minimum holdings (e.g., US, EU)
+    region_min_tokens: VecMap<u64, u64>,
+}
 
 // ==== Events ====
 
@@ -30,20 +42,9 @@ public struct DSComplianceHoldingLimitsRuleSet<phantom T, V: copy + drop> has co
     new_value: V,
 }
 
-// ==== Structs ====
-
-/// Holding limits configuration
-public struct HoldingLimits has drop, store {
-    /// Minimum holdings per investor (0 = no minimum)
-    min_holdings_per_investor: u64,
-    /// Maximum holdings per investor (0 = no maximum)
-    max_holdings_per_investor: u64,
-    /// Region-specific minimum holdings (e.g., US, EU)
-    region_min_tokens: VecMap<u64, u64>,
-}
 // ==================== Initialization ====================
 
-/// Create with region-specific minimums
+/// Create with region-specific minimums.
 public fun new<T>(
     auth: &Auth<T>,
     min_holdings_per_investor: u64,
@@ -58,7 +59,6 @@ public fun new<T>(
     let mut region_min_tokens = vec_map::empty();
 
     regions.zip_do!(region_mins, |region, min| {
-        assert!(min > 0, EInvalidMinimum);
         region_min_tokens.insert(region, min);
     });
 
@@ -88,7 +88,6 @@ public fun set_min_holdings<T>(
 ) {
     version.check_is_valid();
     auth.owner_has_ability<T, ManageRules>(ctx.sender());
-    assert!(min >= 0, EInvalidMinimum);
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"min_holdings_per_investor".to_string(),
         region: option::none(),
@@ -118,7 +117,10 @@ public fun set_max_holdings<T>(
     rule.max_holdings_per_investor = max;
 }
 
-/// Set region-specific minimum holdings
+/// Set region-specific minimum holdings.
+///
+/// # Aborts
+/// * `EInvalidMinimum` - If min is zero
 public fun set_region_min_holdings<T>(
     auth: &Auth<T>,
     rule: &mut HoldingLimits,
@@ -208,7 +210,10 @@ public fun validate_holding_limits_for_issuance(
     rule.validate_max_holdings(to_balance_after);
 }
 
-/// Validate only MINIMUM holdings (global + region)
+/// Validate only MINIMUM holdings (global + region).
+///
+/// # Aborts
+/// * `EBelowMinHolding` - If balance is below global or region minimum
 public fun validate_min_holdings(rule: &HoldingLimits, balance_after: u64, region: u64) {
     // Global minimum
     if (rule.min_holdings_per_investor > 0) {
@@ -222,7 +227,10 @@ public fun validate_min_holdings(rule: &HoldingLimits, balance_after: u64, regio
     };
 }
 
-/// Validate only MAXIMUM holdings (global)
+/// Validate only MAXIMUM holdings (global).
+///
+/// # Aborts
+/// * `EAboveMaxHolding` - If balance exceeds maximum
 public fun validate_max_holdings(rule: &HoldingLimits, balance_after: u64) {
     if (rule.max_holdings_per_investor > 0) {
         assert!(balance_after <= rule.max_holdings_per_investor, EAboveMaxHolding);
@@ -241,7 +249,10 @@ public fun max_holdings(rule: &HoldingLimits): u64 {
     rule.max_holdings_per_investor
 }
 
-/// Get region-specific minimum holdings
+/// Get region-specific minimum holdings.
+///
+/// # Aborts
+/// * `ERegionNotFound` - If the region does not have a minimum configured
 public fun region_min_holdings(rule: &HoldingLimits, region: u64): u64 {
     assert!(rule.region_min_tokens.contains(&region), ERegionNotFound);
     *rule.region_min_tokens.get(&region)

@@ -17,6 +17,16 @@ const ENotUSAccredited: u64 = 1;
 
 const US: u64 = 1;
 
+// ==== Structs ====
+
+/// Accredited-only rule configuration
+public struct AccreditedOnly has drop, store {
+    /// Require accreditation globally
+    force_accredited: bool,
+    /// Require US accreditation for US investors
+    force_us_accredited: bool,
+}
+
 // ==== Events ====
 
 public struct DSComplianceAccreditedOnlyRuleCreated<phantom T> has copy, drop {
@@ -28,16 +38,6 @@ public struct DSComplianceAccreditedOnlyRuleSet<phantom T, V: copy + drop> has c
     field: String,
     old_value: V,
     new_value: V,
-}
-
-// ==== Structs ====
-
-/// Accredited-only rule configuration
-public struct AccreditedOnly has drop, store {
-    /// Require accreditation globally
-    force_accredited: bool,
-    /// Require US accreditation for US investors
-    force_us_accredited: bool,
 }
 
 // ==================== Initialization ====================
@@ -102,7 +102,11 @@ public fun set_force_us_accredited<T>(
 
 // ==================== Validation ====================
 
-/// Validate that investor is accredited based on rule configuration
+/// Validate that investor is accredited based on rule configuration.
+///
+/// # Aborts
+/// * `ENotAccredited` - If global accreditation is required and investor is not accredited
+/// * `ENotUSAccredited` - If US accreditation is required, investor is in US, and not accredited
 public fun validate_rule(rule: &AccreditedOnly, region: u64, is_accredited: bool) {
     // Check global requirement
     if (rule.force_accredited) {
