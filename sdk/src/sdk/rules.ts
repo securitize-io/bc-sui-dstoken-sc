@@ -5,6 +5,9 @@ import {FlowbackRestriction} from "./rules/FlowbackRestriction";
 import {ForceFullTransfer} from "./rules/ForceFullTransfer";
 import {HoldingLimits} from "./rules/HoldingLimits";
 import {InvestorLimits} from "./rules/InvestorLimits";
+import {AuthorizedSecurities} from "./rules/AuthorizedSecurities";
+import {BackdatingIssuance} from "./rules/BackdatingIssuance";
+import {LockupRestriction} from "./rules/LockupRestriction";
 import {newPTBDetails, PTBDetails} from "./domains/PTBDetails";
 import {getTokenDetails} from "./token";
 
@@ -47,7 +50,11 @@ export class Rules {
             jpInvestorsLimit: allFields.jp_investors_limit && parseInt(allFields.jp_investors_limit),
             usAccreditedInvestorsLimit: allFields.us_accredited_limit && parseInt(allFields.us_accredited_limit),
             nonAccreditedInvestorsLimit: allFields.non_accredited_limit && parseInt(allFields.non_accredited_limit),
-            maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage)
+            maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage),
+            maxAuthorizedSecurities: allFields.max_supply && BigInt(allFields.max_supply).toString(),
+            allowBackdating: allFields.allow_backdating,
+            usLockPeriod: allFields.us_lock_period_ms && parseInt(allFields.us_lock_period_ms),
+            nonUSLockPeriod: allFields.non_us_lock_period_ms && parseInt(allFields.non_us_lock_period_ms)
         }
 
         const regionMinTokens = allFields?.region_min_tokens?.fields?.contents?.map((c: any) => c.fields)
@@ -121,6 +128,18 @@ export class Rules {
                 rules.maxUSInvestorsPercentage,
                 ptbDetails,
             )
+        }
+
+        if ('maxAuthorizedSecurities' in rules) {
+            new AuthorizedSecurities(this.tokenAddress).registerPTB(BigInt(rules.maxAuthorizedSecurities || 0), ptbDetails)
+        }
+
+        if ('allowBackdating' in rules) {
+            new BackdatingIssuance(this.tokenAddress).registerPTB(rules.allowBackdating, ptbDetails)
+        }
+
+        if ('usLockPeriod' in rules || 'nonUSLockPeriod' in rules) {
+            new LockupRestriction(this.tokenAddress).registerPTB(rules.usLockPeriod, rules.nonUSLockPeriod, ptbDetails)
         }
 
         return ptbDetails.ptb

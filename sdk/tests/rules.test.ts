@@ -6,6 +6,9 @@ import { FlowbackRestriction } from '../src/sdk/rules/FlowbackRestriction'
 import { ForceFullTransfer } from '../src/sdk/rules/ForceFullTransfer'
 import { HoldingLimits } from '../src/sdk/rules/HoldingLimits'
 import { InvestorLimits } from '../src/sdk/rules/InvestorLimits'
+import { AuthorizedSecurities } from '../src/sdk/rules/AuthorizedSecurities'
+import { BackdatingIssuance } from '../src/sdk/rules/BackdatingIssuance'
+import { LockupRestriction } from '../src/sdk/rules/LockupRestriction'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -17,6 +20,9 @@ async function cleanup(tokenAddress: string) {
         const forceFullTransfer = new ForceFullTransfer(tokenAddress)
         const holdingLimits = new HoldingLimits(tokenAddress)
         const investorLimits = new InvestorLimits(tokenAddress)
+        const authorizedSecurities = new AuthorizedSecurities(tokenAddress)
+        const backdatingIssuance = new BackdatingIssuance(tokenAddress)
+        const lockupRestriction = new LockupRestriction(tokenAddress)
 
         if (await accreditedOnly.exists(sender)) {
             await executeTxFunc(accreditedOnly.unregister(sender))
@@ -32,6 +38,15 @@ async function cleanup(tokenAddress: string) {
         }
         if (await investorLimits.exists(sender)) {
             await executeTxFunc(investorLimits.unregister(sender))
+        }
+        if (await authorizedSecurities.exists(sender)) {
+            await executeTxFunc(authorizedSecurities.unregister(sender))
+        }
+        if (await backdatingIssuance.exists(sender)) {
+            await executeTxFunc(backdatingIssuance.unregister(sender))
+        }
+        if (await lockupRestriction.exists(sender)) {
+            await executeTxFunc(lockupRestriction.unregister(sender))
         }
     } catch (error) {
         // Ignore cleanup errors
@@ -67,6 +82,10 @@ describe('Rules (Compliance)', () => {
                 usAccreditedInvestorsLimit: 300,
                 nonAccreditedInvestorsLimit: 150,
                 maxUSInvestorsPercentage: 25,
+                maxAuthorizedSecurities: '10000000',
+                allowBackdating: false,
+                usLockPeriod: 31536000000,
+                nonUSLockPeriod: 15768000000,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -77,12 +96,18 @@ describe('Rules (Compliance)', () => {
             const forceFullTransfer = new ForceFullTransfer(tokenAddress)
             const holdingLimits = new HoldingLimits(tokenAddress)
             const investorLimits = new InvestorLimits(tokenAddress)
+            const authorizedSecurities = new AuthorizedSecurities(tokenAddress)
+            const backdatingIssuance = new BackdatingIssuance(tokenAddress)
+            const lockupRestriction = new LockupRestriction(tokenAddress)
 
             await expect(accreditedOnly.exists(sender)).resolves.toBe(true)
             await expect(flowbackRestriction.exists(sender)).resolves.toBe(true)
             await expect(forceFullTransfer.exists(sender)).resolves.toBe(true)
             await expect(holdingLimits.exists(sender)).resolves.toBe(true)
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
+            await expect(authorizedSecurities.exists(sender)).resolves.toBe(true)
+            await expect(backdatingIssuance.exists(sender)).resolves.toBe(true)
+            await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
             await expect(rules.getRules()).resolves.toEqual(complianceRules)
 
             // Clean up
@@ -91,6 +116,9 @@ describe('Rules (Compliance)', () => {
             await executeTxFunc(forceFullTransfer.unregister(sender))
             await executeTxFunc(holdingLimits.unregister(sender))
             await executeTxFunc(investorLimits.unregister(sender))
+            await executeTxFunc(authorizedSecurities.unregister(sender))
+            await executeTxFunc(backdatingIssuance.unregister(sender))
+            await executeTxFunc(lockupRestriction.unregister(sender))
         })
 
         it('should update rules with partial ComplianceRules object', async () => {
@@ -196,6 +224,40 @@ describe('Rules (Compliance)', () => {
             const investorLimits = new InvestorLimits(tokenAddress)
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
         })
+
+        it('should update with AuthorizedSecurities rules only', async () => {
+            const complianceRules: ComplianceRules = {
+                maxAuthorizedSecurities: '1000000',
+            }
+
+            await executeTxFunc(rules.update(sender, complianceRules))
+
+            const authorizedSecurities = new AuthorizedSecurities(tokenAddress)
+            await expect(authorizedSecurities.exists(sender)).resolves.toBe(true)
+        })
+
+        it('should update with BackdatingIssuance rules only', async () => {
+            const complianceRules: ComplianceRules = {
+                allowBackdating: true,
+            }
+
+            await executeTxFunc(rules.update(sender, complianceRules))
+
+            const backdatingIssuance = new BackdatingIssuance(tokenAddress)
+            await expect(backdatingIssuance.exists(sender)).resolves.toBe(true)
+        })
+
+        it('should update with LockupRestriction rules only', async () => {
+            const complianceRules: ComplianceRules = {
+                usLockPeriod: 31536000000, // 1 year in ms
+                nonUSLockPeriod: 15768000000, // 6 months in ms
+            }
+
+            await executeTxFunc(rules.update(sender, complianceRules))
+
+            const lockupRestriction = new LockupRestriction(tokenAddress)
+            await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
+        })
     })
 
     describe('Edge Cases and Validation', () => {
@@ -254,18 +316,47 @@ describe('Rules (Compliance)', () => {
 
             await executeTxFunc(rules.update(sender, complianceRules))
 
-            // All rules should be registered with default/zero values
+            // All rules should NOT be registered when empty object is passed
             const accreditedOnly = new AccreditedOnly(tokenAddress)
             const flowbackRestriction = new FlowbackRestriction(tokenAddress)
             const forceFullTransfer = new ForceFullTransfer(tokenAddress)
             const holdingLimits = new HoldingLimits(tokenAddress)
             const investorLimits = new InvestorLimits(tokenAddress)
+            const authorizedSecurities = new AuthorizedSecurities(tokenAddress)
+            const backdatingIssuance = new BackdatingIssuance(tokenAddress)
+            const lockupRestriction = new LockupRestriction(tokenAddress)
 
             await expect(accreditedOnly.exists(sender)).resolves.toBe(false)
             await expect(flowbackRestriction.exists(sender)).resolves.toBe(false)
             await expect(forceFullTransfer.exists(sender)).resolves.toBe(false)
             await expect(holdingLimits.exists(sender)).resolves.toBe(false)
             await expect(investorLimits.exists(sender)).resolves.toBe(false)
+            await expect(authorizedSecurities.exists(sender)).resolves.toBe(false)
+            await expect(backdatingIssuance.exists(sender)).resolves.toBe(false)
+            await expect(lockupRestriction.exists(sender)).resolves.toBe(false)
+        })
+
+        it('should handle AuthorizedSecurities with zero max supply (unlimited)', async () => {
+            const complianceRules: ComplianceRules = {
+                maxAuthorizedSecurities: '0',
+            }
+
+            await executeTxFunc(rules.update(sender, complianceRules))
+
+            const authorizedSecurities = new AuthorizedSecurities(tokenAddress)
+            await expect(authorizedSecurities.exists(sender)).resolves.toBe(true)
+        })
+
+        it('should handle LockupRestriction with zero periods (no lockup)', async () => {
+            const complianceRules: ComplianceRules = {
+                usLockPeriod: 0,
+                nonUSLockPeriod: 0,
+            }
+
+            await executeTxFunc(rules.update(sender, complianceRules))
+
+            const lockupRestriction = new LockupRestriction(tokenAddress)
+            await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
         })
     })
 })
