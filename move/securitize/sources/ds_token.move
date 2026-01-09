@@ -1,3 +1,8 @@
+/// Module: ds_token
+///
+/// The main security token module that implements the DS Token standard.
+/// Provides treasury management, token issuance, burning, seizing, and transfers
+/// with integrated compliance validation through the compliance service.
 module securitize::ds_token;
 
 use pas::{
@@ -146,6 +151,7 @@ public(package) fun share<T>(treasury: Treasury<T>) {
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
+/// * `EVaultOwnerMismatch` - If the vault owner does not match to_address
 public fun issue_tokens<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
@@ -298,6 +304,7 @@ fun issue_tokens_internal<T>(
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the BurnTokens ability
+/// * `EVaultOwnerMismatch` - If the vault owner does not match from_address
 public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
@@ -349,6 +356,7 @@ public fun burn<T>(
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the SeizeTokens ability
+/// * `EVaultOwnerMismatch` - If the vault owner does not match the expected address
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
@@ -404,7 +412,8 @@ public fun seize<T>(
 /// The treasury must not be paused for the transfer to succeed.
 ///
 /// # Aborts
-/// * `ETreasuryPaused` - If the treasury is currently paused
+/// * `EValueZero` - If the transfer value is zero
+/// * `ETreasuryPaused` - If the treasury is paused and both parties are investors
 public fun transfer<T>(
     treasury: &Treasury<T>,
     investors: &mut InvestorInfo<T>,
@@ -488,6 +497,7 @@ public fun set_metadata<T>(
 /// Only authorized addresses should be able to call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the Pauser ability
 /// * `ETreasuryAlreadyPaused` - If the treasury is already paused
 public fun pause<T>(
     treasury: &mut Treasury<T>,
@@ -509,6 +519,7 @@ public fun pause<T>(
 /// Only authorized addresses should be able to call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the Pauser ability
 /// * `ETreasuryNotPaused` - If the treasury is not currently paused
 public fun unpause<T>(
     treasury: &mut Treasury<T>,

@@ -1,3 +1,8 @@
+/// Module: setup
+///
+/// Handles the initialization and deployment of new DS Token instances.
+/// Manages authorized deployers and provides the entry point for creating
+/// new security tokens with their associated services.
 module securitize::setup;
 
 use pas::namespace::Namespace;
@@ -27,7 +32,6 @@ public struct SetupRegistry has key {
     /// Set of addresses authorized to deploy tokens
     deployers: VecSet<address>,
     /// Admin address with permission to add/remove deployers
-    /// TODO: consider making this a vector for multi-admin support (need to ask Securitize)
     admin: address,
 }
 

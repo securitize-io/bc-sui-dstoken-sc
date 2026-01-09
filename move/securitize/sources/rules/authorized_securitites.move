@@ -4,7 +4,7 @@
 /// This ensures the total supply never exceeds the authorized amount,
 /// maintaining compliance with regulatory requirements for authorized offerings.
 ///
-/// When max_supply is 0, the check is disabled (unlimited issuance allowed).
+/// When max_supply is 0, the check is disabled unlimited issuance allowed.
 module securitize::authorized_securities;
 
 use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
@@ -14,6 +14,13 @@ use sui::event;
 // ==== Error Codes ====
 
 const EMaxAuthorizedSecuritiesExceeded: u64 = 0;
+
+// ==== Structs ====
+
+/// Authorized securities configuration
+public struct AuthorizedSecurities has drop, store {
+    max_supply: u64,
+}
 
 // ==== Events ====
 
@@ -25,13 +32,6 @@ public struct DSComplianceAuthorizedSecuritiesRuleSet<phantom T, V: copy + drop>
     field: String,
     old_value: V,
     new_value: V,
-}
-
-// ==== Structs ====
-
-/// Authorized securities configuration
-public struct AuthorizedSecurities has drop, store {
-    max_supply: u64,
 }
 
 // ==================== Initialization ====================
@@ -76,7 +76,10 @@ public fun set_max_supply<T>(
 
 // ==================== Validation ====================
 
-/// Validate that issuance does not exceed max authorized securities
+/// Validate that issuance does not exceed max authorized securities.
+///
+/// # Aborts
+/// * `EMaxAuthorizedSecuritiesExceeded` - If total supply plus issuance exceeds max_supply
 public fun validate_rule(rule: &AuthorizedSecurities, total_supply: u64, issuance_value: u64) {
     // If max_supply is 0, check is disabled (unlimited)
     if (rule.max_supply == 0) return;

@@ -1,7 +1,7 @@
 /// Module: wallet_manager
 ///
 /// This module manages special wallets for security tokens.
-/// Special wallets are designated addresses (Issuer, Platform) that have
+/// Special wallets are designated addresses Issuer, Platform that have
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
@@ -47,7 +47,6 @@ public struct DSWalletManagerSpecialWalletRemoved<phantom T> has copy, drop {
 }
 
 /// Initializes the Wallet Manager abilities for the given token type T.
-///
 /// Called by the setup module during token deployment.
 public(package) fun new<T: key>(auth: &mut Auth<T>, version: &Version, ctx: &TxContext) {
     // Assign abilities to roles

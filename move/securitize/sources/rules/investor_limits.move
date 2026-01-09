@@ -1,7 +1,7 @@
 /// Module: investor_limits
 ///
 /// Rule that enforces limits on the number of investors by category
-/// (total, accredited, non-accredited, by region, etc.)
+/// total, accredited, non-accredited, by region, etc.
 module securitize::investor_limits;
 
 use securitize::{
@@ -29,25 +29,6 @@ const US: u64 = 1;
 const EU: u64 = 2;
 const JP: u64 = 8;
 
-// ==== Events ====
-
-public struct DSComplianceInvestorLimitsRuleCreated<phantom T> has copy, drop {
-    total_investors_limit: u64,
-    minimum_total_investors: u64,
-    us_investors_limit: u64,
-    us_accredited_limit: u64,
-    non_accredited_limit: u64,
-    jp_investors_limit: u64,
-    eu_retail_limit: u64,
-    max_us_percentage: u64,
-}
-
-public struct DSComplianceInvestorLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
-}
-
 // ==== Structs ====
 
 /// Investor limits configuration
@@ -68,6 +49,25 @@ public struct InvestorLimits has drop, store {
     eu_retail_limit: u64,
     /// Maximum US investors as percentage of total (0 = no limit)
     max_us_percentage: u64,
+}
+
+// ==== Events ====
+
+public struct DSComplianceInvestorLimitsRuleCreated<phantom T> has copy, drop {
+    total_investors_limit: u64,
+    minimum_total_investors: u64,
+    us_investors_limit: u64,
+    us_accredited_limit: u64,
+    non_accredited_limit: u64,
+    jp_investors_limit: u64,
+    eu_retail_limit: u64,
+    max_us_percentage: u64,
+}
+
+public struct DSComplianceInvestorLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -411,7 +411,10 @@ public fun validate_us_investor_limits<T>(
     };
 }
 
-/// Validate total investor count
+/// Validate total investor count.
+///
+/// # Aborts
+/// * `EMaxInvestorsExceeded` - If adding new investor would exceed total limit
 public fun validate_transfer_total_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -425,7 +428,10 @@ public fun validate_transfer_total_investors(
     }
 }
 
-/// Validate total investor count
+/// Validate total investor count.
+///
+/// # Aborts
+/// * `EMaxInvestorsExceeded` - If adding new investor would exceed total limit
 public fun validate_issuance_total_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -438,7 +444,10 @@ public fun validate_issuance_total_investors(
     }
 }
 
-/// Validate US investor count
+/// Validate US investor count.
+///
+/// # Aborts
+/// * `EMaxUSInvestorsExceeded` - If adding new US investor would exceed US limit
 public fun validate_transfer_us_investors(
     rule: &InvestorLimits,
     current_us_count: u64,
@@ -456,7 +465,10 @@ public fun validate_transfer_us_investors(
     }
 }
 
-/// Validate US investor count
+/// Validate US investor count.
+///
+/// # Aborts
+/// * `EMaxUSInvestorsExceeded` - If adding new US investor would exceed US limit
 public fun validate_issuance_us_investors(
     rule: &InvestorLimits,
     current_us_count: u64,
@@ -473,7 +485,10 @@ public fun validate_issuance_us_investors(
     }
 }
 
-/// Validate US accredited investor count
+/// Validate US accredited investor count.
+///
+/// # Aborts
+/// * `EMaxUSAccreditedExceeded` - If adding new US accredited investor would exceed limit
 public fun validate_transfer_us_accredited(
     rule: &InvestorLimits,
     current_count: u64,
@@ -489,7 +504,10 @@ public fun validate_transfer_us_accredited(
     }
 }
 
-/// Validate US accredited investor count
+/// Validate US accredited investor count.
+///
+/// # Aborts
+/// * `EMaxUSAccreditedExceeded` - If adding new US accredited investor would exceed limit
 public fun validate_issuance_us_accredited(
     rule: &InvestorLimits,
     current_count: u64,
@@ -502,7 +520,10 @@ public fun validate_issuance_us_accredited(
     }
 }
 
-/// Validate non-accredited investor count
+/// Validate non-accredited investor count.
+///
+/// # Aborts
+/// * `EMaxNonAccreditedExceeded` - If adding new non-accredited investor would exceed limit
 public fun validate_transfer_non_accredited(
     rule: &InvestorLimits,
     current_non_accredited: u64,
@@ -517,7 +538,10 @@ public fun validate_transfer_non_accredited(
     }
 }
 
-/// Validate non-accredited investor count
+/// Validate non-accredited investor count.
+///
+/// # Aborts
+/// * `EMaxNonAccreditedExceeded` - If adding new non-accredited investor would exceed limit
 public fun validate_issuance_non_accredited(
     rule: &InvestorLimits,
     current_count: u64,
@@ -530,7 +554,10 @@ public fun validate_issuance_non_accredited(
     }
 }
 
-/// Validate EU retail investor count
+/// Validate EU retail investor count.
+///
+/// # Aborts
+/// * `EMaxEURetailExceeded` - If adding new EU retail investor would exceed limit
 public fun validate_transfer_eu_retail(
     rule: &InvestorLimits,
     current_count: u64,
@@ -545,7 +572,10 @@ public fun validate_transfer_eu_retail(
     }
 }
 
-/// Validate EU retail investor count
+/// Validate EU retail investor count.
+///
+/// # Aborts
+/// * `EMaxEURetailExceeded` - If adding new EU retail investor would exceed limit
 public fun validate_issuance_eu_retail(
     rule: &InvestorLimits,
     current_count: u64,
@@ -558,7 +588,10 @@ public fun validate_issuance_eu_retail(
     }
 }
 
-/// Validate JP investor count
+/// Validate JP investor count.
+///
+/// # Aborts
+/// * `EMaxJPInvestorsExceeded` - If adding new JP investor would exceed limit
 public fun validate_transfer_jp_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -573,7 +606,10 @@ public fun validate_transfer_jp_investors(
     }
 }
 
-/// Validate JP investor count
+/// Validate JP investor count.
+///
+/// # Aborts
+/// * `EMaxJPInvestorsExceeded` - If adding new JP investor would exceed limit
 public fun validate_issuance_jp_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -586,9 +622,11 @@ public fun validate_issuance_jp_investors(
     }
 }
 
-/// Validate minimum total investors requirement
-/// Used to prevent transfers that would reduce total investors below minimum
-/// is_losing_investor: true if this action would cause an investor to have 0 balance
+/// Validate minimum total investors requirement.
+/// Used to prevent transfers that would reduce total investors below minimum.
+///
+/// # Aborts
+/// * `EBelowMinimumInvestors` - If transfer would reduce count below minimum
 public fun validate_transfer_minimum_total_investors(
     rule: &InvestorLimits,
     current_count: u64,
