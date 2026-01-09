@@ -73,27 +73,56 @@ export class Rules {
     ) {
         ptbDetails ??= newPTBDetails()
 
-       new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
-       new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
-       new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
-       new HoldingLimits(this.tokenAddress).registerPTB(
-            BigInt(rules.minimumHoldingsPerInvestor || 0),
-            BigInt(rules.maximumHoldingsPerInvestor || 0),
-            BigInt(rules.minUSTokens || 0),
-            BigInt(rules.minEUTokens || 0),
-            ptbDetails,
-        )
-        new InvestorLimits(this.tokenAddress).registerPTB(
-            rules.totalInvestorsLimit,
-            rules.minimumTotalInvestors,
-            rules.usInvestorsLimit,
-            rules.usAccreditedInvestorsLimit,
-            rules.nonAccreditedInvestorsLimit,
-            rules.jpInvestorsLimit,
-            rules.euRetailInvestorsLimit,
-            rules.maxUSInvestorsPercentage,
-            ptbDetails,
-        )
+        if ('forceAccredited' in rules || 'forceAccreditedUS' in rules) {
+            new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
+        }
+
+        if ('blockFlowbackEndTime' in rules) {
+            new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
+        }
+
+        if ('forceFullTransfer' in rules || 'worldWideForceFullTransfer' in rules) {
+            new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
+        }
+
+        if (
+            'minimumHoldingsPerInvestor' in rules ||
+            'maximumHoldingsPerInvestor' in rules ||
+            'minUSTokens' in rules ||
+            'minEUTokens' in rules
+        ) {
+            new HoldingLimits(this.tokenAddress).registerPTB(
+                BigInt(rules.minimumHoldingsPerInvestor || 0),
+                BigInt(rules.maximumHoldingsPerInvestor || 0),
+                BigInt(rules.minUSTokens || 0),
+                BigInt(rules.minEUTokens || 0),
+                ptbDetails,
+            )
+        }
+
+        if (
+            'totalInvestorsLimit' in rules ||
+            'minimumTotalInvestors' in rules ||
+            'usInvestorsLimit' in rules ||
+            'usAccreditedInvestorsLimit' in rules ||
+            'nonAccreditedInvestorsLimit' in rules ||
+            'jpInvestorsLimit' in rules ||
+            'euRetailInvestorsLimit' in rules ||
+            'maxUSInvestorsPercentage' in rules
+        ) {
+            new InvestorLimits(this.tokenAddress).registerPTB(
+                rules.totalInvestorsLimit,
+                rules.minimumTotalInvestors,
+                rules.usInvestorsLimit,
+                rules.usAccreditedInvestorsLimit,
+                rules.nonAccreditedInvestorsLimit,
+                rules.jpInvestorsLimit,
+                rules.euRetailInvestorsLimit,
+                rules.maxUSInvestorsPercentage,
+                ptbDetails,
+            )
+        }
+
         return ptbDetails.ptb
     }
 
