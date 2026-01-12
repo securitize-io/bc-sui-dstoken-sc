@@ -13,6 +13,7 @@ use sui::{event, vec_map::{Self, VecMap}};
 const EBelowMinHolding: u64 = 0;
 const EAboveMaxHolding: u64 = 1;
 const ERegionNotFound: u64 = 2;
+const ENotAuthorized: u64 = 3;
 
 // ==== Structs ====
 
@@ -45,6 +46,9 @@ public struct DSComplianceHoldingLimitsRuleSet<phantom T, V: copy + drop> has co
 // ==================== Initialization ====================
 
 /// Create with region-specific minimums.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     min_holdings_per_investor: u64,
@@ -55,7 +59,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): HoldingLimits {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let mut region_min_tokens = vec_map::empty();
 
     regions.zip_do!(region_mins, |region, min| {
@@ -79,6 +83,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set minimum holdings
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_min_holdings<T>(
     auth: &Auth<T>,
     rule: &mut HoldingLimits,
@@ -87,7 +94,7 @@ public fun set_min_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"min_holdings_per_investor".to_string(),
         region: option::none(),
@@ -98,6 +105,9 @@ public fun set_min_holdings<T>(
 }
 
 /// Set maximum holdings
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_holdings<T>(
     auth: &Auth<T>,
     rule: &mut HoldingLimits,
@@ -106,8 +116,7 @@ public fun set_max_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
-    assert!(max >= 0, EInvalidMaximum);
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"max_holdings_per_investor".to_string(),
         region: option::none(),
@@ -120,7 +129,7 @@ public fun set_max_holdings<T>(
 /// Set region-specific minimum holdings.
 ///
 /// # Aborts
-/// * `EInvalidMinimum` - If min is zero
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_region_min_holdings<T>(
     auth: &Auth<T>,
     rule: &mut HoldingLimits,
@@ -130,8 +139,7 @@ public fun set_region_min_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
-    assert!(min > 0, EInvalidMinimum);
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
 
     let old_value = if (rule.region_min_tokens.contains(&region)) {
         let (_, old) = rule.region_min_tokens.remove(&region);
@@ -149,6 +157,9 @@ public fun set_region_min_holdings<T>(
 }
 
 /// Remove region-specific minimum
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun remove_region_min_holdings<T>(
     auth: &Auth<T>,
     rule: &mut HoldingLimits,
@@ -157,7 +168,7 @@ public fun remove_region_min_holdings<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);

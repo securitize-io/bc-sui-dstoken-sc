@@ -11,6 +11,7 @@ use sui::{clock::Clock, event};
 // ==== Error Codes ====
 
 const EFlowbackRestricted: u64 = 0;
+const ENotAuthorized: u64 = 1;
 
 // ==== Compliance Region Constants ====
 
@@ -39,6 +40,9 @@ public struct DSComplianceFlowbackRestrictionRuleSet<phantom T, V: copy + drop> 
 // ==================== Initialization ====================
 
 /// Create a new FlowbackRestriction rule with an end time
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     block_flowback_end_time_ms: u64,
@@ -46,7 +50,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): FlowbackRestriction {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> {
         block_flowback_end_time_ms,
     });
@@ -58,6 +62,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set flowback end time
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_flowback_end_time<T>(
     auth: &Auth<T>,
     rule: &mut FlowbackRestriction,
@@ -66,7 +73,7 @@ public fun set_flowback_end_time<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
         field: b"block_flowback_end_time_ms".to_string(),
         old_value: rule.block_flowback_end_time_ms,

@@ -9,6 +9,10 @@ use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
+// ==== Error Codes ====
+
+const ENotAuthorized: u64 = 0;
+
 // ==== Structs ====
 
 /// Backdating issuance rule configuration
@@ -32,6 +36,9 @@ public struct DSComplianceBackdatingIssuanceRuleSet<phantom T, V: copy + drop> h
 // ==================== Initialization ====================
 
 /// Create a new BackdatingIssuance rule
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     allow_backdating: bool,
@@ -39,7 +46,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): BackdatingIssuance {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceBackdatingIssuanceRuleCreated<T> {
         allow_backdating,
     });
@@ -51,6 +58,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set whether backdating is allowed
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_allow_backdating<T>(
     auth: &Auth<T>,
     rule: &mut BackdatingIssuance,
@@ -59,7 +69,7 @@ public fun set_allow_backdating<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceBackdatingIssuanceRuleSet<T, bool> {
         field: b"allow_backdating".to_string(),
         old_value: rule.allow_backdating,
