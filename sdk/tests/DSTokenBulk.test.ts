@@ -27,7 +27,7 @@ describe('DSTokenBulk', () => {
     let investor2: Keypair
     let investor3: Keypair
     let investors: Investor[]
-    const numberOfInvestors = 166 //166
+    const numberOfInvestors = 1000
     const tokensPerInvestor = 1000n
 
     beforeAll(async () => {
