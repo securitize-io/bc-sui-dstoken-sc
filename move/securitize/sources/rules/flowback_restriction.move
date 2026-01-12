@@ -1,20 +1,29 @@
 /// Module: flowback_restriction
 ///
 /// Rule that prevents non-US investors from transferring tokens to US investors
-/// during a specified Regulation S distribution period (flowback restriction).
+/// during a specified Regulation S distribution period flowback restriction.
 module securitize::flowback_restriction;
 
 use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::{clock::Clock, event};
 
+// ==== Error Codes ====
+
+const EFlowbackRestricted: u64 = 0;
+const ENotAuthorized: u64 = 1;
+
 // ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 
-// ==== Error Codes ====
+// ==== Structs ====
 
-const EFlowbackRestricted: u64 = 0;
+/// Flowback restriction configuration
+public struct FlowbackRestriction has drop, store {
+    /// End time (in ms) for the flowback restriction period (0 = transfer restriction)
+    block_flowback_end_time_ms: u64,
+}
 
 // ==== Events ====
 
@@ -28,17 +37,12 @@ public struct DSComplianceFlowbackRestrictionRuleSet<phantom T, V: copy + drop> 
     new_value: V,
 }
 
-// ==== Structs ====
-
-/// Flowback restriction configuration
-public struct FlowbackRestriction has drop, store {
-    /// End time (in ms) for the flowback restriction period (0 = transfer restriction)
-    block_flowback_end_time_ms: u64,
-}
-
 // ==================== Initialization ====================
 
 /// Create a new FlowbackRestriction rule with an end time
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     block_flowback_end_time_ms: u64,
@@ -46,7 +50,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): FlowbackRestriction {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> {
         block_flowback_end_time_ms,
     });
@@ -58,6 +62,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set flowback end time
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_flowback_end_time<T>(
     auth: &Auth<T>,
     rule: &mut FlowbackRestriction,
@@ -66,7 +73,7 @@ public fun set_flowback_end_time<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
         field: b"block_flowback_end_time_ms".to_string(),
         old_value: rule.block_flowback_end_time_ms,
@@ -77,10 +84,13 @@ public fun set_flowback_end_time<T>(
 
 // ==================== Validation ====================
 
-/// Validate that flowback restriction doesn't apply to this transfer
+/// Validate that flowback restriction doesn't apply to this transfer.
 ///
 /// This checks if a non-US investor is trying to transfer to a US investor
 /// during the restricted period.
+///
+/// # Aborts
+/// * `EFlowbackRestricted` - If non-US to US transfer during active restriction period
 public fun validate_rule(
     rule: &FlowbackRestriction,
     from_region: u64,

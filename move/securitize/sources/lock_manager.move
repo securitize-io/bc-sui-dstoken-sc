@@ -1,3 +1,7 @@
+/// Module: lock_manager
+///
+/// Manages token locks for investors, including full account locks, liquidate-only
+/// restrictions, and time-based lock records for specific token amounts.
 module securitize::lock_manager;
 
 use securitize::{
@@ -11,6 +15,7 @@ use sui::{clock::Clock, event};
 
 const MAX_LOCKS: u64 = 30;
 
+const ENotAuthorized: u64 = 0;
 const EAlreadyLocked: u64 = 1;
 const ENotLocked: u64 = 2;
 const ETooManyLocks: u64 = 3;
@@ -66,6 +71,11 @@ public(package) fun new<T>(auth: &mut Auth<T>, version: &Version, ctx: &TxContex
 
 // ==== Public Functions ====
 
+/// Fully locks an investor's account, preventing all transfers.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks LockInvestor ability
+/// * `EAlreadyLocked` - If the investor is already fully locked
 public fun lock_investor<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -74,13 +84,18 @@ public fun lock_investor<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, LockInvestor>(ctx.sender());
+    assert!(auth.owner_has_ability<T, LockInvestor>(ctx.sender()), ENotAuthorized);
     let lock_state = registry.get_investor_locks_mut(investor);
     assert!(!lock_state.is_fully_locked(), EAlreadyLocked);
     lock_state.set_fully_locked(true);
     event::emit(DSLockManagerInvestorFullyLocked<T> { investor });
 }
 
+/// Unlocks a fully locked investor's account, allowing transfers again.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks UnlockInvestor ability
+/// * `ENotLocked` - If the investor is not fully locked
 public fun unlock_investor<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -89,13 +104,18 @@ public fun unlock_investor<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, UnlockInvestor>(ctx.sender());
+    assert!(auth.owner_has_ability<T, UnlockInvestor>(ctx.sender()), ENotAuthorized);
     let lock_state = registry.get_investor_locks_mut(investor);
     assert!(lock_state.is_fully_locked(), ENotLocked);
     lock_state.set_fully_locked(false);
     event::emit(DSLockManagerInvestorFullyUnlocked<T> { investor });
 }
 
+/// Sets the liquidate-only restriction for an investor.
+/// When enabled, the investor can only transfer tokens to the issuer wallet.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks SetLiquidateOnly ability
 public fun set_liquidate_only<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -105,12 +125,19 @@ public fun set_liquidate_only<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, SetLiquidateOnly>(ctx.sender());
+    assert!(auth.owner_has_ability<T, SetLiquidateOnly>(ctx.sender()), ENotAuthorized);
     let lock_state = registry.get_investor_locks_mut(investor);
     lock_state.set_liquidate_only(enabled);
     event::emit(DSLockManagerLiquidateOnlySet<T> { investor, enabled });
 }
 
+/// Adds a time-based lock record for a specific token amount.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks AddLockRecord ability
+/// * `EInvalidValue` - If the value is zero
+/// * `EInvalidTime` - If the release time is non-zero and in the past
+/// * `ETooManyLocks` - If the investor already has the maximum number of locks
 public fun add_lock<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -124,7 +151,7 @@ public fun add_lock<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, AddLockRecord>(ctx.sender());
+    assert!(auth.owner_has_ability<T, AddLockRecord>(ctx.sender()), ENotAuthorized);
     assert!(value > 0, EInvalidValue);
     assert!(release_time_ms == 0 || release_time_ms > clock.timestamp_ms(), EInvalidTime);
 
@@ -144,6 +171,11 @@ public fun add_lock<T>(
     });
 }
 
+/// Removes a lock record at the specified index.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks RemoveLockRecord ability
+/// * `EIndexOutOfRange` - If the index is out of range
 public fun remove_lock<T>(
     registry: &mut InvestorInfo<T>,
     investor: String,
@@ -153,7 +185,7 @@ public fun remove_lock<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, RemoveLockRecord>(ctx.sender());
+    assert!(auth.owner_has_ability<T, RemoveLockRecord>(ctx.sender()), ENotAuthorized);
     let lock_state = registry.get_investor_locks_mut(investor);
     let len = lock_state.locks_length();
     assert!(index < len, EIndexOutOfRange);

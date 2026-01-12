@@ -1,3 +1,8 @@
+/// Module: abilities
+///
+/// Defines all capability types used for fine-grained access control.
+/// These ability structs are used by the trust service to authorize
+/// specific actions across the DS Token ecosystem.
 module securitize::abilities;
 
 // ==== Ds Token Abilities ====
@@ -14,17 +19,17 @@ public struct Pauser() has drop;
 
 // ==================== Trust Service Abilities ====================
 
-public struct SetServiceOwner has drop {}
+public struct SetServiceOwner() has drop;
 
-public struct SetTransferAgent has drop {}
+public struct SetTransferAgent() has drop;
 
-public struct SetIssuer has drop {}
+public struct SetIssuer() has drop;
 
-public struct SetExchange has drop {}
+public struct SetExchange() has drop;
 
-public struct SetAbilities has drop {}
+public struct SetAbilities() has drop;
 
-public struct SetRoleTypes has drop {}
+public struct SetRoleTypes() has drop;
 
 // ==== Compliance Abilities ====
 
@@ -38,15 +43,15 @@ public struct ManageRules() has drop;
 
 // ==== Lock Manager Abilities ====
 
-public struct LockInvestor has drop {}
+public struct LockInvestor() has drop;
 
-public struct UnlockInvestor has drop {}
+public struct UnlockInvestor() has drop;
 
-public struct SetLiquidateOnly has drop {}
+public struct SetLiquidateOnly() has drop;
 
-public struct AddLockRecord has drop {}
+public struct AddLockRecord() has drop;
 
-public struct RemoveLockRecord has drop {}
+public struct RemoveLockRecord() has drop;
 
 // ==== Registry Service Abilities ====
 

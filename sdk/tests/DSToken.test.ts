@@ -173,6 +173,7 @@ describe('DSToken', () => {
             const wallets = new Wallets(tokenAddress)
             await executeTxFunc(wallets.addIssuerWallet(issuer.toSuiAddress(), sender))
 
+            // testInvestor2 had 300,000 from transfer + 500,000 new = 800,000
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '800000')
             await expect(dsToken.getTotalIssued()).resolves.toBe(
                 (totalIssued + 1_000_000 + 500_000).toString()
@@ -188,6 +189,7 @@ describe('DSToken', () => {
                 )
             )
 
+            // 800,000 - 300,000 seized = 500,000
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '500000')
             await expect(dsToken.getTotalIssued()).resolves.toBe(
                 (totalIssued + 1_000_000 + 500_000).toString()

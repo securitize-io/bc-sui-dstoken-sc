@@ -1,3 +1,7 @@
+/// Module: version
+///
+/// Manages package versioning to ensure users interact with the latest contract version.
+/// Provides version validation and migration support for package upgrades.
 module securitize::version;
 
 use sui::package::Publisher;
@@ -19,6 +23,9 @@ fun init(ctx: &mut TxContext) {
 }
 
 /// Function checking that the package-version matches the `Version` object.
+///
+/// # Aborts
+/// * `EInvalidPackageVersion` - If the package version does not match the Version object
 public fun check_is_valid(self: &Version) {
     assert!(self.version == VERSION, EInvalidPackageVersion);
 }

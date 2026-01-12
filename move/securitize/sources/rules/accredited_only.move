@@ -12,10 +12,21 @@ use sui::event;
 
 const ENotAccredited: u64 = 0;
 const ENotUSAccredited: u64 = 1;
+const ENotAuthorized: u64 = 2;
 
 // ==== Compliance Region Constants ====
 
 const US: u64 = 1;
+
+// ==== Structs ====
+
+/// Accredited-only rule configuration
+public struct AccreditedOnly has drop, store {
+    /// Require accreditation globally
+    force_accredited: bool,
+    /// Require US accreditation for US investors
+    force_us_accredited: bool,
+}
 
 // ==== Events ====
 
@@ -30,19 +41,12 @@ public struct DSComplianceAccreditedOnlyRuleSet<phantom T, V: copy + drop> has c
     new_value: V,
 }
 
-// ==== Structs ====
-
-/// Accredited-only rule configuration
-public struct AccreditedOnly has drop, store {
-    /// Require accreditation globally
-    force_accredited: bool,
-    /// Require US accreditation for US investors
-    force_us_accredited: bool,
-}
-
 // ==================== Initialization ====================
 
 /// Create a new AccreditedOnly rule
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     force_accredited: bool,
@@ -51,7 +55,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): AccreditedOnly {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAccreditedOnlyRuleCreated<T> {
         force_accredited,
         force_us_accredited,
@@ -65,6 +69,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set global accreditation requirement
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_accredited<T>(
     auth: &Auth<T>,
     rule: &mut AccreditedOnly,
@@ -73,7 +80,7 @@ public fun set_force_accredited<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
         field: b"force_accredited".to_string(),
         old_value: rule.force_accredited,
@@ -83,6 +90,9 @@ public fun set_force_accredited<T>(
 }
 
 /// Set US accreditation requirement
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us_accredited<T>(
     auth: &Auth<T>,
     rule: &mut AccreditedOnly,
@@ -91,7 +101,7 @@ public fun set_force_us_accredited<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
         field: b"force_us_accredited".to_string(),
         old_value: rule.force_us_accredited,
@@ -102,7 +112,11 @@ public fun set_force_us_accredited<T>(
 
 // ==================== Validation ====================
 
-/// Validate that investor is accredited based on rule configuration
+/// Validate that investor is accredited based on rule configuration.
+///
+/// # Aborts
+/// * `ENotAccredited` - If global accreditation is required and investor is not accredited
+/// * `ENotUSAccredited` - If US accreditation is required, investor is in US, and not accredited
 public fun validate_rule(rule: &AccreditedOnly, region: u64, is_accredited: bool) {
     // Check global requirement
     if (rule.force_accredited) {

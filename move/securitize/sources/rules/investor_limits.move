@@ -1,7 +1,7 @@
 /// Module: investor_limits
 ///
 /// Rule that enforces limits on the number of investors by category
-/// (total, accredited, non-accredited, by region, etc.)
+/// total, accredited, non-accredited, by region, etc.
 module securitize::investor_limits;
 
 use securitize::{
@@ -22,31 +22,13 @@ const EMaxNonAccreditedExceeded: u64 = 3;
 const EMaxJPInvestorsExceeded: u64 = 4;
 const EMaxEURetailExceeded: u64 = 5;
 const EBelowMinimumInvestors: u64 = 6;
+const ENotAuthorized: u64 = 7;
 
 // ==== Compliance Region Constants ====
 
 const US: u64 = 1;
 const EU: u64 = 2;
 const JP: u64 = 8;
-
-// ==== Events ====
-
-public struct DSComplianceInvestorLimitsRuleCreated<phantom T> has copy, drop {
-    total_investors_limit: u64,
-    minimum_total_investors: u64,
-    us_investors_limit: u64,
-    us_accredited_limit: u64,
-    non_accredited_limit: u64,
-    jp_investors_limit: u64,
-    eu_retail_limit: u64,
-    max_us_percentage: u64,
-}
-
-public struct DSComplianceInvestorLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
-}
 
 // ==== Structs ====
 
@@ -70,9 +52,31 @@ public struct InvestorLimits has drop, store {
     max_us_percentage: u64,
 }
 
+// ==== Events ====
+
+public struct DSComplianceInvestorLimitsRuleCreated<phantom T> has copy, drop {
+    total_investors_limit: u64,
+    minimum_total_investors: u64,
+    us_investors_limit: u64,
+    us_accredited_limit: u64,
+    non_accredited_limit: u64,
+    jp_investors_limit: u64,
+    eu_retail_limit: u64,
+    max_us_percentage: u64,
+}
+
+public struct DSComplianceInvestorLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
+    field: String,
+    old_value: V,
+    new_value: V,
+}
+
 // ==================== Initialization ====================
 
 /// Create a new InvestorLimits rule
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     total_investors_limit: u64,
@@ -87,7 +91,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): InvestorLimits {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleCreated<T> {
         total_investors_limit,
         minimum_total_investors,
@@ -113,6 +117,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set total investor limit
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_total_limit<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -121,7 +128,7 @@ public fun set_total_limit<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"total_investors_limit".to_string(),
         old_value: rule.total_investors_limit,
@@ -131,6 +138,9 @@ public fun set_total_limit<T>(
 }
 
 /// Set minimum total investors
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_minimum_total_investors<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -139,7 +149,7 @@ public fun set_minimum_total_investors<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"minimum_total_investors".to_string(),
         old_value: rule.minimum_total_investors,
@@ -149,6 +159,9 @@ public fun set_minimum_total_investors<T>(
 }
 
 /// Set US investor limit
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_limit<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -157,7 +170,7 @@ public fun set_us_limit<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"us_investors_limit".to_string(),
         old_value: rule.us_investors_limit,
@@ -167,6 +180,9 @@ public fun set_us_limit<T>(
 }
 
 /// Set US accredited limit
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_accredited_limit<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -175,7 +191,7 @@ public fun set_us_accredited_limit<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"us_accredited_limit".to_string(),
         old_value: rule.us_accredited_limit,
@@ -185,6 +201,9 @@ public fun set_us_accredited_limit<T>(
 }
 
 /// Set non-accredited limit
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_non_accredited_limit<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -193,7 +212,7 @@ public fun set_non_accredited_limit<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"non_accredited_limit".to_string(),
         old_value: rule.non_accredited_limit,
@@ -203,6 +222,9 @@ public fun set_non_accredited_limit<T>(
 }
 
 /// Set JP investor limit
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_jp_limit<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -211,7 +233,7 @@ public fun set_jp_limit<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"jp_investors_limit".to_string(),
         old_value: rule.jp_investors_limit,
@@ -221,6 +243,9 @@ public fun set_jp_limit<T>(
 }
 
 /// Set EU retail limit
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_eu_retail_limit<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -229,7 +254,7 @@ public fun set_eu_retail_limit<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"eu_retail_limit".to_string(),
         old_value: rule.eu_retail_limit,
@@ -239,6 +264,9 @@ public fun set_eu_retail_limit<T>(
 }
 
 /// Set max US percentage
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_us_percentage<T>(
     auth: &Auth<T>,
     rule: &mut InvestorLimits,
@@ -247,7 +275,7 @@ public fun set_max_us_percentage<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"max_us_percentage".to_string(),
         old_value: rule.max_us_percentage,
@@ -411,7 +439,10 @@ public fun validate_us_investor_limits<T>(
     };
 }
 
-/// Validate total investor count
+/// Validate total investor count.
+///
+/// # Aborts
+/// * `EMaxInvestorsExceeded` - If adding new investor would exceed total limit
 public fun validate_transfer_total_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -425,7 +456,10 @@ public fun validate_transfer_total_investors(
     }
 }
 
-/// Validate total investor count
+/// Validate total investor count.
+///
+/// # Aborts
+/// * `EMaxInvestorsExceeded` - If adding new investor would exceed total limit
 public fun validate_issuance_total_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -438,7 +472,10 @@ public fun validate_issuance_total_investors(
     }
 }
 
-/// Validate US investor count
+/// Validate US investor count.
+///
+/// # Aborts
+/// * `EMaxUSInvestorsExceeded` - If adding new US investor would exceed US limit
 public fun validate_transfer_us_investors(
     rule: &InvestorLimits,
     current_us_count: u64,
@@ -456,7 +493,10 @@ public fun validate_transfer_us_investors(
     }
 }
 
-/// Validate US investor count
+/// Validate US investor count.
+///
+/// # Aborts
+/// * `EMaxUSInvestorsExceeded` - If adding new US investor would exceed US limit
 public fun validate_issuance_us_investors(
     rule: &InvestorLimits,
     current_us_count: u64,
@@ -473,7 +513,10 @@ public fun validate_issuance_us_investors(
     }
 }
 
-/// Validate US accredited investor count
+/// Validate US accredited investor count.
+///
+/// # Aborts
+/// * `EMaxUSAccreditedExceeded` - If adding new US accredited investor would exceed limit
 public fun validate_transfer_us_accredited(
     rule: &InvestorLimits,
     current_count: u64,
@@ -489,7 +532,10 @@ public fun validate_transfer_us_accredited(
     }
 }
 
-/// Validate US accredited investor count
+/// Validate US accredited investor count.
+///
+/// # Aborts
+/// * `EMaxUSAccreditedExceeded` - If adding new US accredited investor would exceed limit
 public fun validate_issuance_us_accredited(
     rule: &InvestorLimits,
     current_count: u64,
@@ -502,7 +548,10 @@ public fun validate_issuance_us_accredited(
     }
 }
 
-/// Validate non-accredited investor count
+/// Validate non-accredited investor count.
+///
+/// # Aborts
+/// * `EMaxNonAccreditedExceeded` - If adding new non-accredited investor would exceed limit
 public fun validate_transfer_non_accredited(
     rule: &InvestorLimits,
     current_non_accredited: u64,
@@ -517,7 +566,10 @@ public fun validate_transfer_non_accredited(
     }
 }
 
-/// Validate non-accredited investor count
+/// Validate non-accredited investor count.
+///
+/// # Aborts
+/// * `EMaxNonAccreditedExceeded` - If adding new non-accredited investor would exceed limit
 public fun validate_issuance_non_accredited(
     rule: &InvestorLimits,
     current_count: u64,
@@ -530,7 +582,10 @@ public fun validate_issuance_non_accredited(
     }
 }
 
-/// Validate EU retail investor count
+/// Validate EU retail investor count.
+///
+/// # Aborts
+/// * `EMaxEURetailExceeded` - If adding new EU retail investor would exceed limit
 public fun validate_transfer_eu_retail(
     rule: &InvestorLimits,
     current_count: u64,
@@ -545,7 +600,10 @@ public fun validate_transfer_eu_retail(
     }
 }
 
-/// Validate EU retail investor count
+/// Validate EU retail investor count.
+///
+/// # Aborts
+/// * `EMaxEURetailExceeded` - If adding new EU retail investor would exceed limit
 public fun validate_issuance_eu_retail(
     rule: &InvestorLimits,
     current_count: u64,
@@ -558,7 +616,10 @@ public fun validate_issuance_eu_retail(
     }
 }
 
-/// Validate JP investor count
+/// Validate JP investor count.
+///
+/// # Aborts
+/// * `EMaxJPInvestorsExceeded` - If adding new JP investor would exceed limit
 public fun validate_transfer_jp_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -573,7 +634,10 @@ public fun validate_transfer_jp_investors(
     }
 }
 
-/// Validate JP investor count
+/// Validate JP investor count.
+///
+/// # Aborts
+/// * `EMaxJPInvestorsExceeded` - If adding new JP investor would exceed limit
 public fun validate_issuance_jp_investors(
     rule: &InvestorLimits,
     current_count: u64,
@@ -586,9 +650,11 @@ public fun validate_issuance_jp_investors(
     }
 }
 
-/// Validate minimum total investors requirement
-/// Used to prevent transfers that would reduce total investors below minimum
-/// is_losing_investor: true if this action would cause an investor to have 0 balance
+/// Validate minimum total investors requirement.
+/// Used to prevent transfers that would reduce total investors below minimum.
+///
+/// # Aborts
+/// * `EBelowMinimumInvestors` - If transfer would reduce count below minimum
 public fun validate_transfer_minimum_total_investors(
     rule: &InvestorLimits,
     current_count: u64,

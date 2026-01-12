@@ -1,3 +1,8 @@
+/// Module: compliance_service
+///
+/// Core compliance engine that validates all token transfers against registered rules.
+/// Manages compliance rules configuration, country-level restrictions, and coordinates
+/// with the registry service to enforce transfer policies.
 module securitize::compliance_service;
 
 use pas::transfer_funds_request::TransferFundsRequest;
@@ -30,6 +35,7 @@ const ETotalInvestorsUnderflow: u64 = 4;
 const ETokensLocked: u64 = 6;
 const EInvestorLiquidateOnly: u64 = 7;
 const ENotIssuerWallet: u64 = 8;
+const ENotAuthorized: u64 = 9;
 
 // ==== Compliance Region Constants ====
 
@@ -37,37 +43,6 @@ const NONE: u64 = 0;
 const FORBIDDEN: u64 = 4;
 
 public struct ComplianceServiceKey<phantom T>() has copy, drop, store;
-
-// ==== Events ====
-
-public struct DSComplianceRuleAdded<phantom T> has copy, drop {
-    rule_type: TypeName,
-}
-
-public struct DSComplianceRuleRemoved<phantom T> has copy, drop {
-    rule_type: TypeName,
-}
-
-public struct DSComplianceTransferRecorded<phantom T> has copy, drop {
-    from: address,
-    to: address,
-    amount: u64,
-}
-
-public struct DSComplianceIssuanceRecorded<phantom T> has copy, drop {
-    to: address,
-    amount: u64,
-}
-
-public struct DSComplianceBurnRecorded<phantom T> has copy, drop {
-    from: address,
-    amount: u64,
-}
-
-public struct DSComplianceSeizeRecorded<phantom T> has copy, drop {
-    from: address,
-    amount: u64,
-}
 
 // ==== Structs ====
 
@@ -107,6 +82,37 @@ public struct PartyInfo has copy, drop {
     is_exit_investor: bool,
     is_new_investor: bool,
     is_special_wallet: bool,
+}
+
+// ==== Events ====
+
+public struct DSComplianceRuleAdded<phantom T> has copy, drop {
+    rule_type: TypeName,
+}
+
+public struct DSComplianceRuleRemoved<phantom T> has copy, drop {
+    rule_type: TypeName,
+}
+
+public struct DSComplianceTransferRecorded<phantom T> has copy, drop {
+    from: address,
+    to: address,
+    amount: u64,
+}
+
+public struct DSComplianceIssuanceRecorded<phantom T> has copy, drop {
+    to: address,
+    amount: u64,
+}
+
+public struct DSComplianceBurnRecorded<phantom T> has copy, drop {
+    from: address,
+    amount: u64,
+}
+
+public struct DSComplianceSeizeRecorded<phantom T> has copy, drop {
+    from: address,
+    amount: u64,
 }
 
 // ==================== Initialization Functions ====================
@@ -290,8 +296,12 @@ public(package) fun validate_seize<T>(
 
 // ==================== Rule Management Functions ====================
 
-/// Register a new rule to type `T`
-/// Adds the rule object to the rules bag and registers its type
+/// Register a new rule to type `T`.
+/// Adds the rule object to the rules bag and registers its type.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
+/// * `ERuleAlreadyExists` - If the rule type is already registered
 public fun register_rule<T, R: store>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
@@ -300,7 +310,7 @@ public fun register_rule<T, R: store>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, RegisterRule>(ctx.sender());
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
     // Check if rule already exists
     assert!(!self.rules.contains(&rule_type), ERuleAlreadyExists);
@@ -312,8 +322,12 @@ public fun register_rule<T, R: store>(
     event::emit(DSComplianceRuleAdded<T> { rule_type });
 }
 
-/// Unregister a rule from type `T`
-/// Removes the rule object from the rules bag and unregisters its type
+/// Unregister a rule from type `T`.
+/// Removes the rule object from the rules bag and unregisters its type.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks UnregisterRule ability
+/// * `ERuleNotFound` - If the rule type is not registered
 public fun unregister_rule<T, R: store + drop>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
@@ -321,7 +335,7 @@ public fun unregister_rule<T, R: store + drop>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, UnregisterRule>(ctx.sender());
+    assert!(auth.owner_has_ability<T, UnregisterRule>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
     // Check if rule exists
     assert!(self.rules.contains(&rule_type), ERuleNotFound);
@@ -341,7 +355,10 @@ public fun has_rule<T, R: store>(config: &ComplianceConfig<T>): bool {
     config.rules.contains(&rule_type)
 }
 
-/// Get mutable reference to a rule configuration
+/// Get mutable reference to a rule configuration.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun get_rule_mut<T, R: store>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
@@ -349,7 +366,7 @@ public fun get_rule_mut<T, R: store>(
     ctx: &TxContext,
 ): &mut R {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
     self.rules_bag.borrow_mut(rule_type)
 }
@@ -361,7 +378,10 @@ public fun rules_vector<T>(config: &ComplianceConfig<T>): &vector<TypeName> {
 
 // ==================== Country Compliance Configuration ====================
 
-/// Set compliance region for a country
+/// Set compliance region for a country.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks SetCountryCompliance ability
 public fun set_country_compliance<T>(
     registry: &mut InvestorInfo<T>,
     country: String,
@@ -371,7 +391,7 @@ public fun set_country_compliance<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender());
+    assert!(auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender()), ENotAuthorized);
     registry.set_country_compliance(country, compliance_region)
 }
 

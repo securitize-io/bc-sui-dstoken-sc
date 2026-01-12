@@ -1,9 +1,8 @@
 /// Module: registry_service
 ///
-/// This module manages the investor registry for security tokens.
-/// It provides functionality to register, remove, and update investors,
-/// manage their wallets, and track compliance-related attributes such as
-/// country, accreditation status, and qualification status.
+/// Manages investor registration and their associated wallets.
+/// Stores investor attributes, country information, and tracks wallet-to-investor mappings
+/// for compliance verification during token transfers.
 module securitize::registry_service;
 
 use pas::{namespace::Namespace, vault};
@@ -54,22 +53,27 @@ const EComplianceUnchanged: u64 = 12;
 
 // ==== Attribute Constants ====
 
-// TODO: Think about making these Enums
 const NONE: u64 = 0;
+#[allow(unused_const)]
 const KYC_APPROVED: u64 = 1;
 const ACCREDITED: u64 = 2;
 const QUALIFIED: u64 = 4;
+#[allow(unused_const)]
 const PROFESSIONAL: u64 = 8;
 
 // ==== Attribute Status Constants ====
 
+#[allow(unused_const)]
 const PENDING: u64 = 0;
+#[allow(unused_const)]
 const APPROVED: u64 = 1;
+#[allow(unused_const)]
 const REJECTED: u64 = 2;
 
 // ==== TEMP Compliance Region Constants ====
 const US: u64 = 1;
 const EU: u64 = 2;
+#[allow(unused_const)]
 const FORBIDDEN: u64 = 4;
 const JP: u64 = 8;
 
@@ -182,7 +186,7 @@ public struct DSRegistryServiceInvestorCountryChanged<phantom T> has copy, drop 
 }
 
 /// Emitted when an investor's attribute is changed
-public struct DSRegistryServiceAttributeChanged<phantom T> has copy, drop {
+public struct DSRegistryServiceInvestorAttributeChanged<phantom T> has copy, drop {
     investor_id: String,
     attribute_id: u64,
     value: u64,
@@ -427,6 +431,7 @@ public fun add_wallet<T>(
     assert!(!investor_info.is_special_wallet(wallet_addr), ESpecialWallet);
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     assert!(!investor_info.is_wallet(wallet_addr), EWalletAlreadyExists);
+    // TODO assert balance == 0
     if (!vault::exists(namespace, wallet_addr)) {
         vault::create_and_share(namespace, wallet_addr);
     };
@@ -465,7 +470,7 @@ public fun remove_wallet<T>(
         investor_info.investor_wallets.borrow(wallet_addr).owner == investor_id,
         EWalletDoesNotBelongToInvestor,
     );
-
+    // TODO assert balance == 0
     investor_info.investor_wallets.remove(wallet_addr);
     let wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
@@ -543,7 +548,7 @@ public fun set_attribute<T>(
         };
         investor.attributes.add(attribute_id, attribute);
     };
-    event::emit(DSRegistryServiceAttributeChanged<T> {
+    event::emit(DSRegistryServiceInvestorAttributeChanged<T> {
         investor_id,
         attribute_id,
         value: attribute_value,
@@ -768,9 +773,9 @@ public(package) fun remove_special_wallet<T>(
     investor_info.special_wallets.remove(wallet)
 }
 
-/// Sets the count of Japanese investors.
+/// Sets the total count of investors.
 public(package) fun set_total_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
-    investor_info.jp_investors_count = count;
+    investor_info.total_investors_count = count;
 }
 
 /// Sets the count of US investors.
@@ -898,7 +903,7 @@ public(package) fun remove_lock(state: &mut InvestorLockState, index: u64) {
 public(package) fun compute_locked_sum(state: &InvestorLockState, now_ms: u64): u64 {
     let mut locked_sum = 0;
     state.locks.do_ref!(|l| {
-        if (l.release_time_ms == 0 || l.release_time_ms >= now_ms) {
+        if (l.release_time_ms == 0 || l.release_time_ms > now_ms) {
             locked_sum = locked_sum + l.value
         }
     });

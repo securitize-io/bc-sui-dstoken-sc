@@ -17,6 +17,12 @@ use securitize::{
 use std::string::String;
 use sui::event;
 
+// ==== Error Codes ====
+
+const EUnderLockup: u64 = 0;
+const ELockPeriodTooLong: u64 = 1;
+const ENotAuthorized: u64 = 2;
+
 // ==== Constants ====
 
 const US: u64 = 1;
@@ -25,10 +31,15 @@ const US: u64 = 1;
 /// This prevents the edge case of overflow when adding lock_period to issuance timestamps
 const MAX_LOCK_PERIOD_MS: u64 = 6_307_200_000_000; // 200 years
 
-// ==== Error Codes ====
+// ==== Structs ====
 
-const EUnderLockup: u64 = 0;
-const ELockPeriodTooLong: u64 = 1;
+/// Lockup restriction configuration - lock periods
+public struct LockupRestriction has drop, store {
+    /// Lock period for US investors (in milliseconds)
+    us_lock_period_ms: u64,
+    /// Lock period for non-US investors (in milliseconds)
+    non_us_lock_period_ms: u64,
+}
 
 // ==== Events ====
 
@@ -43,19 +54,13 @@ public struct DSComplianceLockupRestrictionRuleSet<phantom T, V: copy + drop> ha
     new_value: V,
 }
 
-// ==== Structs ====
-
-/// Lockup restriction configuration - lock periods
-public struct LockupRestriction has drop, store {
-    /// Lock period for US investors (in milliseconds)
-    us_lock_period_ms: u64,
-    /// Lock period for non-US investors (in milliseconds)
-    non_us_lock_period_ms: u64,
-}
-
 // ==================== Initialization ====================
 
-/// Create a new LockupRestriction rule with configurable lock periods
+/// Create a new LockupRestriction rule with configurable lock periods.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ELockPeriodTooLong` - If either lock period exceeds maximum (200 years)
 public fun new<T>(
     auth: &Auth<T>,
     us_lock_period_ms: u64,
@@ -64,7 +69,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): LockupRestriction {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     event::emit(DSComplianceLockupRestrictionRuleCreated<T> {
@@ -79,7 +84,11 @@ public fun new<T>(
 
 // ==================== Rule Management ====================
 
-/// Set US lock period (in milliseconds)
+/// Set US lock period (in milliseconds).
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_us_lock_period<T>(
     auth: &Auth<T>,
     rule: &mut LockupRestriction,
@@ -88,7 +97,7 @@ public fun set_us_lock_period<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
         field: b"us_lock_period_ms".to_string(),
@@ -98,7 +107,11 @@ public fun set_us_lock_period<T>(
     rule.us_lock_period_ms = period_ms;
 }
 
-/// Set non-US lock period (in milliseconds)
+/// Set non-US lock period (in milliseconds).
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_non_us_lock_period<T>(
     auth: &Auth<T>,
     rule: &mut LockupRestriction,
@@ -107,7 +120,7 @@ public fun set_non_us_lock_period<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
         field: b"non_us_lock_period_ms".to_string(),
@@ -120,6 +133,9 @@ public fun set_non_us_lock_period<T>(
 // ==================== Validation ====================
 
 /// Validate that a transfer does not exceed the transferable (issuances unlocked) token amount.
+///
+/// # Aborts
+/// * `EUnderLockup` - If transfer amount exceeds transferable balance
 public fun validate_rule(
     rule: &LockupRestriction,
     investor_issuances: &vector<Issuance>,

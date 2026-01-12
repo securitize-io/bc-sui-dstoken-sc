@@ -1,3 +1,8 @@
+/// Module: ds_token
+///
+/// The main security token module that implements the DS Token standard.
+/// Provides treasury management, token issuance, burning, seizing, and transfers
+/// with integrated compliance validation through the compliance service.
 module securitize::ds_token;
 
 use pas::{
@@ -43,6 +48,8 @@ const EInvalidLengthOfParameters: u64 = 6;
 const EValueLockedLargerThanValue: u64 = 7;
 /// Error code when there is not enough balance to perform the operation
 const ENotEnoughBalance: u64 = 9;
+/// Error code when there is an Arithmetic Overflow
+const EArithmeticOverflow: u64 = 10;
 
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
@@ -92,7 +99,10 @@ public struct Transfer<phantom T> has copy, drop {
 
 public struct Pause<phantom T> has copy, drop {
     pauser: address,
-    is_paused: bool,
+}
+
+public struct Unpause<phantom T> has copy, drop {
+    pauser: address,
 }
 
 /// Initializes a new Treasury for the given token type T.
@@ -146,6 +156,7 @@ public(package) fun share<T>(treasury: Treasury<T>) {
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
+/// * `EVaultOwnerMismatch` - If the vault owner does not match to_address
 public fun issue_tokens<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
@@ -271,7 +282,9 @@ fun issue_tokens_internal<T>(
     if (investors.is_wallet(to)) {
         let id = investors.get_investor_id_by_wallet(to);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
+        let new_total_u256 = (total_balance as u256) + (value as u256);
+        let new_total = try_from_u256_to_u64(new_total_u256);
+        investors.update_investor_total_balance(id, new_total);
     };
     let mut total_locked = 0;
     let mut i = 0;
@@ -298,6 +311,7 @@ fun issue_tokens_internal<T>(
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the BurnTokens ability
+/// * `EVaultOwnerMismatch` - If the vault owner does not match from_address
 public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
@@ -330,7 +344,8 @@ public fun burn<T>(
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance - value);
+        assert!(total_balance >= value, ENotEnoughBalance);
+        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
     };
     event::emit(Burn<T> {
         burner: from_address,
@@ -349,6 +364,7 @@ public fun burn<T>(
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the SeizeTokens ability
+/// * `EVaultOwnerMismatch` - If the vault owner does not match the expected address
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
@@ -380,12 +396,15 @@ public fun seize<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
+        let new_total_u256 = (total_balance as u256) + (value as u256);
+        let new_total = try_from_u256_to_u64(new_total_u256);
+        investors.update_investor_total_balance(id, new_total);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance - value);
+        assert!(total_balance >= value, ENotEnoughBalance);
+        investors.update_investor_total_balance(id, (total_balance - value));
     };
     event::emit(Seize<T> {
         from: from_address,
@@ -404,7 +423,8 @@ public fun seize<T>(
 /// The treasury must not be paused for the transfer to succeed.
 ///
 /// # Aborts
-/// * `ETreasuryPaused` - If the treasury is currently paused
+/// * `EValueZero` - If the transfer value is zero
+/// * `ETreasuryPaused` - If the treasury is paused and both parties are investors
 public fun transfer<T>(
     treasury: &Treasury<T>,
     investors: &mut InvestorInfo<T>,
@@ -420,12 +440,6 @@ public fun transfer<T>(
     let value = request.amount();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
-    if (treasury.is_paused()) {
-        assert!(
-            !(investors.is_wallet(from_address) && investors.is_wallet(to_address)),
-            ETreasuryPaused,
-        );
-    };
     assert!(
         !(
             investors.is_wallet(from_address) && 
@@ -444,12 +458,15 @@ public fun transfer<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
+        let new_total_u256 = (total_balance as u256) + (value as u256);
+        let new_total = try_from_u256_to_u64(new_total_u256);
+        investors.update_investor_total_balance(id, new_total);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance - value);
+        assert!(total_balance >= value, ENotEnoughBalance);
+        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
     };
     // Resolve the request
     rule.resolve_transfer(request, DsProtocol());
@@ -488,6 +505,7 @@ public fun set_metadata<T>(
 /// Only authorized addresses should be able to call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the Pauser ability
 /// * `ETreasuryAlreadyPaused` - If the treasury is already paused
 public fun pause<T>(
     treasury: &mut Treasury<T>,
@@ -501,7 +519,6 @@ public fun pause<T>(
     treasury.paused = true;
     event::emit(Pause<T> {
         pauser: ctx.sender(),
-        is_paused: true,
     });
 }
 
@@ -509,6 +526,7 @@ public fun pause<T>(
 /// Only authorized addresses should be able to call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the Pauser ability
 /// * `ETreasuryNotPaused` - If the treasury is not currently paused
 public fun unpause<T>(
     treasury: &mut Treasury<T>,
@@ -520,9 +538,8 @@ public fun unpause<T>(
     assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
-    event::emit(Pause<T> {
+    event::emit(Unpause<T> {
         pauser: ctx.sender(),
-        is_paused: false,
     });
 }
 
@@ -531,4 +548,13 @@ public fun unpause<T>(
 /// Returns whether the treasury is currently paused.
 public fun is_paused<T>(treasury: &Treasury<T>): bool {
     treasury.paused
+}
+
+// ==== Helpers ====
+
+// Try to safely convert u256 to u64
+public(package) fun try_from_u256_to_u64(number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64(number);
+    assert!(number_option.is_some(), EArithmeticOverflow);
+    number_option.extract()
 }

@@ -60,7 +60,7 @@ describe('Roles', () => {
             await executeTxFunc(roles.removeExchange(testExchange, sender))
 
             // Verify role is removed (should throw or return empty)
-            await expect(roles.getRole(testIssuer)).resolves.toBe('none')
+            await expect(roles.getRole(testExchange)).resolves.toBe('none')
         })
     })
 

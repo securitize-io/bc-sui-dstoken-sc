@@ -1,7 +1,7 @@
 /// Module: wallet_manager
 ///
 /// This module manages special wallets for security tokens.
-/// Special wallets are designated addresses (Issuer, Platform) that have
+/// Special wallets are designated addresses Issuer, Platform that have
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
@@ -29,6 +29,8 @@ const EWalletBelongsToInvestor: u64 = 0;
 const EDirectWalletChange: u64 = 1;
 /// The input wallet is not a special wallet
 const ENotSpecialWallet: u64 = 2;
+/// The caller is not authorized to perform this action
+const ENotAuthorized: u64 = 3;
 
 // ==== Events ====
 
@@ -47,7 +49,6 @@ public struct DSWalletManagerSpecialWalletRemoved<phantom T> has copy, drop {
 }
 
 /// Initializes the Wallet Manager abilities for the given token type T.
-///
 /// Called by the setup module during token deployment.
 public(package) fun new<T: key>(auth: &mut Auth<T>, version: &Version, ctx: &TxContext) {
     // Assign abilities to roles
@@ -64,6 +65,7 @@ public(package) fun new<T: key>(auth: &mut Auth<T>, version: &Version, ctx: &TxC
 /// Only authorized addresses with the SetIssuerWallet ability can call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If caller lacks SetIssuerWallet ability
 /// * `EWalletBelongsToInvestor` - If the wallet belongs to an investor
 /// * `EDirectWalletChange` - If the wallet is already a special wallet
 public fun add_issuer_wallet<T>(
@@ -75,7 +77,7 @@ public fun add_issuer_wallet<T>(
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, SetIssuerWallet>(ctx.sender());
+    assert!(auth.owner_has_ability<T, SetIssuerWallet>(ctx.sender()), ENotAuthorized);
     set_special_wallet(investor_info, namespace, wallet, ISSUER, ctx);
 }
 
@@ -83,6 +85,7 @@ public fun add_issuer_wallet<T>(
 /// Only authorized addresses with the SetPlatformWallet ability can call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If caller lacks SetPlatformWallet ability
 /// * `EWalletBelongsToInvestor` - If the wallet belongs to an investor
 /// * `EDirectWalletChange` - If the wallet is already a special wallet
 public fun add_platform_wallet<T>(
@@ -94,7 +97,7 @@ public fun add_platform_wallet<T>(
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, SetPlatformWallet>(ctx.sender());
+    assert!(auth.owner_has_ability<T, SetPlatformWallet>(ctx.sender()), ENotAuthorized);
     set_special_wallet(investor_info, namespace, wallet, PLATFORM, ctx);
 }
 
@@ -102,6 +105,7 @@ public fun add_platform_wallet<T>(
 /// Only authorized addresses with the RemoveSpecialWallet ability can call this function.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If caller lacks RemoveSpecialWallet ability
 /// * `ENotSpecialWallet` - If the wallet is not a special wallet
 public fun remove_special_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
@@ -111,7 +115,7 @@ public fun remove_special_wallet<T>(
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, RemoveSpecialWallet>(ctx.sender());
+    assert!(auth.owner_has_ability<T, RemoveSpecialWallet>(ctx.sender()), ENotAuthorized);
     assert!(investor_info.is_special_wallet(wallet), ENotSpecialWallet);
     let old_type = investor_info.remove_special_wallet(wallet);
     event::emit(DSWalletManagerSpecialWalletRemoved<T> {

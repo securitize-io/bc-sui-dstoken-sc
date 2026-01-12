@@ -1,15 +1,31 @@
 /// Module: force_full_transfer
+///
+/// Rule that requires investors to transfer their entire token balance.
+/// Can be configured separately for US investors or applied worldwide.
 module securitize::force_full_transfer;
 
 use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
 use std::string::String;
 use sui::event;
 
+// ==== Error Codes ====
+
 const EPartialTransferNotAllowed: u64 = 0;
+const ENotAuthorized: u64 = 1;
 
 // ==== Compliance Region Constants ====
 
 const US: u64 = 1;
+
+// ==== Structs ====
+
+/// Force full transfer configuration
+public struct ForceFullTransfer has drop, store {
+    /// Require US investors to transfer entire balance
+    force_full_transfer_us: bool,
+    /// Require all investors worldwide to transfer entire balance
+    force_full_transfer_worldwide: bool,
+}
 
 // ==== Events ====
 
@@ -24,19 +40,12 @@ public struct DSComplianceForceFullTransferRuleSet<phantom T, V: copy + drop> ha
     new_value: V,
 }
 
-// ==== Structs ====
-
-/// Force full transfer configuration
-public struct ForceFullTransfer has drop, store {
-    /// Require US investors to transfer entire balance
-    force_full_transfer_us: bool,
-    /// Require all investors worldwide to transfer entire balance
-    force_full_transfer_worldwide: bool,
-}
-
 // ==================== Initialization ====================
 
 /// Create a new ForceFullTransfer rule
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     force_full_transfer_us: bool,
@@ -45,7 +54,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): ForceFullTransfer {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceForceFullTransferRuleCreated<T> {
         force_full_transfer_us,
         force_full_transfer_worldwide,
@@ -59,6 +68,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set force full transfer for US investors
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us<T>(
     auth: &Auth<T>,
     rule: &mut ForceFullTransfer,
@@ -67,7 +79,7 @@ public fun set_force_us<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_us".to_string(),
         old_value: rule.force_full_transfer_us,
@@ -77,6 +89,9 @@ public fun set_force_us<T>(
 }
 
 /// Set force full transfer worldwide
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_worldwide<T>(
     auth: &Auth<T>,
     rule: &mut ForceFullTransfer,
@@ -85,7 +100,7 @@ public fun set_force_worldwide<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_worldwide".to_string(),
         old_value: rule.force_full_transfer_worldwide,
@@ -96,7 +111,10 @@ public fun set_force_worldwide<T>(
 
 // ==================== Validation ====================
 
-/// Validate that transfer complies with force full transfer rules
+/// Validate that transfer complies with force full transfer rules.
+///
+/// # Aborts
+/// * `EPartialTransferNotAllowed` - If partial transfer when full transfer is required
 public fun validate_rule(
     rule: &ForceFullTransfer,
     from_region: u64,
