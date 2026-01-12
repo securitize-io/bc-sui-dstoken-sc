@@ -18,13 +18,13 @@ const ENotAuthorized: u64 = 0;
 /// Backdating issuance rule configuration
 public struct BackdatingIssuance has drop, store {
     /// Whether backdating is allowed for issuances
-    allow_backdating: bool,
+    disallow_backdating: bool,
 }
 
 // ==== Events ====
 
 public struct DSComplianceBackdatingIssuanceRuleCreated<phantom T> has copy, drop {
-    allow_backdating: bool,
+    disallow_backdating: bool,
 }
 
 public struct DSComplianceBackdatingIssuanceRuleSet<phantom T, V: copy + drop> has copy, drop {
@@ -41,17 +41,17 @@ public struct DSComplianceBackdatingIssuanceRuleSet<phantom T, V: copy + drop> h
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
-    allow_backdating: bool,
+    disallow_backdating: bool,
     version: &Version,
     ctx: &TxContext,
 ): BackdatingIssuance {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceBackdatingIssuanceRuleCreated<T> {
-        allow_backdating,
+        disallow_backdating,
     });
     BackdatingIssuance {
-        allow_backdating,
+        disallow_backdating,
     }
 }
 
@@ -61,26 +61,26 @@ public fun new<T>(
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
-public fun set_allow_backdating<T>(
+public fun set_disallow_backdating<T>(
     auth: &Auth<T>,
     rule: &mut BackdatingIssuance,
-    allow: bool,
+    disallow: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceBackdatingIssuanceRuleSet<T, bool> {
-        field: b"allow_backdating".to_string(),
-        old_value: rule.allow_backdating,
-        new_value: allow,
+        field: b"disallow_backdating".to_string(),
+        old_value: rule.disallow_backdating,
+        new_value: disallow,
     });
-    rule.allow_backdating = allow;
+    rule.disallow_backdating = disallow;
 }
 
 // ==================== View Functions ====================
 
 /// Check if backdating is allowed
 public fun is_backdating_allowed(rule: &BackdatingIssuance): bool {
-    rule.allow_backdating
+    !rule.disallow_backdating
 }
