@@ -21,6 +21,7 @@ use sui::event;
 
 const EUnderLockup: u64 = 0;
 const ELockPeriodTooLong: u64 = 1;
+const ENotAuthorized: u64 = 2;
 
 // ==== Constants ====
 
@@ -58,6 +59,7 @@ public struct DSComplianceLockupRestrictionRuleSet<phantom T, V: copy + drop> ha
 /// Create a new LockupRestriction rule with configurable lock periods.
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 /// * `ELockPeriodTooLong` - If either lock period exceeds maximum (200 years)
 public fun new<T>(
     auth: &Auth<T>,
@@ -67,7 +69,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): LockupRestriction {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     event::emit(DSComplianceLockupRestrictionRuleCreated<T> {
@@ -85,6 +87,7 @@ public fun new<T>(
 /// Set US lock period (in milliseconds).
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_us_lock_period<T>(
     auth: &Auth<T>,
@@ -94,7 +97,7 @@ public fun set_us_lock_period<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
         field: b"us_lock_period_ms".to_string(),
@@ -107,6 +110,7 @@ public fun set_us_lock_period<T>(
 /// Set non-US lock period (in milliseconds).
 ///
 /// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_non_us_lock_period<T>(
     auth: &Auth<T>,
@@ -116,7 +120,7 @@ public fun set_non_us_lock_period<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
         field: b"non_us_lock_period_ms".to_string(),

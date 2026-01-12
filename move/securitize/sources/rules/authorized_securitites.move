@@ -14,6 +14,7 @@ use sui::event;
 // ==== Error Codes ====
 
 const EMaxAuthorizedSecuritiesExceeded: u64 = 0;
+const ENotAuthorized: u64 = 1;
 
 // ==== Structs ====
 
@@ -38,6 +39,9 @@ public struct DSComplianceAuthorizedSecuritiesRuleSet<phantom T, V: copy + drop>
 
 /// Create a new AuthorizedSecurities rule
 /// Starts with max_supply of 0 (unlimited)
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     max_supply: u64,
@@ -45,7 +49,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): AuthorizedSecurities {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAuthorizedSecuritiesRuleCreated<T> {
         max_supply,
     });
@@ -57,6 +61,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set the maximum authorized securities (max supply)
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_supply<T>(
     auth: &Auth<T>,
     rule: &mut AuthorizedSecurities,
@@ -65,7 +72,7 @@ public fun set_max_supply<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAuthorizedSecuritiesRuleSet<T, u64> {
         field: b"max_supply".to_string(),
         old_value: rule.max_supply,

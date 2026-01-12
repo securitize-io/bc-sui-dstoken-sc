@@ -97,7 +97,10 @@ public struct Transfer<phantom T> has copy, drop {
 
 public struct Pause<phantom T> has copy, drop {
     pauser: address,
-    is_paused: bool,
+}
+
+public struct Unpause<phantom T> has copy, drop {
+    pauser: address,
 }
 
 /// Initializes a new Treasury for the given token type T.
@@ -277,7 +280,7 @@ fun issue_tokens_internal<T>(
     if (investors.is_wallet(to)) {
         let id = investors.get_investor_id_by_wallet(to);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
+        investors.update_investor_total_balance(id, ((total_balance as u128) + (value as u128)) as u64);
     };
     let mut total_locked = 0;
     let mut i = 0;
@@ -337,7 +340,8 @@ public fun burn<T>(
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance - value);
+        assert!(total_balance >= value, ENotEnoughBalance);
+        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
     };
     event::emit(Burn<T> {
         burner: from_address,
@@ -388,12 +392,13 @@ public fun seize<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
+        investors.update_investor_total_balance(id, ((total_balance as u128) + (value as u128)) as u64);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance - value);
+        assert!(total_balance >= value, ENotEnoughBalance);
+        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
     };
     event::emit(Seize<T> {
         from: from_address,
@@ -429,12 +434,6 @@ public fun transfer<T>(
     let value = request.amount();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
-    if (treasury.is_paused()) {
-        assert!(
-            !(investors.is_wallet(from_address) && investors.is_wallet(to_address)),
-            ETreasuryPaused,
-        );
-    };
     assert!(
         !(
             investors.is_wallet(from_address) && 
@@ -453,12 +452,13 @@ public fun transfer<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance + value);
+        investors.update_investor_total_balance(id, ((total_balance as u128) + (value as u128)) as u64);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, total_balance - value);
+        assert!(total_balance >= value, ENotEnoughBalance);
+        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
     };
     // Resolve the request
     rule.resolve_transfer(request, DsProtocol());
@@ -511,7 +511,6 @@ public fun pause<T>(
     treasury.paused = true;
     event::emit(Pause<T> {
         pauser: ctx.sender(),
-        is_paused: true,
     });
 }
 
@@ -531,9 +530,8 @@ public fun unpause<T>(
     assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
-    event::emit(Pause<T> {
+    event::emit(Unpause<T> {
         pauser: ctx.sender(),
-        is_paused: false,
     });
 }
 

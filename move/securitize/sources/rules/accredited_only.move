@@ -12,6 +12,7 @@ use sui::event;
 
 const ENotAccredited: u64 = 0;
 const ENotUSAccredited: u64 = 1;
+const ENotAuthorized: u64 = 2;
 
 // ==== Compliance Region Constants ====
 
@@ -43,6 +44,9 @@ public struct DSComplianceAccreditedOnlyRuleSet<phantom T, V: copy + drop> has c
 // ==================== Initialization ====================
 
 /// Create a new AccreditedOnly rule
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     force_accredited: bool,
@@ -51,7 +55,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): AccreditedOnly {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAccreditedOnlyRuleCreated<T> {
         force_accredited,
         force_us_accredited,
@@ -65,6 +69,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set global accreditation requirement
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_accredited<T>(
     auth: &Auth<T>,
     rule: &mut AccreditedOnly,
@@ -73,7 +80,7 @@ public fun set_force_accredited<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
         field: b"force_accredited".to_string(),
         old_value: rule.force_accredited,
@@ -83,6 +90,9 @@ public fun set_force_accredited<T>(
 }
 
 /// Set US accreditation requirement
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us_accredited<T>(
     auth: &Auth<T>,
     rule: &mut AccreditedOnly,
@@ -91,7 +101,7 @@ public fun set_force_us_accredited<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
         field: b"force_us_accredited".to_string(),
         old_value: rule.force_us_accredited,

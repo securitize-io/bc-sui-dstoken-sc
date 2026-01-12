@@ -11,6 +11,7 @@ use sui::event;
 // ==== Error Codes ====
 
 const EPartialTransferNotAllowed: u64 = 0;
+const ENotAuthorized: u64 = 1;
 
 // ==== Compliance Region Constants ====
 
@@ -42,6 +43,9 @@ public struct DSComplianceForceFullTransferRuleSet<phantom T, V: copy + drop> ha
 // ==================== Initialization ====================
 
 /// Create a new ForceFullTransfer rule
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun new<T>(
     auth: &Auth<T>,
     force_full_transfer_us: bool,
@@ -50,7 +54,7 @@ public fun new<T>(
     ctx: &TxContext,
 ): ForceFullTransfer {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceForceFullTransferRuleCreated<T> {
         force_full_transfer_us,
         force_full_transfer_worldwide,
@@ -64,6 +68,9 @@ public fun new<T>(
 // ==================== Rule Management ====================
 
 /// Set force full transfer for US investors
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us<T>(
     auth: &Auth<T>,
     rule: &mut ForceFullTransfer,
@@ -72,7 +79,7 @@ public fun set_force_us<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_us".to_string(),
         old_value: rule.force_full_transfer_us,
@@ -82,6 +89,9 @@ public fun set_force_us<T>(
 }
 
 /// Set force full transfer worldwide
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_worldwide<T>(
     auth: &Auth<T>,
     rule: &mut ForceFullTransfer,
@@ -90,7 +100,7 @@ public fun set_force_worldwide<T>(
     ctx: &TxContext,
 ) {
     version.check_is_valid();
-    auth.owner_has_ability<T, ManageRules>(ctx.sender());
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_worldwide".to_string(),
         old_value: rule.force_full_transfer_worldwide,
