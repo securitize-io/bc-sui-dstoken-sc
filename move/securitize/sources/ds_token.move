@@ -48,6 +48,8 @@ const EInvalidLengthOfParameters: u64 = 6;
 const EValueLockedLargerThanValue: u64 = 7;
 /// Error code when there is not enough balance to perform the operation
 const ENotEnoughBalance: u64 = 9;
+/// Error code when there is an Arithmetic Overflow
+const EArithmeticOverflow: u64 = 10;
 
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
@@ -280,7 +282,9 @@ fun issue_tokens_internal<T>(
     if (investors.is_wallet(to)) {
         let id = investors.get_investor_id_by_wallet(to);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, ((total_balance as u128) + (value as u128)) as u64);
+        let new_total_u256 = (total_balance as u256) + (value as u256);
+        let new_total = try_from_u256_to_u64(new_total_u256);
+        investors.update_investor_total_balance(id, new_total);
     };
     let mut total_locked = 0;
     let mut i = 0;
@@ -392,13 +396,15 @@ public fun seize<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, ((total_balance as u128) + (value as u128)) as u64);
+        let new_total_u256 = (total_balance as u256) + (value as u256);
+        let new_total = try_from_u256_to_u64(new_total_u256);
+        investors.update_investor_total_balance(id, new_total);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
         assert!(total_balance >= value, ENotEnoughBalance);
-        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
+        investors.update_investor_total_balance(id, (total_balance - value));
     };
     event::emit(Seize<T> {
         from: from_address,
@@ -452,7 +458,9 @@ public fun transfer<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(id, ((total_balance as u128) + (value as u128)) as u64);
+        let new_total_u256 = (total_balance as u256) + (value as u256);
+        let new_total = try_from_u256_to_u64(new_total_u256);
+        investors.update_investor_total_balance(id, new_total);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
@@ -540,4 +548,13 @@ public fun unpause<T>(
 /// Returns whether the treasury is currently paused.
 public fun is_paused<T>(treasury: &Treasury<T>): bool {
     treasury.paused
+}
+
+// ==== Helpers ====
+
+// Try to safely convert u256 to u64
+public(package) fun try_from_u256_to_u64(number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64(number);
+    assert!(number_option.is_some(), EArithmeticOverflow);
+    number_option.extract()
 }
