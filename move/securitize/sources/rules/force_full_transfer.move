@@ -4,7 +4,12 @@
 /// Can be configured separately for US investors or applied worldwide.
 module securitize::force_full_transfer;
 
-use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
+use securitize::{
+    abilities::ManageRules,
+    rule_wrapper::RuleWrapper,
+    trust_service::Auth,
+    version::Version,
+};
 use std::string::String;
 use sui::event;
 
@@ -73,13 +78,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us<T>(
     auth: &Auth<T>,
-    rule: &mut ForceFullTransfer,
+    wrapper: &mut RuleWrapper<ForceFullTransfer>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_us".to_string(),
         old_value: rule.force_full_transfer_us,
@@ -94,13 +100,14 @@ public fun set_force_us<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_worldwide<T>(
     auth: &Auth<T>,
-    rule: &mut ForceFullTransfer,
+    wrapper: &mut RuleWrapper<ForceFullTransfer>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
         field: b"force_full_transfer_worldwide".to_string(),
         old_value: rule.force_full_transfer_worldwide,
