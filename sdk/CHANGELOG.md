@@ -1,5 +1,11 @@
 # @securitize/sui-sdk
 
+## 1.3.0
+
+### Minor Changes
+
+- Update to latest version
+
 ## 1.1.0
 
 ### Minor Changes
