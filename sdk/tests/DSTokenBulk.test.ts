@@ -77,9 +77,9 @@ describe('DSTokenBulk', () => {
         it('should burn tokens from multiple investors in a single transaction', async () => {
             // Before: investor1=1,000,000, investor2=500,000, investor3=250,000, total=1,750,000
             const tokenBurns: TokenIssue[] = [
-                {to: investor1.toSuiAddress(), value: 500_000n},
-                {to: investor2.toSuiAddress(), value: 500_000n},
-                {to: investor3.toSuiAddress(), value: 200_000n}
+                { to: investor1.toSuiAddress(), value: 500_000n },
+                { to: investor2.toSuiAddress(), value: 500_000n },
+                { to: investor3.toSuiAddress(), value: 200_000n },
             ]
             // Total burned: 500k + 500k + 200k = 1,200,000
             await executeTxFunc(dsTokenBulk.burnBulk(tokenBurns, sender))
@@ -94,9 +94,9 @@ describe('DSTokenBulk', () => {
 
             // Re-issue tokens to restore balances for subsequent tests
             const tokenIssues: TokenIssue[] = [
-                {to: investor1.toSuiAddress(), value: 500_000n},
-                {to: investor2.toSuiAddress(), value: 500_000n},
-                {to: investor3.toSuiAddress(), value: 200_000n}
+                { to: investor1.toSuiAddress(), value: 500_000n },
+                { to: investor2.toSuiAddress(), value: 500_000n },
+                { to: investor3.toSuiAddress(), value: 200_000n },
             ]
             await executeTxFunc(dsTokenBulk.issueBulk(tokenIssues, sender))
             // After re-issue: investor1=1,000,000, investor2=500,000, investor3=250,000, total=1,750,000
@@ -195,10 +195,13 @@ describe('DSTokenBulk', () => {
             const totalIssuedBefore = await dsToken.getTotalIssued()
 
             // Burn 500 tokens from first 100 investors (each has 1000, burning 500)
-            const tokenBurns = investors.slice(0, 100).map((i) => ({
-                to: i.wallet,
-                value: 500n
-            } as TokenIssue))
+            const tokenBurns = investors.slice(0, 100).map(
+                (i) =>
+                    ({
+                        to: i.wallet,
+                        value: 500n,
+                    }) as TokenIssue
+            )
             await dsTokenBulk.burnExecution(tokenBurns, ADMIN_KEYPAIR!)
 
             const totalIssuedAfter = await dsToken.getTotalIssued()

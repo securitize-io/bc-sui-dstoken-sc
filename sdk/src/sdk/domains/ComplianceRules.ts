@@ -23,7 +23,7 @@ export interface ComplianceRules {
 
   nonUSLockPeriod?: number; // Mapped to LockupRestriction.non_us_lock_period_ms
   usLockPeriod?: number; // Mapped to LockupRestriction.us_lock_period_ms
-  allowBackdating?: boolean; // Mapped to BackdatingIssuance.allow_backdating
+  disallowBackDating?: boolean; // Mapped to BackdatingIssuance.allow_backdating
 
-  maxAuthorizedSecurities?: string; // Mapped to AuthorizedSecurities.max_supply
+  authorizedSecurities?: string; // Mapped to AuthorizedSecurities.max_supply
 }

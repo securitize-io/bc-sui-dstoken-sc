@@ -37,9 +37,9 @@ describe('BackdatingIssuance Rule', () => {
         it('should register BackdatingIssuance with different flag values', async () => {
             const configs = [true, false]
 
-            for (const allowBackdating of configs) {
+            for (const disallowBackDating of configs) {
                 await executeTxFunc(
-                    backdatingIssuance.register(sender, allowBackdating)
+                    backdatingIssuance.register(sender, disallowBackDating)
                 )
                 await expect(backdatingIssuance.exists(sender)).resolves.toBe(true)
                 await executeTxFunc(backdatingIssuance.unregister(sender))

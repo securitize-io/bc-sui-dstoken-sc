@@ -82,8 +82,8 @@ describe('Rules (Compliance)', () => {
                 usAccreditedInvestorsLimit: 300,
                 nonAccreditedInvestorsLimit: 150,
                 maxUSInvestorsPercentage: 25,
-                maxAuthorizedSecurities: '10000000',
-                allowBackdating: false,
+                authorizedSecurities: '10000000',
+                disallowBackDating: false,
                 usLockPeriod: 31536000000,
                 nonUSLockPeriod: 15768000000,
             }
@@ -110,15 +110,16 @@ describe('Rules (Compliance)', () => {
             await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
             await expect(rules.getRules()).resolves.toEqual(complianceRules)
 
-            // Clean up
-            await executeTxFunc(accreditedOnly.unregister(sender))
-            await executeTxFunc(flowbackRestriction.unregister(sender))
-            await executeTxFunc(forceFullTransfer.unregister(sender))
-            await executeTxFunc(holdingLimits.unregister(sender))
-            await executeTxFunc(investorLimits.unregister(sender))
-            await executeTxFunc(authorizedSecurities.unregister(sender))
-            await executeTxFunc(backdatingIssuance.unregister(sender))
-            await executeTxFunc(lockupRestriction.unregister(sender))
+            const complianceRules2: ComplianceRules = {
+                forceAccredited: false,
+            }
+            await executeTxFunc(rules.update(sender, complianceRules2))
+            await expect(rules.getRules()).resolves.toEqual({
+                ...complianceRules,
+                ...complianceRules2
+            })
+
+            await cleanup(tokenAddress)
         })
 
         it('should update rules with partial ComplianceRules object', async () => {
@@ -149,7 +150,7 @@ describe('Rules (Compliance)', () => {
                 maximumHoldingsPerInvestor: '500000',
             }
 
-            const ptb = rules.updatePTB(complianceRules)
+            const ptb = await rules.updatePTB(complianceRules)
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
         })
@@ -227,7 +228,7 @@ describe('Rules (Compliance)', () => {
 
         it('should update with AuthorizedSecurities rules only', async () => {
             const complianceRules: ComplianceRules = {
-                maxAuthorizedSecurities: '1000000',
+                authorizedSecurities: '1000000',
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -238,7 +239,7 @@ describe('Rules (Compliance)', () => {
 
         it('should update with BackdatingIssuance rules only', async () => {
             const complianceRules: ComplianceRules = {
-                allowBackdating: true,
+                disallowBackDating: true,
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))
@@ -338,7 +339,7 @@ describe('Rules (Compliance)', () => {
 
         it('should handle AuthorizedSecurities with zero max supply (unlimited)', async () => {
             const complianceRules: ComplianceRules = {
-                maxAuthorizedSecurities: '0',
+                authorizedSecurities: '0',
             }
 
             await executeTxFunc(rules.update(sender, complianceRules))

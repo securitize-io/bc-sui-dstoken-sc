@@ -1,5 +1,5 @@
 import {SuiClient} from "../easysui";
-import {ComplianceRules, Regions} from "./domains";
+import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains";
 import {AccreditedOnly} from "./rules/AccreditedOnly";
 import {FlowbackRestriction} from "./rules/FlowbackRestriction";
 import {ForceFullTransfer} from "./rules/ForceFullTransfer";
@@ -8,7 +8,6 @@ import {InvestorLimits} from "./rules/InvestorLimits";
 import {AuthorizedSecurities} from "./rules/AuthorizedSecurities";
 import {BackdatingIssuance} from "./rules/BackdatingIssuance";
 import {LockupRestriction} from "./rules/LockupRestriction";
-import {newPTBDetails, PTBDetails} from "./domains/PTBDetails";
 import {getTokenDetails} from "./token";
 
 export class Rules {
@@ -51,8 +50,8 @@ export class Rules {
             usAccreditedInvestorsLimit: allFields.us_accredited_limit && parseInt(allFields.us_accredited_limit),
             nonAccreditedInvestorsLimit: allFields.non_accredited_limit && parseInt(allFields.non_accredited_limit),
             maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage),
-            maxAuthorizedSecurities: allFields.max_supply && BigInt(allFields.max_supply).toString(),
-            allowBackdating: allFields.allow_backdating,
+            authorizedSecurities: allFields.max_supply && BigInt(allFields.max_supply).toString(),
+            disallowBackDating: allFields.allow_backdating,
             usLockPeriod: allFields.us_lock_period_ms && parseInt(allFields.us_lock_period_ms),
             nonUSLockPeriod: allFields.non_us_lock_period_ms && parseInt(allFields.non_us_lock_period_ms)
         }
@@ -74,7 +73,7 @@ export class Rules {
 
     // ==== Rule Management Functions ====
 
-    updatePTB(
+    async updatePTB(
         rules: ComplianceRules,
         ptbDetails?: PTBDetails,
     ) {
@@ -130,12 +129,12 @@ export class Rules {
             )
         }
 
-        if ('maxAuthorizedSecurities' in rules) {
-            new AuthorizedSecurities(this.tokenAddress).registerPTB(BigInt(rules.maxAuthorizedSecurities || 0), ptbDetails)
+        if ('authorizedSecurities' in rules) {
+            new AuthorizedSecurities(this.tokenAddress).registerPTB(BigInt(rules.authorizedSecurities || 0), ptbDetails)
         }
 
-        if ('allowBackdating' in rules) {
-            new BackdatingIssuance(this.tokenAddress).registerPTB(rules.allowBackdating, ptbDetails)
+        if ('disallowBackDating' in rules) {
+            new BackdatingIssuance(this.tokenAddress).registerPTB(rules.disallowBackDating, ptbDetails)
         }
 
         if ('usLockPeriod' in rules || 'nonUSLockPeriod' in rules) {
@@ -149,7 +148,7 @@ export class Rules {
         signer: string,
         rules: ComplianceRules,
     ) {
-        const ptb = this.updatePTB(rules)
+        const ptb = await this.updatePTB(rules)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 }
