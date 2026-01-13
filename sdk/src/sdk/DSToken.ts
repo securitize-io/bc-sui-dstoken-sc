@@ -192,6 +192,60 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
+    issueNoVaultPTB(
+        to: string,
+        value: bigint,
+        valuesLocked: number[],
+        releaseTimes: number[],
+        issuanceTimeMS: number,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.auth,
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.complianceConfig,
+            this.tokenDetails.pasRule,
+            Config.vars.PAS_NAMESPACE,
+            to,
+            value,
+            Config.vars.VERSION,
+            valuesLocked,
+            releaseTimes,
+            issuanceTimeMS,
+            CLOCK_ID,
+        ]
+        const argsTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.address,
+            MoveType.u64,
+            MoveType.object,
+            MoveType.vec_u64,
+            MoveType.vec_u64,
+            MoveType.u64,
+            MoveType.object,
+        ]
+        return this.buildSetPTB('issue_tokens_no_vault', args, ptb, argsTypes)
+    }
+
+    async issueNoVault(
+        signer: string,
+        to: string,
+        value: bigint,
+        valuesLocked: number[],
+        releaseTimes: number[],
+        issuanceTimeMS: number,
+    ) {
+        const ptb = this.issueNoVaultPTB(to, value, valuesLocked, releaseTimes, issuanceTimeMS)
+        return this.buildSetBytes(ptb, signer)
+    }
+
     burnPTB(
         from: string,
         value: bigint,
