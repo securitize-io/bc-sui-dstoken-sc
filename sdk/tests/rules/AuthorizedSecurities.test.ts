@@ -70,6 +70,17 @@ describe('AuthorizedSecurities Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(authorizedSecurities.register(sender, BigInt(1000000)))
+
+            await executeTxFunc(authorizedSecurities.setMaxSupply(BigInt(2000000), sender))
+            await expect(authorizedSecurities.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(authorizedSecurities.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle undefined max supply (defaults to 0 - unlimited)', async () => {
             await executeTxFunc(

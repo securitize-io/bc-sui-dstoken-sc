@@ -28,4 +28,17 @@ export class AuthorizedSecurities extends Rule {
         const ptb = this.registerPTB(max_supply)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    setMaxSupplyPTB(maxSupply?: bigint, ptbDetails?: PTBDetails) {
+        if (maxSupply === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_max_supply', [ptbDetails.ptb.pure.u64(maxSupply)], ptbDetails)
+    }
+
+    setMaxSupply(maxSupply: bigint, signer: string) {
+        const ptb = this.setMaxSupplyPTB(maxSupply)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
 }

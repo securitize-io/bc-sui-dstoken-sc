@@ -28,4 +28,17 @@ export class BackdatingIssuance extends Rule {
         const ptb = this.registerPTB(allow_backdating)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    setDisallowBackdatingPTB(disallow?: boolean, ptbDetails?: PTBDetails) {
+        if (disallow === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_disallow_backdating', [ptbDetails.ptb.pure.bool(disallow)], ptbDetails)
+    }
+
+    setDisallowBackdating(disallow: boolean, signer: string) {
+        const ptb = this.setDisallowBackdatingPTB(disallow)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
 }

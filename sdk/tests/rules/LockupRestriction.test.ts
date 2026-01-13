@@ -73,6 +73,18 @@ describe('LockupRestriction Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(lockupRestriction.register(sender, 1000, 2000))
+
+            await executeTxFunc(lockupRestriction.setUsLockPeriod(5000, sender))
+            await executeTxFunc(lockupRestriction.setNonUsLockPeriod(5000, sender))
+            await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(lockupRestriction.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle undefined lock periods (defaults to 0)', async () => {
             await executeTxFunc(

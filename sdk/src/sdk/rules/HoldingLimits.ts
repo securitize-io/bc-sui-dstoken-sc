@@ -51,4 +51,46 @@ export class HoldingLimits extends Rule {
         const ptb = this.registerPTB(min_holdings_per_investor, max_holdings_per_investor, minUSTokens, minEUTokens)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    setMinHoldingsPTB(minHoldings?: bigint, ptbDetails?: PTBDetails) {
+        if (minHoldings === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_min_holdings', [ptbDetails.ptb.pure.u64(minHoldings)], ptbDetails)
+    }
+
+    setMinHoldings(minHoldings: bigint, signer: string) {
+        const ptb = this.setMinHoldingsPTB(minHoldings)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+
+    setMaxHoldingsPTB(maxHoldings?: bigint, ptbDetails?: PTBDetails) {
+        if (maxHoldings === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_max_holdings', [ptbDetails.ptb.pure.u64(maxHoldings)], ptbDetails)
+    }
+
+    setMaxHoldings(maxHoldings: bigint, signer: string) {
+        const ptb = this.setMaxHoldingsPTB(maxHoldings)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+
+    setRegionMinHoldingsPTB(region?: Regions, minHoldings?: bigint, ptbDetails?: PTBDetails) {
+        if (region === undefined || minHoldings === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_region_min_holdings', [
+            ptbDetails.ptb.pure.u64(region),
+            ptbDetails.ptb.pure.u64(minHoldings)
+        ], ptbDetails)
+    }
+
+    setRegionMinHoldings(region: Regions, minHoldings: bigint, signer: string) {
+        const ptb = this.setRegionMinHoldingsPTB(region, minHoldings)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
 }

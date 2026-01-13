@@ -107,6 +107,24 @@ describe('InvestorLimits Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(investorLimits.register(sender, 1000, 100, 500, 300, 150, 100, 200, 25))
+
+            await executeTxFunc(investorLimits.setTotalLimit(2000, sender))
+            await executeTxFunc(investorLimits.setMinimumTotalInvestors(200, sender))
+            await executeTxFunc(investorLimits.setUsLimit(600, sender))
+            await executeTxFunc(investorLimits.setUsAccreditedLimit(400, sender))
+            await executeTxFunc(investorLimits.setNonAccreditedLimit(250, sender))
+            await executeTxFunc(investorLimits.setJpLimit(150, sender))
+            await executeTxFunc(investorLimits.setEuRetailLimit(300, sender))
+            await executeTxFunc(investorLimits.setMaxUsPercentage(50, sender))
+            await expect(investorLimits.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(investorLimits.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle InvestorLimits with all zeros (no limits)', async () => {
             await executeTxFunc(

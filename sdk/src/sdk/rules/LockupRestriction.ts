@@ -31,4 +31,30 @@ export class LockupRestriction extends Rule {
         const ptb = this.registerPTB(us_lock_period_ms, non_us_lock_period_ms)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    setUsLockPeriodPTB(periodMs?: number, ptbDetails?: PTBDetails) {
+        if (periodMs === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_us_lock_period', [ptbDetails.ptb.pure.u64(periodMs)], ptbDetails)
+    }
+
+    setUsLockPeriod(periodMs: number, signer: string) {
+        const ptb = this.setUsLockPeriodPTB(periodMs)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+
+    setNonUsLockPeriodPTB(periodMs?: number, ptbDetails?: PTBDetails) {
+        if (periodMs === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_non_us_lock_period', [ptbDetails.ptb.pure.u64(periodMs)], ptbDetails)
+    }
+
+    setNonUsLockPeriod(periodMs: number, signer: string) {
+        const ptb = this.setNonUsLockPeriodPTB(periodMs)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
 }

@@ -110,15 +110,30 @@ describe('Rules (Compliance)', () => {
             await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
             await expect(rules.getRules()).resolves.toEqual(complianceRules)
 
-            // TODO: uncomment when "setters" are implemented
-            // const complianceRules2: ComplianceRules = {
-            //     forceAccredited: false,
-            // }
-            // await executeTxFunc(rules.update(sender, complianceRules2))
-            // await expect(rules.getRules()).resolves.toEqual({
-            //     ...complianceRules,
-            //     ...complianceRules2
-            // })
+            const complianceRules2: ComplianceRules = {
+                forceAccredited: false,
+                forceAccreditedUS: false,
+                blockFlowbackEndTime: new Date().getTime(),
+                worldWideForceFullTransfer: false,
+                forceFullTransfer: false,
+                minUSTokens: '600',
+                minEUTokens: '400',
+                minimumHoldingsPerInvestor: '200',
+                maximumHoldingsPerInvestor: '2000000',
+                totalInvestorsLimit: 3000,
+                usInvestorsLimit: 600,
+                euRetailInvestorsLimit: 300,
+                jpInvestorsLimit: 200,
+                usAccreditedInvestorsLimit: 400,
+                nonAccreditedInvestorsLimit: 250,
+                maxUSInvestorsPercentage: 35,
+                authorizedSecurities: '20000000',
+                disallowBackDating: true,
+                usLockPeriod: 41536000000,
+                nonUSLockPeriod: 25768000000,
+            }
+            await executeTxFunc(rules.update(sender, complianceRules2))
+            await expect(rules.getRules()).resolves.toEqual(complianceRules2)
 
             await cleanup(tokenAddress)
         })

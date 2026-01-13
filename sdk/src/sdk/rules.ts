@@ -80,15 +80,32 @@ export class Rules {
         ptbDetails ??= newPTBDetails()
 
         if ('forceAccredited' in rules || 'forceAccreditedUS' in rules) {
-            new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
+            const accreditedOnly = new AccreditedOnly(this.tokenAddress)
+            if (await accreditedOnly.exists()) {
+                accreditedOnly.setForceAccreditedPTB(rules.forceAccredited, ptbDetails)
+                accreditedOnly.setForceUsAccreditedPTB(rules.forceAccreditedUS, ptbDetails)
+            } else {
+                accreditedOnly.registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
+            }
         }
 
         if ('blockFlowbackEndTime' in rules) {
-            new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
+            const flowbackRestriction = new FlowbackRestriction(this.tokenAddress)
+            if (await flowbackRestriction.exists()) {
+                flowbackRestriction.setFlowbackEndTimePTB(rules.blockFlowbackEndTime, ptbDetails)
+            } else {
+                flowbackRestriction.registerPTB(rules.blockFlowbackEndTime, ptbDetails)
+            }
         }
 
         if ('forceFullTransfer' in rules || 'worldWideForceFullTransfer' in rules) {
-            new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
+            const forceFullTransfer = new ForceFullTransfer(this.tokenAddress)
+            if (await forceFullTransfer.exists()) {
+                forceFullTransfer.setForceUsPTB(rules.forceFullTransfer, ptbDetails)
+                forceFullTransfer.setForceWorldwidePTB(rules.worldWideForceFullTransfer, ptbDetails)
+            } else {
+                forceFullTransfer.registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
+            }
         }
 
         if (
@@ -97,13 +114,25 @@ export class Rules {
             'minUSTokens' in rules ||
             'minEUTokens' in rules
         ) {
-            new HoldingLimits(this.tokenAddress).registerPTB(
-                BigInt(rules.minimumHoldingsPerInvestor || 0),
-                BigInt(rules.maximumHoldingsPerInvestor || 0),
-                BigInt(rules.minUSTokens || 0),
-                BigInt(rules.minEUTokens || 0),
-                ptbDetails,
-            )
+            const holdingLimits = new HoldingLimits(this.tokenAddress)
+            if (await holdingLimits.exists()) {
+                holdingLimits.setMinHoldingsPTB(rules.minimumHoldingsPerInvestor ? BigInt(rules.minimumHoldingsPerInvestor) : undefined, ptbDetails)
+                holdingLimits.setMaxHoldingsPTB(rules.maximumHoldingsPerInvestor ? BigInt(rules.maximumHoldingsPerInvestor) : undefined, ptbDetails)
+                if (rules.minUSTokens !== undefined) {
+                    holdingLimits.setRegionMinHoldingsPTB(Regions.US, BigInt(rules.minUSTokens), ptbDetails)
+                }
+                if (rules.minEUTokens !== undefined) {
+                    holdingLimits.setRegionMinHoldingsPTB(Regions.EU, BigInt(rules.minEUTokens), ptbDetails)
+                }
+            } else {
+                holdingLimits.registerPTB(
+                    BigInt(rules.minimumHoldingsPerInvestor || 0),
+                    BigInt(rules.maximumHoldingsPerInvestor || 0),
+                    BigInt(rules.minUSTokens || 0),
+                    BigInt(rules.minEUTokens || 0),
+                    ptbDetails,
+                )
+            }
         }
 
         if (
@@ -116,29 +145,57 @@ export class Rules {
             'euRetailInvestorsLimit' in rules ||
             'maxUSInvestorsPercentage' in rules
         ) {
-            new InvestorLimits(this.tokenAddress).registerPTB(
-                rules.totalInvestorsLimit,
-                rules.minimumTotalInvestors,
-                rules.usInvestorsLimit,
-                rules.usAccreditedInvestorsLimit,
-                rules.nonAccreditedInvestorsLimit,
-                rules.jpInvestorsLimit,
-                rules.euRetailInvestorsLimit,
-                rules.maxUSInvestorsPercentage,
-                ptbDetails,
-            )
+            const investorLimits = new InvestorLimits(this.tokenAddress)
+            if (await investorLimits.exists()) {
+                investorLimits.setTotalLimitPTB(rules.totalInvestorsLimit, ptbDetails)
+                investorLimits.setMinimumTotalInvestorsPTB(rules.minimumTotalInvestors, ptbDetails)
+                investorLimits.setUsLimitPTB(rules.usInvestorsLimit, ptbDetails)
+                investorLimits.setUsAccreditedLimitPTB(rules.usAccreditedInvestorsLimit, ptbDetails)
+                investorLimits.setNonAccreditedLimitPTB(rules.nonAccreditedInvestorsLimit, ptbDetails)
+                investorLimits.setJpLimitPTB(rules.jpInvestorsLimit, ptbDetails)
+                investorLimits.setEuRetailLimitPTB(rules.euRetailInvestorsLimit, ptbDetails)
+                investorLimits.setMaxUsPercentagePTB(rules.maxUSInvestorsPercentage, ptbDetails)
+            } else {
+                investorLimits.registerPTB(
+                    rules.totalInvestorsLimit,
+                    rules.minimumTotalInvestors,
+                    rules.usInvestorsLimit,
+                    rules.usAccreditedInvestorsLimit,
+                    rules.nonAccreditedInvestorsLimit,
+                    rules.jpInvestorsLimit,
+                    rules.euRetailInvestorsLimit,
+                    rules.maxUSInvestorsPercentage,
+                    ptbDetails,
+                )
+            }
         }
 
         if ('authorizedSecurities' in rules) {
-            new AuthorizedSecurities(this.tokenAddress).registerPTB(BigInt(rules.authorizedSecurities || 0), ptbDetails)
+            const authorizedSecurities = new AuthorizedSecurities(this.tokenAddress)
+            if (await authorizedSecurities.exists()) {
+                authorizedSecurities.setMaxSupplyPTB(rules.authorizedSecurities ? BigInt(rules.authorizedSecurities) : undefined, ptbDetails)
+            } else {
+                authorizedSecurities.registerPTB(BigInt(rules.authorizedSecurities || 0), ptbDetails)
+            }
         }
 
         if ('disallowBackDating' in rules) {
-            new BackdatingIssuance(this.tokenAddress).registerPTB(rules.disallowBackDating, ptbDetails)
+            const backdatingIssuance = new BackdatingIssuance(this.tokenAddress)
+            if (await backdatingIssuance.exists()) {
+                backdatingIssuance.setDisallowBackdatingPTB(rules.disallowBackDating, ptbDetails)
+            } else {
+                backdatingIssuance.registerPTB(rules.disallowBackDating, ptbDetails)
+            }
         }
 
         if ('usLockPeriod' in rules || 'nonUSLockPeriod' in rules) {
-            new LockupRestriction(this.tokenAddress).registerPTB(rules.usLockPeriod, rules.nonUSLockPeriod, ptbDetails)
+            const lockupRestriction = new LockupRestriction(this.tokenAddress)
+            if (await lockupRestriction.exists()) {
+                lockupRestriction.setUsLockPeriodPTB(rules.usLockPeriod, ptbDetails)
+                lockupRestriction.setNonUsLockPeriodPTB(rules.nonUSLockPeriod, ptbDetails)
+            } else {
+                lockupRestriction.registerPTB(rules.usLockPeriod, rules.nonUSLockPeriod, ptbDetails)
+            }
         }
 
         return ptbDetails.ptb

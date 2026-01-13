@@ -72,6 +72,17 @@ describe('BackdatingIssuance Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(backdatingIssuance.register(sender, false))
+
+            await executeTxFunc(backdatingIssuance.setDisallowBackdating(true, sender))
+            await expect(backdatingIssuance.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(backdatingIssuance.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle undefined allow_backdating flag (defaults to false)', async () => {
             await executeTxFunc(
