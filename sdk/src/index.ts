@@ -1,5 +1,7 @@
 export * from './easysui'
 export * from './sdk/domains'
+export * from './sdk/CombinedIssuance'
+export * from './sdk/CombinedIssuanceBulk'
 export * from './sdk/CountryCompliance'
 export * from './sdk/deploy_ds_token'
 export * from './sdk/DSToken'

@@ -51,7 +51,7 @@ export class Rules {
             nonAccreditedInvestorsLimit: allFields.non_accredited_limit && parseInt(allFields.non_accredited_limit),
             maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage),
             authorizedSecurities: allFields.max_supply && BigInt(allFields.max_supply).toString(),
-            disallowBackDating: allFields.allow_backdating,
+            disallowBackDating: allFields.disallow_backdating,
             usLockPeriod: allFields.us_lock_period_ms && parseInt(allFields.us_lock_period_ms),
             nonUSLockPeriod: allFields.non_us_lock_period_ms && parseInt(allFields.non_us_lock_period_ms)
         }

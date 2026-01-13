@@ -2,7 +2,7 @@ import {MoveType, SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {Attribute, AttributeStatus, AttributeType, toAttributeStatus, toAttributeType} from "./domains";
-import {InvestorDetails} from "./domains/InvestorDetails";
+import {InvestorDetails} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 
 export class Investors {
@@ -225,15 +225,19 @@ export class Investors {
         return this.buildSetPTB(signer, 'remove_investor', [investorId])
     }
 
-    async updateInvestor(
+    updateInvestorPTB(
         investorId: string,
         country: string,
         wallets: string[],
-        attributeIds: AttributeType[],
-        attributeValues: AttributeStatus[],
-        attributeExpirations: number[],
-        signer: string,
+        attributes: Attribute[],
+        ptb?: Transaction,
     ) {
+        ptb ??= new Transaction()
+
+        const attributeIds = attributes.map((a) => a.name)
+        const attributeValues = attributes.map((a) => a.status)
+        const attributeExpirations = attributes.map((a) => a.expiry)
+
         const args = [
             Config.vars.PAS_NAMESPACE,
             investorId,
@@ -255,7 +259,18 @@ export class Investors {
             MoveType.vec_u64,
             MoveType.object,
         ];
-        return this.buildSetPTB(signer, 'update_investor', args, argTypes)
+        return this._buildSetPTB('update_investor', args, argTypes, ptb)
+    }
+
+    async updateInvestor(
+        investorId: string,
+        country: string,
+        wallets: string[],
+        attributes: Attribute[],
+        signer: string,
+    ) {
+        const ptb = this.updateInvestorPTB(investorId, country, wallets, attributes)
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
     addWalletPTB(

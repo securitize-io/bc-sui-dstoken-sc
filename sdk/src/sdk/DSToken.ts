@@ -50,7 +50,7 @@ export class DSToken {
         return result ?? false
     }
 
-    async getTotalIssued(treasuryCap?: string) {
+    async getTotalIssued(treasuryCap?: string): Promise<string> {
         treasuryCap ??= (await this.getCurrency()).treasury_cap_id
 
         if (!treasuryCap) {
@@ -140,7 +140,7 @@ export class DSToken {
     issuePTB(
         to: string,
         value: bigint,
-        valuesLocked: number[],
+        valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
         ptb?: Transaction,
@@ -184,7 +184,7 @@ export class DSToken {
         signer: string,
         to: string,
         value: bigint,
-        valuesLocked: number[],
+        valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
     ) {
@@ -195,7 +195,7 @@ export class DSToken {
     issueNoVaultPTB(
         to: string,
         value: bigint,
-        valuesLocked: number[],
+        valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
         ptb?: Transaction,
@@ -238,7 +238,7 @@ export class DSToken {
         signer: string,
         to: string,
         value: bigint,
-        valuesLocked: number[],
+        valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
     ) {
