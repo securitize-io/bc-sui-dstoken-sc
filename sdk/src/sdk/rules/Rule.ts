@@ -1,8 +1,8 @@
-import {SuiClient} from "../../easysui";
+import {ADMIN_KEYPAIR, SuiClient} from "../../easysui";
 import {Config} from "../utils/config";
 import {getTokenDetails} from "../token";
 import {Transaction, TransactionResult} from "@mysten/sui/transactions";
-import {PTBDetails} from "../domains/PTBDetails";
+import {PTBDetails} from "../domains";
 
 export class Rule {
     private readonly tokenAddress: string;
@@ -21,13 +21,13 @@ export class Rule {
         return `${Config.vars.PACKAGE_ID}::compliance_service::${func}`
     }
 
-    private getTargetNew() {
-        return `${Config.vars.PACKAGE_ID}::${this.ruleModule}::new`
+    private getRuleTarget(func: string) {
+        return `${Config.vars.PACKAGE_ID}::${this.ruleModule}::${func}`
     }
 
     protected newRule(ptb: Transaction, args: any[], ptbDetails: PTBDetails) {
         return ptb.moveCall({
-            target: this.getTargetNew(),
+            target: this.getRuleTarget('new'),
             typeArguments: [
                 this.tokenAddress
             ],
@@ -39,22 +39,23 @@ export class Rule {
         })
     }
 
+    private get ruleTypeArg() {
+        return `${Config.vars.PACKAGE_ID}::${this.ruleModule}::${this.ruleType}`
+    }
+
     private buildGetPTB(func: string, args: any[] = []) {
-        const ruleTypeArg = `${Config.vars.PACKAGE_ID}::${this.ruleModule}::${this.ruleType}`
         return SuiClient.getPTB(
             this.getComplianceTarget(func),
-            [this.tokenAddress, ruleTypeArg],
+            [this.tokenAddress, this.ruleTypeArg],
             [this.tokenDetails.complianceConfig, ...args],
         )
     }
 
     private buildSetPTB(signer: string, func: string, args: any[] = []) {
-        const ruleTypeArg = `${Config.vars.PACKAGE_ID}::${this.ruleModule}::${this.ruleType}`
-
         return SuiClient.getMoveCallBytes({
             signer,
             target: this.getComplianceTarget(func),
-            typeArgs: [this.tokenAddress, ruleTypeArg],
+            typeArgs: [this.tokenAddress, this.ruleTypeArg],
             args: [
                 this.tokenDetails.complianceConfig,
                 this.tokenDetails.auth,
@@ -66,10 +67,38 @@ export class Rule {
 
     // ==== View Functions ====
 
-    async exists(sender: string): Promise<boolean> {
+    async exists(sender?: string): Promise<boolean> {
+        sender ??= ADMIN_KEYPAIR!.toSuiAddress()
         const ptb = this.buildGetPTB('has_rule')
         const result = await SuiClient.devInspectBool(ptb, sender)
         return result ?? false
+    }
+
+    private getRule(ptbDetails: PTBDetails) {
+        const ptb = ptbDetails.ptb
+        return ptb.moveCall({
+            target: this.getComplianceTarget('get_rule'),
+            typeArguments: [this.tokenAddress, this.ruleTypeArg],
+            arguments: [
+                ptbDetails.tokenDetails?.complianceConfig || ptb.object(this.tokenDetails.complianceConfig),
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
+                ptb.object(Config.vars.VERSION),
+            ]
+        })
+    }
+
+    private returnRule(rule: TransactionResult, ptbDetails: PTBDetails) {
+        const ptb = ptbDetails.ptb
+        return ptb.moveCall({
+            target: this.getComplianceTarget('return_rule'),
+            typeArguments: [this.tokenAddress, this.ruleTypeArg],
+            arguments: [
+                ptbDetails.tokenDetails?.complianceConfig || ptb.object(this.tokenDetails.complianceConfig),
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
+                rule,
+                ptb.object(Config.vars.VERSION),
+            ]
+        })
     }
 
     // ==== Rule Management Functions ====
@@ -96,5 +125,24 @@ export class Rule {
 
     async unregister(signer: string) {
         return this.buildSetPTB(signer, 'unregister_rule')
+    }
+
+    protected setRule(func: string, args: any[], ptbDetails: PTBDetails) {
+        const ptb = ptbDetails.ptb
+
+        const rule = this.getRule(ptbDetails);
+        ptb.moveCall({
+            target: this.getRuleTarget(func),
+            typeArguments: [this.tokenAddress],
+            arguments: [
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
+                rule,
+                ...args,
+                ptb.object(Config.vars.VERSION),
+            ]
+        })
+        this.returnRule(rule, ptbDetails)
+
+        return ptb
     }
 }
