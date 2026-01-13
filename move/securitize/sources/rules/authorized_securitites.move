@@ -7,7 +7,12 @@
 /// When max_supply is 0, the check is disabled unlimited issuance allowed.
 module securitize::authorized_securities;
 
-use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
+use securitize::{
+    abilities::ManageRules,
+    rule_wrapper::RuleWrapper,
+    trust_service::Auth,
+    version::Version,
+};
 use std::string::String;
 use sui::event;
 
@@ -66,13 +71,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_supply<T>(
     auth: &Auth<T>,
-    rule: &mut AuthorizedSecurities,
+    wrapper: &mut RuleWrapper<AuthorizedSecurities>,
     max_supply: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceAuthorizedSecuritiesRuleSet<T, u64> {
         field: b"max_supply".to_string(),
         old_value: rule.max_supply,

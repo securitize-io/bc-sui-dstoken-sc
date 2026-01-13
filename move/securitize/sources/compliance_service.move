@@ -18,6 +18,7 @@ use securitize::{
     lock_manager,
     lockup_restriction::LockupRestriction,
     registry_service::{InvestorInfo, is_special_wallet, Issuance, new_issuance},
+    rule_wrapper::{Self, RuleWrapper},
     trust_service::{Auth, TransferAgent, Master},
     version::Version,
     wallet_manager::is_issuer_wallet
@@ -355,20 +356,41 @@ public fun has_rule<T, R: store>(config: &ComplianceConfig<T>): bool {
     config.rules.contains(&rule_type)
 }
 
-/// Get mutable reference to a rule configuration.
+/// Get a rule configuration wrapped in a hot potato.
+/// The rule is removed from the bag and must be returned via `return_rule`.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
-public fun get_rule_mut<T, R: store>(
+public fun get_rule<T, R: store + drop>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
     version: &Version,
     ctx: &TxContext,
-): &mut R {
+): RuleWrapper<R> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
-    self.rules_bag.borrow_mut(rule_type)
+    let rule: R = self.rules_bag.remove(rule_type);
+    rule_wrapper::new(rule)
+}
+
+/// Return a rule back to the compliance config.
+/// Consumes the hot potato wrapper and adds the rule back to the bag.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If caller lacks ManageRules ability
+public fun return_rule<T, R: store + drop>(
+    self: &mut ComplianceConfig<T>,
+    auth: &Auth<T>,
+    wrapper: RuleWrapper<R>,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule_type = type_name::with_defining_ids<R>();
+    let rule = rule_wrapper::unwrap(wrapper);
+    self.rules_bag.add(rule_type, rule);
 }
 
 /// Get immutable reference to the rules vector

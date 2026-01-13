@@ -5,7 +5,12 @@
 /// issuance timestamp.
 module securitize::backdating_issuance;
 
-use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
+use securitize::{
+    abilities::ManageRules,
+    rule_wrapper::RuleWrapper,
+    trust_service::Auth,
+    version::Version,
+};
 use std::string::String;
 use sui::event;
 
@@ -63,13 +68,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_disallow_backdating<T>(
     auth: &Auth<T>,
-    rule: &mut BackdatingIssuance,
+    wrapper: &mut RuleWrapper<BackdatingIssuance>,
     disallow: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceBackdatingIssuanceRuleSet<T, bool> {
         field: b"disallow_backdating".to_string(),
         old_value: rule.disallow_backdating,

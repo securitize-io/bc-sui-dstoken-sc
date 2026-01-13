@@ -4,7 +4,12 @@
 /// during a specified Regulation S distribution period flowback restriction.
 module securitize::flowback_restriction;
 
-use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
+use securitize::{
+    abilities::ManageRules,
+    rule_wrapper::RuleWrapper,
+    trust_service::Auth,
+    version::Version,
+};
 use std::string::String;
 use sui::{clock::Clock, event};
 
@@ -67,13 +72,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_flowback_end_time<T>(
     auth: &Auth<T>,
-    rule: &mut FlowbackRestriction,
+    wrapper: &mut RuleWrapper<FlowbackRestriction>,
     end_time: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
         field: b"block_flowback_end_time_ms".to_string(),
         old_value: rule.block_flowback_end_time_ms,
