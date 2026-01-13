@@ -11,8 +11,9 @@ module securitize::lockup_restriction;
 use securitize::{
     abilities::ManageRules,
     registry_service::Issuance,
+    rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version
+    version::Version,
 };
 use std::string::String;
 use sui::event;
@@ -91,7 +92,7 @@ public fun new<T>(
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_us_lock_period<T>(
     auth: &Auth<T>,
-    rule: &mut LockupRestriction,
+    wrapper: &mut RuleWrapper<LockupRestriction>,
     period_ms: u64,
     version: &Version,
     ctx: &TxContext,
@@ -99,6 +100,7 @@ public fun set_us_lock_period<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
         field: b"us_lock_period_ms".to_string(),
         old_value: rule.us_lock_period_ms,
@@ -114,7 +116,7 @@ public fun set_us_lock_period<T>(
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_non_us_lock_period<T>(
     auth: &Auth<T>,
-    rule: &mut LockupRestriction,
+    wrapper: &mut RuleWrapper<LockupRestriction>,
     period_ms: u64,
     version: &Version,
     ctx: &TxContext,
@@ -122,6 +124,7 @@ public fun set_non_us_lock_period<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
         field: b"non_us_lock_period_ms".to_string(),
         old_value: rule.non_us_lock_period_ms,

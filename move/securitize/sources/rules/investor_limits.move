@@ -7,8 +7,9 @@ module securitize::investor_limits;
 use securitize::{
     abilities::ManageRules,
     registry_service::InvestorInfo,
+    rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version
+    version::Version,
 };
 use std::string::String;
 use sui::event;
@@ -122,13 +123,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_total_limit<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"total_investors_limit".to_string(),
         old_value: rule.total_investors_limit,
@@ -143,13 +145,14 @@ public fun set_total_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_minimum_total_investors<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     minimum: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"minimum_total_investors".to_string(),
         old_value: rule.minimum_total_investors,
@@ -164,13 +167,14 @@ public fun set_minimum_total_investors<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_limit<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"us_investors_limit".to_string(),
         old_value: rule.us_investors_limit,
@@ -185,13 +189,14 @@ public fun set_us_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_accredited_limit<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"us_accredited_limit".to_string(),
         old_value: rule.us_accredited_limit,
@@ -206,13 +211,14 @@ public fun set_us_accredited_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_non_accredited_limit<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"non_accredited_limit".to_string(),
         old_value: rule.non_accredited_limit,
@@ -227,13 +233,14 @@ public fun set_non_accredited_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_jp_limit<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"jp_investors_limit".to_string(),
         old_value: rule.jp_investors_limit,
@@ -248,13 +255,14 @@ public fun set_jp_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_eu_retail_limit<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"eu_retail_limit".to_string(),
         old_value: rule.eu_retail_limit,
@@ -269,13 +277,14 @@ public fun set_eu_retail_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_us_percentage<T>(
     auth: &Auth<T>,
-    rule: &mut InvestorLimits,
+    wrapper: &mut RuleWrapper<InvestorLimits>,
     percentage: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
         field: b"max_us_percentage".to_string(),
         old_value: rule.max_us_percentage,

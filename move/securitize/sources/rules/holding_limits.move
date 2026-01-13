@@ -4,7 +4,12 @@
 /// Supports region-specific minimum holdings.
 module securitize::holding_limits;
 
-use securitize::{abilities::ManageRules, trust_service::Auth, version::Version};
+use securitize::{
+    abilities::ManageRules,
+    rule_wrapper::RuleWrapper,
+    trust_service::Auth,
+    version::Version,
+};
 use std::string::String;
 use sui::{event, vec_map::{Self, VecMap}};
 
@@ -88,13 +93,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_min_holdings<T>(
     auth: &Auth<T>,
-    rule: &mut HoldingLimits,
+    wrapper: &mut RuleWrapper<HoldingLimits>,
     min: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"min_holdings_per_investor".to_string(),
         region: option::none(),
@@ -110,13 +116,14 @@ public fun set_min_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_holdings<T>(
     auth: &Auth<T>,
-    rule: &mut HoldingLimits,
+    wrapper: &mut RuleWrapper<HoldingLimits>,
     max: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
         field: b"max_holdings_per_investor".to_string(),
         region: option::none(),
@@ -132,7 +139,7 @@ public fun set_max_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_region_min_holdings<T>(
     auth: &Auth<T>,
-    rule: &mut HoldingLimits,
+    wrapper: &mut RuleWrapper<HoldingLimits>,
     region: u64,
     min: u64,
     version: &Version,
@@ -140,6 +147,7 @@ public fun set_region_min_holdings<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
 
     let old_value = if (rule.region_min_tokens.contains(&region)) {
         let (_, old) = rule.region_min_tokens.remove(&region);
@@ -162,13 +170,14 @@ public fun set_region_min_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun remove_region_min_holdings<T>(
     auth: &Auth<T>,
-    rule: &mut HoldingLimits,
+    wrapper: &mut RuleWrapper<HoldingLimits>,
     region: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    let rule = wrapper.borrow_mut();
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);
