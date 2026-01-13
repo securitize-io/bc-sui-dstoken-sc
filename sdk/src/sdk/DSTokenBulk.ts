@@ -3,6 +3,7 @@ import {TokenIssue} from "./domains";
 import {Bulk} from "./Bulk";
 import {Transaction} from "@mysten/sui/transactions";
 import {Keypair} from "@mysten/sui/cryptography";
+import {BulkTokenBurn, BulkTokenIssue} from "./domains/TokenIssue";
 
 export class DSTokenBulk extends Bulk {
     private dsToken: DSToken;
@@ -12,12 +13,12 @@ export class DSTokenBulk extends Bulk {
         this.dsToken = new DSToken(tokenAddress);
     }
 
-    async issueBulk(tokenIssues: TokenIssue[], signer: string) {
-        return this.bulkCall(tokenIssues, signer, this.getIssuePTBs())
+    async issueBulk(bulkTokenIssue: BulkTokenIssue) {
+        return this.bulkCall(bulkTokenIssue.wallets, bulkTokenIssue.identity, this.getIssuePTBs(bulkTokenIssue.issuanceTime))
     }
 
-    async issueExecution(tokenIssues: TokenIssue[], signer: Keypair) {
-        return this.bulkExecution(tokenIssues, signer, this.getIssuePTBs())
+    async issueExecution(bulkTokenIssue: BulkTokenIssue, signer: Keypair) {
+        return this.bulkExecution(bulkTokenIssue.wallets, signer, this.getIssuePTBs(bulkTokenIssue.issuanceTime))
     }
 
     private getIssuePTBs(issuanceTimeMS?: number) {
@@ -27,12 +28,12 @@ export class DSTokenBulk extends Bulk {
         };
     }
 
-    async burnBulk(tokenIssues: TokenIssue[], signer: string) {
-        return this.bulkCall(tokenIssues, signer, this.getBurnPTBs())
+    async burnBulk(bulkTokenBurn: BulkTokenBurn) {
+        return this.bulkCall(bulkTokenBurn.wallets, bulkTokenBurn.identity, this.getBurnPTBs())
     }
 
-    async burnExecution(tokenIssues: TokenIssue[], signer: Keypair) {
-        return this.bulkExecution(tokenIssues, signer, this.getBurnPTBs())
+    async burnExecution(bulkTokenBurn: BulkTokenBurn, signer: Keypair) {
+        return this.bulkExecution(bulkTokenBurn.wallets, signer, this.getBurnPTBs())
     }
 
     private getBurnPTBs() {
