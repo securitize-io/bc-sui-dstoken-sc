@@ -8,7 +8,7 @@ export class CombinedIssuanceBulk extends Bulk {
     private combinedIssuance: CombinedIssuance
 
     constructor(tokenAddress: string) {
-        super(100)
+        super(124)
         this.combinedIssuance = new CombinedIssuance(tokenAddress)
     }
 
