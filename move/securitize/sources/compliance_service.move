@@ -116,6 +116,12 @@ public struct DSComplianceSeizeRecorded<phantom T> has copy, drop {
     amount: u64,
 }
 
+public struct DSCountryComplianceSet<phantom T> has copy, drop {
+    country: String,
+    previous_value: u64,
+    new_value: u64,
+}
+
 // ==================== Initialization Functions ====================
 
 /// Create a new ComplianceConfig for token type T
@@ -414,7 +420,13 @@ public fun set_country_compliance<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender()), ENotAuthorized);
-    registry.set_country_compliance(country, compliance_region)
+    let previous_value = registry.get_country_compliance(country);
+    registry.set_country_compliance(country, compliance_region);
+    event::emit(DSCountryComplianceSet<T> {
+        country,
+        previous_value,
+        new_value: compliance_region,
+    });
 }
 
 /// Get compliance region for a country

@@ -273,7 +273,6 @@ public(package) fun share<T>(investor_info: InvestorInfo<T>) {
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the RegisterInvestor ability
 /// * `EInvestorExists` - If the investor already exists
-/// * `EEmptyId` - If the investor_id is empty
 public fun register_investor<T: key>(
     investor_info: &mut InvestorInfo<T>,
     auth: &Auth<T>,
@@ -284,28 +283,28 @@ public fun register_investor<T: key>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterInvestor>(ctx.sender()), ENotAuthorized);
     assert!(!investor_info.is_investor(investor_id), EInvestorExists);
-    assert!(investor_id.length() > 0, EEmptyId);
+    register_investor_internal(investor_info, investor_id, ctx);
+}
 
-    let investor = Investor {
-        creator: ctx.sender(),
-        country: string::utf8(b""),
-        wallets: vector[],
-        attributes: table::new(ctx),
-        total_balance: 0,
+/// Registers a new investor if they don't already exist.
+/// Does nothing if the investor already exists.
+/// Only authorized addresses with the RegisterInvestor ability can call this function.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the RegisterInvestor ability
+public fun register_investor_if_not_exists<T: key>(
+    investor_info: &mut InvestorInfo<T>,
+    auth: &Auth<T>,
+    investor_id: String,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, RegisterInvestor>(ctx.sender()), ENotAuthorized);
+    if (investor_info.is_investor(investor_id)) {
+        return
     };
-    investor_info.investors.add(investor_id, investor);
-    investor_info.investor_issuances.add(investor_id, vector[]);
-    investor_info
-        .investor_locks
-        .add(
-            investor_id,
-            InvestorLockState {
-                fully_locked: false,
-                liquidate_only: false,
-                locks: vector::empty(),
-            },
-        );
-    event::emit(DSRegistryServiceInvestorAdded<T> { investor_id, sender: ctx.sender() });
+    register_investor_internal(investor_info, investor_id, ctx);
 }
 
 /// Removes an investor from the registry.
@@ -949,6 +948,35 @@ public(package) fun apply_change(counter: &mut u64, increase: bool) {
 }
 
 // ==== Internal Functions ====
+
+fun register_investor_internal<T: key>(
+    investor_info: &mut InvestorInfo<T>,
+    investor_id: String,
+    ctx: &mut TxContext,
+) {
+    assert!(investor_id.length() > 0, EEmptyId);
+
+    let investor = Investor {
+        creator: ctx.sender(),
+        country: string::utf8(b""),
+        wallets: vector[],
+        attributes: table::new(ctx),
+        total_balance: 0,
+    };
+    investor_info.investors.add(investor_id, investor);
+    investor_info.investor_issuances.add(investor_id, vector[]);
+    investor_info
+        .investor_locks
+        .add(
+            investor_id,
+            InvestorLockState {
+                fully_locked: false,
+                liquidate_only: false,
+                locks: vector::empty(),
+            },
+        );
+    event::emit(DSRegistryServiceInvestorAdded<T> { investor_id, sender: ctx.sender() });
+}
 
 // Adjusts compliance counters when an investor's country changes.
 // Only updates counters if the investor has a non-zero balance.
