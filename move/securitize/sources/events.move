@@ -5,8 +5,7 @@
 /// token operations, investor management, compliance changes, and role assignments.
 module securitize::events;
 
-use std::string::String;
-use std::type_name::TypeName;
+use std::{string::String, type_name::TypeName};
 use sui::event;
 
 // ============================================================================
@@ -322,11 +321,19 @@ public(package) fun emit_unpause_event<T>(pauser: address) {
 
 // ==== Trust Service Emit Functions ====
 
-public(package) fun emit_role_added_event<T>(target_address: address, role: TypeName, sender: address) {
+public(package) fun emit_role_added_event<T>(
+    target_address: address,
+    role: TypeName,
+    sender: address,
+) {
     event::emit(DSTrustServiceRoleAdded<T> { target_address, role, sender });
 }
 
-public(package) fun emit_role_removed_event<T>(target_address: address, role: TypeName, sender: address) {
+public(package) fun emit_role_removed_event<T>(
+    target_address: address,
+    role: TypeName,
+    sender: address,
+) {
     event::emit(DSTrustServiceRoleRemoved<T> { target_address, role, sender });
 }
 
@@ -340,19 +347,43 @@ public(package) fun emit_investor_removed_event<T>(investor_id: String, sender: 
     event::emit(DSRegistryServiceInvestorRemoved<T> { investor_id, sender });
 }
 
-public(package) fun emit_investor_country_changed_event<T>(investor_id: String, country: String, sender: address) {
+public(package) fun emit_investor_country_changed_event<T>(
+    investor_id: String,
+    country: String,
+    sender: address,
+) {
     event::emit(DSRegistryServiceInvestorCountryChanged<T> { investor_id, country, sender });
 }
 
-public(package) fun emit_investor_attribute_changed_event<T>(investor_id: String, attribute_id: u64, value: u64, expiry: u64, sender: address) {
-    event::emit(DSRegistryServiceInvestorAttributeChanged<T> { investor_id, attribute_id, value, expiry, sender });
+public(package) fun emit_investor_attribute_changed_event<T>(
+    investor_id: String,
+    attribute_id: u64,
+    value: u64,
+    expiry: u64,
+    sender: address,
+) {
+    event::emit(DSRegistryServiceInvestorAttributeChanged<T> {
+        investor_id,
+        attribute_id,
+        value,
+        expiry,
+        sender,
+    });
 }
 
-public(package) fun emit_wallet_added_event<T>(wallet: address, investor_id: String, sender: address) {
+public(package) fun emit_wallet_added_event<T>(
+    wallet: address,
+    investor_id: String,
+    sender: address,
+) {
     event::emit(DSRegistryServiceWalletAdded<T> { wallet, investor_id, sender });
 }
 
-public(package) fun emit_wallet_removed_event<T>(wallet: address, investor_id: String, sender: address) {
+public(package) fun emit_wallet_removed_event<T>(
+    wallet: address,
+    investor_id: String,
+    sender: address,
+) {
     event::emit(DSRegistryServiceWalletRemoved<T> { wallet, investor_id, sender });
 }
 
@@ -366,7 +397,11 @@ public(package) fun emit_compliance_rule_removed_event<T>(rule_type: TypeName) {
     event::emit(DSComplianceRuleRemoved<T> { rule_type });
 }
 
-public(package) fun emit_compliance_transfer_recorded_event<T>(from: address, to: address, amount: u64) {
+public(package) fun emit_compliance_transfer_recorded_event<T>(
+    from: address,
+    to: address,
+    amount: u64,
+) {
     event::emit(DSComplianceTransferRecorded<T> { from, to, amount });
 }
 
@@ -382,7 +417,11 @@ public(package) fun emit_compliance_seize_recorded_event<T>(from: address, amoun
     event::emit(DSComplianceSeizeRecorded<T> { from, amount });
 }
 
-public(package) fun emit_country_compliance_set_event<T>(country: String, previous_value: u64, new_value: u64) {
+public(package) fun emit_country_compliance_set_event<T>(
+    country: String,
+    previous_value: u64,
+    new_value: u64,
+) {
     event::emit(DSCountryComplianceSet<T> { country, previous_value, new_value });
 }
 
@@ -400,41 +439,84 @@ public(package) fun emit_liquidate_only_set_event<T>(investor_id: String, enable
     event::emit(InvestorLiquidateOnlySet<T> { investor_id, enabled });
 }
 
-public(package) fun emit_lock_added_event<T>(holder_id: String, _index: u64, value: u64, reason: u64, reason_string: String, release_time: u64) {
+public(package) fun emit_lock_added_event<T>(
+    holder_id: String,
+    _index: u64,
+    value: u64,
+    reason: u64,
+    reason_string: String,
+    release_time: u64,
+) {
     event::emit(HolderLocked<T> { holder_id, value, reason, reason_string, release_time });
 }
 
-public(package) fun emit_lock_removed_event<T>(holder_id: String, _index: u64, value: u64, reason: u64, reason_string: String, release_time: u64) {
+public(package) fun emit_lock_removed_event<T>(
+    holder_id: String,
+    _index: u64,
+    value: u64,
+    reason: u64,
+    reason_string: String,
+    release_time: u64,
+) {
     event::emit(HolderUnlocked<T> { holder_id, value, reason, reason_string, release_time });
 }
 
 // ==== Wallet Manager Emit Functions ====
 
-public(package) fun emit_special_wallet_added_event<T>(wallet: address, wallet_type: u64, caller: address) {
+public(package) fun emit_special_wallet_added_event<T>(
+    wallet: address,
+    wallet_type: u64,
+    caller: address,
+) {
     event::emit(DSWalletManagerSpecialWalletAdded<T> { wallet, wallet_type, caller });
 }
 
-public(package) fun emit_special_wallet_removed_event<T>(wallet: address, old_type: u64, caller: address) {
+public(package) fun emit_special_wallet_removed_event<T>(
+    wallet: address,
+    old_type: u64,
+    caller: address,
+) {
     event::emit(DSWalletManagerSpecialWalletRemoved<T> { wallet, old_type, caller });
 }
 
 // ==== Generic Compliance Rule Set Emit Functions ====
 
-public(package) fun emit_uint_rule_set_event<T>(rule_name: String, prev_value: u64, new_value: u64) {
+public(package) fun emit_uint_rule_set_event<T>(
+    rule_name: String,
+    prev_value: u64,
+    new_value: u64,
+) {
     event::emit(DSComplianceUIntRuleSet<T> { rule_name, prev_value, new_value });
 }
 
-public(package) fun emit_bool_rule_set_event<T>(rule_name: String, prev_value: bool, new_value: bool) {
+public(package) fun emit_bool_rule_set_event<T>(
+    rule_name: String,
+    prev_value: bool,
+    new_value: bool,
+) {
     event::emit(DSComplianceBoolRuleSet<T> { rule_name, prev_value, new_value });
 }
 
-public(package) fun emit_string_to_uint_map_rule_set_event<T>(rule_name: String, key_value: String, prev_value: u64, new_value: u64) {
-    event::emit(DSComplianceStringToUIntMapRuleSet<T> { rule_name, key_value, prev_value, new_value });
+public(package) fun emit_string_to_uint_map_rule_set_event<T>(
+    rule_name: String,
+    key_value: String,
+    prev_value: u64,
+    new_value: u64,
+) {
+    event::emit(DSComplianceStringToUIntMapRuleSet<T> {
+        rule_name,
+        key_value,
+        prev_value,
+        new_value,
+    });
 }
 
 // ==== Compliance Rule Created Emit Functions ====
 
-public(package) fun emit_accredited_only_rule_created_event<T>(force_accredited: bool, force_us_accredited: bool) {
+public(package) fun emit_accredited_only_rule_created_event<T>(
+    force_accredited: bool,
+    force_us_accredited: bool,
+) {
     event::emit(DSComplianceAccreditedOnlyRuleCreated<T> { force_accredited, force_us_accredited });
 }
 
@@ -446,16 +528,34 @@ public(package) fun emit_backdating_issuance_rule_created_event<T>(disallow_back
     event::emit(DSComplianceBackdatingIssuanceRuleCreated<T> { disallow_backdating });
 }
 
-public(package) fun emit_flowback_restriction_rule_created_event<T>(block_flowback_end_time_ms: u64) {
+public(package) fun emit_flowback_restriction_rule_created_event<T>(
+    block_flowback_end_time_ms: u64,
+) {
     event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> { block_flowback_end_time_ms });
 }
 
-public(package) fun emit_force_full_transfer_rule_created_event<T>(force_full_transfer_us: bool, force_full_transfer_worldwide: bool) {
-    event::emit(DSComplianceForceFullTransferRuleCreated<T> { force_full_transfer_us, force_full_transfer_worldwide });
+public(package) fun emit_force_full_transfer_rule_created_event<T>(
+    force_full_transfer_us: bool,
+    force_full_transfer_worldwide: bool,
+) {
+    event::emit(DSComplianceForceFullTransferRuleCreated<T> {
+        force_full_transfer_us,
+        force_full_transfer_worldwide,
+    });
 }
 
-public(package) fun emit_holding_limits_rule_created_event<T>(min_holdings_per_investor: u64, max_holdings_per_investor: u64, regions: vector<u64>, region_mins: vector<u64>) {
-    event::emit(DSComplianceHoldingLimitsRuleCreated<T> { min_holdings_per_investor, max_holdings_per_investor, regions, region_mins });
+public(package) fun emit_holding_limits_rule_created_event<T>(
+    min_holdings_per_investor: u64,
+    max_holdings_per_investor: u64,
+    regions: vector<u64>,
+    region_mins: vector<u64>,
+) {
+    event::emit(DSComplianceHoldingLimitsRuleCreated<T> {
+        min_holdings_per_investor,
+        max_holdings_per_investor,
+        regions,
+        region_mins,
+    });
 }
 
 public(package) fun emit_investor_limits_rule_created_event<T>(
@@ -480,6 +580,12 @@ public(package) fun emit_investor_limits_rule_created_event<T>(
     });
 }
 
-public(package) fun emit_lockup_restriction_rule_created_event<T>(us_lock_period_ms: u64, non_us_lock_period_ms: u64) {
-    event::emit(DSComplianceLockupRestrictionRuleCreated<T> { us_lock_period_ms, non_us_lock_period_ms });
+public(package) fun emit_lockup_restriction_rule_created_event<T>(
+    us_lock_period_ms: u64,
+    non_us_lock_period_ms: u64,
+) {
+    event::emit(DSComplianceLockupRestrictionRuleCreated<T> {
+        us_lock_period_ms,
+        non_us_lock_period_ms,
+    });
 }

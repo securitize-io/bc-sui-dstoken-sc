@@ -18,12 +18,7 @@ use securitize::{
     version::Version
 };
 use std::type_name::{Self, TypeName};
-use sui::{
-    bag::{Self, Bag},
-    derived_object,
-    vec_map::{Self, VecMap},
-    vec_set::{Self, VecSet}
-};
+use sui::{bag::{Self, Bag}, derived_object, vec_map::{Self, VecMap}, vec_set::{Self, VecSet}};
 
 // ==== Error Codes ====
 

@@ -51,7 +51,8 @@ const EWalletAlreadyExists: vector<u8> = b"Wallet is already registered";
 #[error(code = 8)]
 const EWalletNotFound: vector<u8> = b"Wallet not found in the registry";
 #[error(code = 9)]
-const EWalletDoesNotBelongToInvestor: vector<u8> = b"Wallet does not belong to the specified investor";
+const EWalletDoesNotBelongToInvestor: vector<u8> =
+    b"Wallet does not belong to the specified investor";
 #[error(code = 10)]
 const EUnknownAttribute: vector<u8> = b"Unknown attribute ID provided";
 #[error(code = 11)]
@@ -499,7 +500,13 @@ public fun set_attribute<T>(
         };
         investor.attributes.add(attribute_id, attribute);
     };
-    emit_investor_attribute_changed_event<T>(investor_id, attribute_id, attribute_value, attribute_expiration, ctx.sender());
+    emit_investor_attribute_changed_event<T>(
+        investor_id,
+        attribute_id,
+        attribute_value,
+        attribute_expiration,
+        ctx.sender(),
+    );
 }
 
 // ==== View Functions ====

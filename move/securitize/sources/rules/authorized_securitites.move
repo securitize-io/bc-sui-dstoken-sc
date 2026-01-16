@@ -12,13 +12,14 @@ use securitize::{
     events::{emit_authorized_securities_rule_created_event, emit_uint_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 
 // ==== Error Codes ====
 
 #[error(code = 0)]
-const EMaxAuthorizedSecuritiesExceeded: vector<u8> = b"Issuance would exceed maximum authorized securities";
+const EMaxAuthorizedSecuritiesExceeded: vector<u8> =
+    b"Issuance would exceed maximum authorized securities";
 #[error(code = 1)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 

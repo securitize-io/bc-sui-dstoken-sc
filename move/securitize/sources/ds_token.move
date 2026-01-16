@@ -50,7 +50,8 @@ const EVaultOwnerMismatch: vector<u8> = b"Vault owner does not match the expecte
 #[error(code = 5)]
 const EValueZero: vector<u8> = b"Value to issue or transfer cannot be zero";
 #[error(code = 6)]
-const EInvalidLengthOfParameters: vector<u8> = b"Locked values and release times arrays must have the same length";
+const EInvalidLengthOfParameters: vector<u8> =
+    b"Locked values and release times arrays must have the same length";
 #[error(code = 7)]
 const EValueLockedLargerThanValue: vector<u8> = b"Total locked value exceeds the issued value";
 #[error(code = 9)]
@@ -309,7 +310,10 @@ public fun burn<T>(
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
         assert!(total_balance >= value, ENotEnoughBalance);
-        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
+        investors.update_investor_total_balance(
+            id,
+            ((total_balance as u128) - (value as u128)) as u64,
+        );
     };
     emit_burn_event<T>(from_address, value, reason);
     emit_transfer_event<T>(from_address, @0x0, value);
@@ -413,7 +417,10 @@ public fun transfer<T>(
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
         assert!(total_balance >= value, ENotEnoughBalance);
-        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
+        investors.update_investor_total_balance(
+            id,
+            ((total_balance as u128) - (value as u128)) as u64,
+        );
     };
     // Resolve the request
     rule.resolve_transfer(request, DsProtocol());

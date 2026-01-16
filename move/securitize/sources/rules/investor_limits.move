@@ -10,7 +10,7 @@ use securitize::{
     registry_service::InvestorInfo,
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 use std::string::String;
 
@@ -120,7 +120,11 @@ public fun set_total_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"total_investors_limit".to_string(), rule.total_investors_limit, limit);
+    emit_uint_rule_set_event<T>(
+        b"total_investors_limit".to_string(),
+        rule.total_investors_limit,
+        limit,
+    );
     rule.total_investors_limit = limit;
 }
 
@@ -138,7 +142,11 @@ public fun set_minimum_total_investors<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"minimum_total_investors".to_string(), rule.minimum_total_investors, minimum);
+    emit_uint_rule_set_event<T>(
+        b"minimum_total_investors".to_string(),
+        rule.minimum_total_investors,
+        minimum,
+    );
     rule.minimum_total_investors = minimum;
 }
 
@@ -174,7 +182,11 @@ public fun set_us_accredited_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"us_accredited_limit".to_string(), rule.us_accredited_limit, limit);
+    emit_uint_rule_set_event<T>(
+        b"us_accredited_limit".to_string(),
+        rule.us_accredited_limit,
+        limit,
+    );
     rule.us_accredited_limit = limit;
 }
 
@@ -192,7 +204,11 @@ public fun set_non_accredited_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"non_accredited_limit".to_string(), rule.non_accredited_limit, limit);
+    emit_uint_rule_set_event<T>(
+        b"non_accredited_limit".to_string(),
+        rule.non_accredited_limit,
+        limit,
+    );
     rule.non_accredited_limit = limit;
 }
 
@@ -246,7 +262,11 @@ public fun set_max_us_percentage<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"max_us_percentage".to_string(), rule.max_us_percentage, percentage);
+    emit_uint_rule_set_event<T>(
+        b"max_us_percentage".to_string(),
+        rule.max_us_percentage,
+        percentage,
+    );
     rule.max_us_percentage = percentage;
 }
 

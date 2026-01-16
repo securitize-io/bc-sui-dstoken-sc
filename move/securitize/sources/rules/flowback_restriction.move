@@ -9,14 +9,15 @@ use securitize::{
     events::{emit_flowback_restriction_rule_created_event, emit_uint_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 use sui::clock::Clock;
 
 // ==== Error Codes ====
 
 #[error(code = 0)]
-const EFlowbackRestricted: vector<u8> = b"Transfer from non-US to US investor is restricted during flowback period";
+const EFlowbackRestricted: vector<u8> =
+    b"Transfer from non-US to US investor is restricted during flowback period";
 #[error(code = 1)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
@@ -68,7 +69,11 @@ public fun set_flowback_end_time<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"block_flowback_end_time_ms".to_string(), rule.block_flowback_end_time_ms, end_time);
+    emit_uint_rule_set_event<T>(
+        b"block_flowback_end_time_ms".to_string(),
+        rule.block_flowback_end_time_ms,
+        end_time,
+    );
     rule.block_flowback_end_time_ms = end_time;
 }
 

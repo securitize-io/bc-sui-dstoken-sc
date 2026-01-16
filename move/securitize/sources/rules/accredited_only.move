@@ -9,7 +9,7 @@ use securitize::{
     events::{emit_accredited_only_rule_created_event, emit_bool_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 
 // ==== Error Codes ====
@@ -91,7 +91,11 @@ public fun set_force_us_accredited<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_bool_rule_set_event<T>(b"force_us_accredited".to_string(), rule.force_us_accredited, force);
+    emit_bool_rule_set_event<T>(
+        b"force_us_accredited".to_string(),
+        rule.force_us_accredited,
+        force,
+    );
     rule.force_us_accredited = force;
 }
 

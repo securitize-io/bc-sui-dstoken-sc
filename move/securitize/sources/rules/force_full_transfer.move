@@ -9,13 +9,14 @@ use securitize::{
     events::{emit_force_full_transfer_rule_created_event, emit_bool_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 
 // ==== Error Codes ====
 
 #[error(code = 0)]
-const EPartialTransferNotAllowed: vector<u8> = b"Partial transfers not allowed - must transfer entire balance";
+const EPartialTransferNotAllowed: vector<u8> =
+    b"Partial transfers not allowed - must transfer entire balance";
 #[error(code = 1)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
@@ -48,7 +49,10 @@ public fun new<T>(
 ): ForceFullTransfer {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_force_full_transfer_rule_created_event<T>(force_full_transfer_us, force_full_transfer_worldwide);
+    emit_force_full_transfer_rule_created_event<T>(
+        force_full_transfer_us,
+        force_full_transfer_worldwide,
+    );
     ForceFullTransfer {
         force_full_transfer_us,
         force_full_transfer_worldwide,
@@ -71,7 +75,11 @@ public fun set_force_us<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_bool_rule_set_event<T>(b"force_full_transfer_us".to_string(), rule.force_full_transfer_us, force);
+    emit_bool_rule_set_event<T>(
+        b"force_full_transfer_us".to_string(),
+        rule.force_full_transfer_us,
+        force,
+    );
     rule.force_full_transfer_us = force;
 }
 
@@ -89,7 +97,11 @@ public fun set_force_worldwide<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_bool_rule_set_event<T>(b"force_full_transfer_worldwide".to_string(), rule.force_full_transfer_worldwide, force);
+    emit_bool_rule_set_event<T>(
+        b"force_full_transfer_worldwide".to_string(),
+        rule.force_full_transfer_worldwide,
+        force,
+    );
     rule.force_full_transfer_worldwide = force;
 }
 

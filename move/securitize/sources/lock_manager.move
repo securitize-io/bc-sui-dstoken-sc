@@ -13,7 +13,13 @@ use securitize::{
         emit_lock_added_event,
         emit_lock_removed_event
     },
-    registry_service::{InvestorInfo, lock_value, lock_reason_code, lock_reason_string, lock_release_time_ms},
+    registry_service::{
+        InvestorInfo,
+        lock_value,
+        lock_reason_code,
+        lock_reason_string,
+        lock_release_time_ms
+    },
     trust_service::{Auth, Master, TransferAgent},
     version::Version
 };

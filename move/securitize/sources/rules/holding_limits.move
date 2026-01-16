@@ -6,10 +6,14 @@ module securitize::holding_limits;
 
 use securitize::{
     abilities::ManageRules,
-    events::{emit_holding_limits_rule_created_event, emit_uint_rule_set_event, emit_string_to_uint_map_rule_set_event},
+    events::{
+        emit_holding_limits_rule_created_event,
+        emit_uint_rule_set_event,
+        emit_string_to_uint_map_rule_set_event
+    },
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 use sui::vec_map::{Self, VecMap};
 
@@ -59,7 +63,12 @@ public fun new<T>(
         region_min_tokens.insert(region, min);
     });
 
-    emit_holding_limits_rule_created_event<T>(min_holdings_per_investor, max_holdings_per_investor, regions, region_mins);
+    emit_holding_limits_rule_created_event<T>(
+        min_holdings_per_investor,
+        max_holdings_per_investor,
+        regions,
+        region_mins,
+    );
 
     HoldingLimits {
         min_holdings_per_investor,
@@ -84,7 +93,11 @@ public fun set_min_holdings<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"min_holdings_per_investor".to_string(), rule.min_holdings_per_investor, min);
+    emit_uint_rule_set_event<T>(
+        b"min_holdings_per_investor".to_string(),
+        rule.min_holdings_per_investor,
+        min,
+    );
     rule.min_holdings_per_investor = min;
 }
 
@@ -102,7 +115,11 @@ public fun set_max_holdings<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"max_holdings_per_investor".to_string(), rule.max_holdings_per_investor, max);
+    emit_uint_rule_set_event<T>(
+        b"max_holdings_per_investor".to_string(),
+        rule.max_holdings_per_investor,
+        max,
+    );
     rule.max_holdings_per_investor = max;
 }
 
@@ -129,7 +146,12 @@ public fun set_region_min_holdings<T>(
         0
     };
     rule.region_min_tokens.insert(region, min);
-    emit_string_to_uint_map_rule_set_event<T>(b"region_min_tokens".to_string(), region.to_string(), old_value, min);
+    emit_string_to_uint_map_rule_set_event<T>(
+        b"region_min_tokens".to_string(),
+        region.to_string(),
+        old_value,
+        min,
+    );
 }
 
 /// Remove region-specific minimum
@@ -149,7 +171,12 @@ public fun remove_region_min_holdings<T>(
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);
-        emit_string_to_uint_map_rule_set_event<T>(b"region_min_tokens".to_string(), region.to_string(), old_value, 0);
+        emit_string_to_uint_map_rule_set_event<T>(
+            b"region_min_tokens".to_string(),
+            region.to_string(),
+            old_value,
+            0,
+        );
     };
 }
 

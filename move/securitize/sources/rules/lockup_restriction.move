@@ -14,13 +14,14 @@ use securitize::{
     registry_service::Issuance,
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
 
 // ==== Error Codes ====
 
 #[error(code = 0)]
-const EUnderLockup: vector<u8> = b"Transfer amount exceeds unlocked tokens - issuance still under lockup";
+const EUnderLockup: vector<u8> =
+    b"Transfer amount exceeds unlocked tokens - issuance still under lockup";
 #[error(code = 1)]
 const ELockPeriodTooLong: vector<u8> = b"Lock period exceeds maximum allowed (200 years)";
 #[error(code = 2)]
@@ -87,7 +88,11 @@ public fun set_us_lock_period<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"us_lock_period_ms".to_string(), rule.us_lock_period_ms, period_ms);
+    emit_uint_rule_set_event<T>(
+        b"us_lock_period_ms".to_string(),
+        rule.us_lock_period_ms,
+        period_ms,
+    );
     rule.us_lock_period_ms = period_ms;
 }
 
@@ -107,7 +112,11 @@ public fun set_non_us_lock_period<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     let rule = wrapper.borrow_mut();
-    emit_uint_rule_set_event<T>(b"non_us_lock_period_ms".to_string(), rule.non_us_lock_period_ms, period_ms);
+    emit_uint_rule_set_event<T>(
+        b"non_us_lock_period_ms".to_string(),
+        rule.non_us_lock_period_ms,
+        period_ms,
+    );
     rule.non_us_lock_period_ms = period_ms;
 }
 
