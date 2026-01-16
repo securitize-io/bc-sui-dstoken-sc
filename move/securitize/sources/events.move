@@ -171,7 +171,7 @@ public struct HolderLocked<phantom T> has copy, drop {
     value: u64,
     reason: u64,
     reason_string: String,
-    release_time: u64,
+    release_time_ms: u64,
 }
 
 public struct HolderUnlocked<phantom T> has copy, drop {
@@ -179,7 +179,7 @@ public struct HolderUnlocked<phantom T> has copy, drop {
     value: u64,
     reason: u64,
     reason_string: String,
-    release_time: u64,
+    release_time_ms: u64,
 }
 
 // ==== Wallet Manager Events ====
@@ -441,24 +441,22 @@ public(package) fun emit_liquidate_only_set_event<T>(investor_id: String, enable
 
 public(package) fun emit_lock_added_event<T>(
     holder_id: String,
-    _index: u64,
     value: u64,
     reason: u64,
     reason_string: String,
-    release_time: u64,
+    release_time_ms: u64,
 ) {
-    event::emit(HolderLocked<T> { holder_id, value, reason, reason_string, release_time });
+    event::emit(HolderLocked<T> { holder_id, value, reason, reason_string, release_time_ms });
 }
 
 public(package) fun emit_lock_removed_event<T>(
     holder_id: String,
-    _index: u64,
     value: u64,
     reason: u64,
     reason_string: String,
-    release_time: u64,
+    release_time_ms: u64,
 ) {
-    event::emit(HolderUnlocked<T> { holder_id, value, reason, reason_string, release_time });
+    event::emit(HolderUnlocked<T> { holder_id, value, reason, reason_string, release_time_ms });
 }
 
 // ==== Wallet Manager Emit Functions ====

@@ -152,7 +152,7 @@ public fun add_lock<T>(
 
     lock_state.add_lock(value, reason_code, reason_string, release_time_ms);
 
-    emit_lock_added_event<T>(investor, idx, value, reason_code, reason_string, release_time_ms);
+    emit_lock_added_event<T>(investor, value, reason_code, reason_string, release_time_ms);
 }
 
 /// Removes a lock record at the specified index.
@@ -178,7 +178,6 @@ public fun remove_lock<T>(
 
     emit_lock_removed_event<T>(
         investor,
-        index,
         lock_value(&lock),
         lock_reason_code(&lock),
         lock_reason_string(&lock),
