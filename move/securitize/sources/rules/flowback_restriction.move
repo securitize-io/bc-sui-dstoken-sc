@@ -6,17 +6,19 @@ module securitize::flowback_restriction;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_flowback_restriction_rule_created_event, emit_uint_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
     version::Version,
 };
-use std::string::String;
-use sui::{clock::Clock, event};
+use sui::clock::Clock;
 
 // ==== Error Codes ====
 
-const EFlowbackRestricted: u64 = 0;
-const ENotAuthorized: u64 = 1;
+#[error(code = 0)]
+const EFlowbackRestricted: vector<u8> = b"Transfer from non-US to US investor is restricted during flowback period";
+#[error(code = 1)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Compliance Region Constants ====
 
@@ -28,18 +30,6 @@ const US: u64 = 1;
 public struct FlowbackRestriction has drop, store {
     /// End time (in ms) for the flowback restriction period (0 = transfer restriction)
     block_flowback_end_time_ms: u64,
-}
-
-// ==== Events ====
-
-public struct DSComplianceFlowbackRestrictionRuleCreated<phantom T> has copy, drop {
-    block_flowback_end_time_ms: u64,
-}
-
-public struct DSComplianceFlowbackRestrictionRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -56,9 +46,7 @@ public fun new<T>(
 ): FlowbackRestriction {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    event::emit(DSComplianceFlowbackRestrictionRuleCreated<T> {
-        block_flowback_end_time_ms,
-    });
+    emit_flowback_restriction_rule_created_event<T>(block_flowback_end_time_ms);
     FlowbackRestriction {
         block_flowback_end_time_ms,
     }
@@ -80,11 +68,7 @@ public fun set_flowback_end_time<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceFlowbackRestrictionRuleSet<T, u64> {
-        field: b"block_flowback_end_time_ms".to_string(),
-        old_value: rule.block_flowback_end_time_ms,
-        new_value: end_time,
-    });
+    emit_uint_rule_set_event<T>(b"block_flowback_end_time_ms".to_string(), rule.block_flowback_end_time_ms, end_time);
     rule.block_flowback_end_time_ms = end_time;
 }
 

@@ -6,19 +6,23 @@ module securitize::holding_limits;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_holding_limits_rule_created_event, emit_uint_rule_set_event, emit_string_to_uint_map_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
     version::Version,
 };
-use std::string::String;
-use sui::{event, vec_map::{Self, VecMap}};
+use sui::vec_map::{Self, VecMap};
 
 // ==== Error Codes ====
 
-const EBelowMinHolding: u64 = 0;
-const EAboveMaxHolding: u64 = 1;
-const ERegionNotFound: u64 = 2;
-const ENotAuthorized: u64 = 3;
+#[error(code = 0)]
+const EBelowMinHolding: vector<u8> = b"Balance would fall below minimum holding requirement";
+#[error(code = 1)]
+const EAboveMaxHolding: vector<u8> = b"Balance would exceed maximum holding limit";
+#[error(code = 2)]
+const ERegionNotFound: vector<u8> = b"Region-specific minimum not configured";
+#[error(code = 3)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Structs ====
 
@@ -30,22 +34,6 @@ public struct HoldingLimits has drop, store {
     max_holdings_per_investor: u64,
     /// Region-specific minimum holdings (e.g., US, EU)
     region_min_tokens: VecMap<u64, u64>,
-}
-
-// ==== Events ====
-
-public struct DSComplianceHoldingLimitsRuleCreated<phantom T> has copy, drop {
-    min_holdings_per_investor: u64,
-    max_holdings_per_investor: u64,
-    regions: vector<u64>,
-    region_mins: vector<u64>,
-}
-
-public struct DSComplianceHoldingLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    region: Option<u64>,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -71,12 +59,7 @@ public fun new<T>(
         region_min_tokens.insert(region, min);
     });
 
-    event::emit(DSComplianceHoldingLimitsRuleCreated<T> {
-        min_holdings_per_investor,
-        max_holdings_per_investor,
-        regions,
-        region_mins,
-    });
+    emit_holding_limits_rule_created_event<T>(min_holdings_per_investor, max_holdings_per_investor, regions, region_mins);
 
     HoldingLimits {
         min_holdings_per_investor,
@@ -101,12 +84,7 @@ public fun set_min_holdings<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
-        field: b"min_holdings_per_investor".to_string(),
-        region: option::none(),
-        old_value: rule.min_holdings_per_investor,
-        new_value: min,
-    });
+    emit_uint_rule_set_event<T>(b"min_holdings_per_investor".to_string(), rule.min_holdings_per_investor, min);
     rule.min_holdings_per_investor = min;
 }
 
@@ -124,12 +102,7 @@ public fun set_max_holdings<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
-        field: b"max_holdings_per_investor".to_string(),
-        region: option::none(),
-        old_value: rule.max_holdings_per_investor,
-        new_value: max,
-    });
+    emit_uint_rule_set_event<T>(b"max_holdings_per_investor".to_string(), rule.max_holdings_per_investor, max);
     rule.max_holdings_per_investor = max;
 }
 
@@ -156,12 +129,7 @@ public fun set_region_min_holdings<T>(
         0
     };
     rule.region_min_tokens.insert(region, min);
-    event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
-        field: b"region_min_tokens".to_string(),
-        region: option::some(region),
-        old_value,
-        new_value: min,
-    });
+    emit_string_to_uint_map_rule_set_event<T>(b"region_min_tokens".to_string(), region.to_string(), old_value, min);
 }
 
 /// Remove region-specific minimum
@@ -181,12 +149,7 @@ public fun remove_region_min_holdings<T>(
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);
-        event::emit(DSComplianceHoldingLimitsRuleSet<T, u64> {
-            field: b"region_min_tokens".to_string(),
-            region: option::some(region),
-            old_value,
-            new_value: 0,
-        });
+        emit_string_to_uint_map_rule_set_event<T>(b"region_min_tokens".to_string(), region.to_string(), old_value, 0);
     };
 }
 

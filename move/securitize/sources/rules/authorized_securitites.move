@@ -9,35 +9,24 @@ module securitize::authorized_securities;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_authorized_securities_rule_created_event, emit_uint_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
     version::Version,
 };
-use std::string::String;
-use sui::event;
 
 // ==== Error Codes ====
 
-const EMaxAuthorizedSecuritiesExceeded: u64 = 0;
-const ENotAuthorized: u64 = 1;
+#[error(code = 0)]
+const EMaxAuthorizedSecuritiesExceeded: vector<u8> = b"Issuance would exceed maximum authorized securities";
+#[error(code = 1)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Structs ====
 
 /// Authorized securities configuration
 public struct AuthorizedSecurities has drop, store {
     max_supply: u64,
-}
-
-// ==== Events ====
-
-public struct DSComplianceAuthorizedSecuritiesRuleCreated<phantom T> has copy, drop {
-    max_supply: u64,
-}
-
-public struct DSComplianceAuthorizedSecuritiesRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -55,9 +44,7 @@ public fun new<T>(
 ): AuthorizedSecurities {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    event::emit(DSComplianceAuthorizedSecuritiesRuleCreated<T> {
-        max_supply,
-    });
+    emit_authorized_securities_rule_created_event<T>(max_supply);
     AuthorizedSecurities {
         max_supply,
     }
@@ -79,11 +66,7 @@ public fun set_max_supply<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceAuthorizedSecuritiesRuleSet<T, u64> {
-        field: b"max_supply".to_string(),
-        old_value: rule.max_supply,
-        new_value: max_supply,
-    });
+    emit_uint_rule_set_event<T>(b"max_supply".to_string(), rule.max_supply, max_supply);
     rule.max_supply = max_supply;
 }
 

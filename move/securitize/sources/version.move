@@ -13,8 +13,10 @@ public struct Version has key {
     version: u64,
 }
 
-const EInvalidPackageVersion: u64 = 0;
-const EInvalidPublisher: u64 = 1;
+#[error(code = 0)]
+const EInvalidPackageVersion: vector<u8> = b"Invalid package version - please use the latest version";
+#[error(code = 1)]
+const EInvalidPublisher: vector<u8> = b"Invalid publisher - package ID mismatch";
 
 const VERSION: u64 = 1;
 

@@ -9,20 +9,21 @@ use pas::namespace::Namespace;
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
     ds_token::{Self, Treasury},
+    events::{emit_deployer_added_event, emit_deployer_removed_event, emit_admin_switched_event},
     lock_manager,
     registry_service::{Self, InvestorInfo},
     trust_service::{Self, Auth},
     version::Version,
     wallet_manager
 };
-use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, event, vec_set::{Self, VecSet}};
+use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, vec_set::{Self, VecSet}};
 
 // ==== Error Codes ====
 
-/// Error code when the caller is not a registered deployer
-const ENotDeployer: u64 = 0;
-/// Error code when the caller is not the admin
-const ENotAdmin: u64 = 1;
+#[error(code = 0)]
+const ENotDeployer: vector<u8> = b"Caller is not a registered deployer";
+#[error(code = 1)]
+const ENotAdmin: vector<u8> = b"Caller is not the admin";
 
 // ==== Structs ====
 
@@ -37,21 +38,6 @@ public struct SetupRegistry has key {
 
 /// Hot potato used to finalize the setup process
 public struct SetupFinalize {}
-
-// ==== Events ====
-
-public struct DeployerAdded has copy, drop {
-    deployer: address,
-}
-
-public struct DeployerRemoved has copy, drop {
-    deployer: address,
-}
-
-public struct AdminSwitched has copy, drop {
-    old_admin: address,
-    new_admin: address,
-}
 
 /// Initializes the SetupAuth on module publish.
 /// The deployer of this module becomes both the first deployer and the admin.
@@ -132,7 +118,7 @@ public fun add_deployer(
     version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.deployers.insert(deployer);
-    event::emit(DeployerAdded { deployer });
+    emit_deployer_added_event(deployer);
 }
 
 /// Removes an address from the list of authorized deployers.
@@ -149,7 +135,7 @@ public fun remove_deployer(
     version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.deployers.remove(&deployer);
-    event::emit(DeployerRemoved { deployer });
+    emit_deployer_removed_event(deployer);
 }
 
 /// Switches the admin to a new address.
@@ -166,10 +152,7 @@ public fun switch_admin(
     version.check_is_valid();
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.admin = new_admin;
-    event::emit(AdminSwitched {
-        old_admin: ctx.sender(),
-        new_admin,
-    });
+    emit_admin_switched_event(ctx.sender(), new_admin);
 }
 
 // ==== View Functions ====

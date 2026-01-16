@@ -16,40 +16,48 @@ use securitize::{
         AddWallet,
         RemoveWallet
     },
+    events::{
+        emit_investor_added_event,
+        emit_investor_removed_event,
+        emit_investor_country_changed_event,
+        emit_investor_attribute_changed_event,
+        emit_wallet_added_event,
+        emit_wallet_removed_event
+    },
     trust_service::{Auth, Master, Issuer, Exchange},
     version::Version
 };
 use std::string::{Self, String};
-use sui::{derived_object, event, table::{Self, Table}};
+use sui::{derived_object, table::{Self, Table}};
 
 // ==== Error Codes ====
 
-/// Error code when the caller is not authorized to perform the action
-const ENotAuthorized: u64 = 0;
-/// Error code when attempting to register an investor that already exists
-const EInvestorExists: u64 = 1;
-/// Error code when an empty investor ID is provided
-const EEmptyId: u64 = 2;
-/// Error code when the specified investor does not exist in the registry
-const EInvestorNotFound: u64 = 3;
-/// Error code when attempting to remove an investor that still has wallets
-const EInvestorHasWallets: u64 = 4;
-/// Error code when attribute vectors have mismatched lengths
-const EWrongVectorLength: u64 = 5;
-/// Error code when attempting to add a special wallet as a regular investor wallet
-const ESpecialWallet: u64 = 6;
-/// Error code when attempting to add a wallet that is already registered
-const EWalletAlreadyExists: u64 = 7;
-/// Error code when the specified wallet does not exist in the registry
-const EWalletNotFound: u64 = 8;
-/// Error code when wallet does not belong to the specified investor
-const EWalletDoesNotBelongToInvestor: u64 = 9;
-/// Error code when an unknown attribute ID is provided
-const EUnknownAttribute: u64 = 10;
-/// Error code when wallet belongs to a different investor than expected
-const EWrongInvestor: u64 = 11;
-/// Error code if the compliance region is already set to the given value.
-const EComplianceUnchanged: u64 = 12;
+#[error(code = 0)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 1)]
+const EInvestorExists: vector<u8> = b"Investor already exists in the registry";
+#[error(code = 2)]
+const EEmptyId: vector<u8> = b"Investor ID cannot be empty";
+#[error(code = 3)]
+const EInvestorNotFound: vector<u8> = b"Investor not found in the registry";
+#[error(code = 4)]
+const EInvestorHasWallets: vector<u8> = b"Cannot remove investor that still has wallets";
+#[error(code = 5)]
+const EWrongVectorLength: vector<u8> = b"Attribute vectors have mismatched lengths";
+#[error(code = 6)]
+const ESpecialWallet: vector<u8> = b"Cannot add special wallet as a regular investor wallet";
+#[error(code = 7)]
+const EWalletAlreadyExists: vector<u8> = b"Wallet is already registered";
+#[error(code = 8)]
+const EWalletNotFound: vector<u8> = b"Wallet not found in the registry";
+#[error(code = 9)]
+const EWalletDoesNotBelongToInvestor: vector<u8> = b"Wallet does not belong to the specified investor";
+#[error(code = 10)]
+const EUnknownAttribute: vector<u8> = b"Unknown attribute ID provided";
+#[error(code = 11)]
+const EWrongInvestor: vector<u8> = b"Wallet belongs to a different investor";
+#[error(code = 12)]
+const EComplianceUnchanged: vector<u8> = b"Compliance region is already set to this value";
 
 // ==== Attribute Constants ====
 
@@ -162,50 +170,6 @@ public struct Attribute has copy, drop, store {
     value: u64,
     /// Unix timestamp when this attribute expires
     expiration: u64,
-}
-
-// ==== Events ====
-
-/// Emitted when a new investor is registered
-public struct DSRegistryServiceInvestorAdded<phantom T> has copy, drop {
-    investor_id: String,
-    sender: address,
-}
-
-/// Emitted when an investor is removed from the registry
-public struct DSRegistryServiceInvestorRemoved<phantom T> has copy, drop {
-    investor_id: String,
-    sender: address,
-}
-
-/// Emitted when an investor's country is changed
-public struct DSRegistryServiceInvestorCountryChanged<phantom T> has copy, drop {
-    investor_id: String,
-    country: String,
-    sender: address,
-}
-
-/// Emitted when an investor's attribute is changed
-public struct DSRegistryServiceInvestorAttributeChanged<phantom T> has copy, drop {
-    investor_id: String,
-    attribute_id: u64,
-    value: u64,
-    expiry: u64,
-    sender: address,
-}
-
-/// Emitted when a wallet is added to an investor
-public struct DSRegistryServiceWalletAdded<phantom T> has copy, drop {
-    wallet: address,
-    investor_id: String,
-    sender: address,
-}
-
-/// Emitted when a wallet is removed from an investor
-public struct DSRegistryServiceWalletRemoved<phantom T> has copy, drop {
-    wallet: address,
-    investor_id: String,
-    sender: address,
 }
 
 /// Initializes a new InvestorInfo for the given token type T.
@@ -338,7 +302,7 @@ public fun remove_investor<T: key>(
     // Clean up issuances and locks
     let _issuances: vector<Issuance> = investor_info.investor_issuances.remove(investor_id);
     let _locks: InvestorLockState = investor_info.investor_locks.remove(investor_id);
-    event::emit(DSRegistryServiceInvestorRemoved<T> { investor_id, sender: ctx.sender() });
+    emit_investor_removed_event<T>(investor_id, ctx.sender());
 }
 
 /// Updates an investor's information including country, wallets, and attributes.
@@ -440,11 +404,7 @@ public fun add_wallet<T>(
     };
     investor_info.investor_wallets.add(wallet_addr, wallet);
     investor_info.investors.borrow_mut(investor_id).wallets.push_back(wallet_addr);
-    event::emit(DSRegistryServiceWalletAdded<T> {
-        wallet: wallet_addr,
-        investor_id,
-        sender: ctx.sender(),
-    });
+    emit_wallet_added_event<T>(wallet_addr, investor_id, ctx.sender());
 }
 
 /// Removes a wallet address from an investor's list of wallets.
@@ -474,11 +434,7 @@ public fun remove_wallet<T>(
     let wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
     investor_info.investors.borrow_mut(investor_id).wallets.remove(idx);
-    event::emit(DSRegistryServiceWalletRemoved<T> {
-        wallet: wallet_addr,
-        investor_id,
-        sender: ctx.sender(),
-    });
+    emit_wallet_removed_event<T>(wallet_addr, investor_id, ctx.sender());
 }
 
 // ==== Country and Attribute Configuration ====
@@ -505,11 +461,7 @@ public fun set_country<T: key>(
     adjust_investor_counts_after_country_change(investor_info, investor_id, country, prev_country);
     let investor = investor_info.investors.borrow_mut(investor_id);
     investor.country = country;
-    event::emit(DSRegistryServiceInvestorCountryChanged<T> {
-        investor_id,
-        country,
-        sender: ctx.sender(),
-    });
+    emit_investor_country_changed_event<T>(investor_id, country, ctx.sender());
 }
 
 /// Sets or updates a compliance attribute for an investor.
@@ -547,13 +499,7 @@ public fun set_attribute<T>(
         };
         investor.attributes.add(attribute_id, attribute);
     };
-    event::emit(DSRegistryServiceInvestorAttributeChanged<T> {
-        investor_id,
-        attribute_id,
-        value: attribute_value,
-        expiry: attribute_expiration,
-        sender: ctx.sender(),
-    })
+    emit_investor_attribute_changed_event<T>(investor_id, attribute_id, attribute_value, attribute_expiration, ctx.sender());
 }
 
 // ==== View Functions ====
@@ -888,14 +834,32 @@ public(package) fun add_lock(
     state.locks.push_back(lock);
 }
 
-/// Removes a lock at the given index (swap-remove)
-public(package) fun remove_lock(state: &mut InvestorLockState, index: u64) {
+/// Removes a lock at the given index (swap-remove) and returns it
+public(package) fun remove_lock(state: &mut InvestorLockState, index: u64): Lock {
     let len = state.locks.length();
     let last = len - 1;
     if (index != last) {
         state.locks.swap(index, last);
     };
-    let _ = state.locks.pop_back();
+    state.locks.pop_back()
+}
+
+// ==== Lock Accessors ====
+
+public(package) fun lock_value(lock: &Lock): u64 {
+    lock.value
+}
+
+public(package) fun lock_reason_code(lock: &Lock): u64 {
+    lock.reason_code
+}
+
+public(package) fun lock_reason_string(lock: &Lock): String {
+    lock.reason_string
+}
+
+public(package) fun lock_release_time_ms(lock: &Lock): u64 {
+    lock.release_time_ms
 }
 
 /// Computes the total locked amount based on current time
@@ -975,7 +939,7 @@ fun register_investor_internal<T: key>(
                 locks: vector::empty(),
             },
         );
-    event::emit(DSRegistryServiceInvestorAdded<T> { investor_id, sender: ctx.sender() });
+    emit_investor_added_event<T>(investor_id, ctx.sender());
 }
 
 // Adjusts compliance counters when an investor's country changes.

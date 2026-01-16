@@ -6,51 +6,36 @@ module securitize::lock_manager;
 
 use securitize::{
     abilities::{LockInvestor, UnlockInvestor, SetLiquidateOnly, AddLockRecord, RemoveLockRecord},
-    registry_service::InvestorInfo,
+    events::{
+        emit_investor_fully_locked_event,
+        emit_investor_fully_unlocked_event,
+        emit_liquidate_only_set_event,
+        emit_lock_added_event,
+        emit_lock_removed_event
+    },
+    registry_service::{InvestorInfo, lock_value, lock_reason_code, lock_reason_string, lock_release_time_ms},
     trust_service::{Auth, Master, TransferAgent},
     version::Version
 };
 use std::string::String;
-use sui::{clock::Clock, event};
+use sui::clock::Clock;
 
 const MAX_LOCKS: u64 = 30;
 
-const ENotAuthorized: u64 = 0;
-const EAlreadyLocked: u64 = 1;
-const ENotLocked: u64 = 2;
-const ETooManyLocks: u64 = 3;
-const EIndexOutOfRange: u64 = 4;
-const EInvalidValue: u64 = 5;
-const EInvalidTime: u64 = 6;
-
-// ==== Events ====
-
-public struct DSLockManagerInvestorFullyLocked<phantom T> has copy, drop {
-    investor: String,
-}
-
-public struct DSLockManagerInvestorFullyUnlocked<phantom T> has copy, drop {
-    investor: String,
-}
-
-public struct DSLockManagerLiquidateOnlySet<phantom T> has copy, drop {
-    investor: String,
-    enabled: bool,
-}
-
-public struct DSLockManagerLockAdded<phantom T> has copy, drop {
-    investor: String,
-    index: u64,
-    value: u64,
-    reason_code: u64,
-    reason_string: String,
-    release_time_ms: u64,
-}
-
-public struct DSLockManagerLockRemoved<phantom T> has copy, drop {
-    investor: String,
-    index: u64,
-}
+#[error(code = 0)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 1)]
+const EAlreadyLocked: vector<u8> = b"Investor is already fully locked";
+#[error(code = 2)]
+const ENotLocked: vector<u8> = b"Investor is not fully locked";
+#[error(code = 3)]
+const ETooManyLocks: vector<u8> = b"Maximum number of lock records exceeded";
+#[error(code = 4)]
+const EIndexOutOfRange: vector<u8> = b"Lock index is out of range";
+#[error(code = 5)]
+const EInvalidValue: vector<u8> = b"Lock value must be greater than zero";
+#[error(code = 6)]
+const EInvalidTime: vector<u8> = b"Release time must be zero or in the future";
 
 /// Called by the setup module during token deployment.
 public(package) fun new<T>(auth: &mut Auth<T>, version: &Version, ctx: &TxContext) {
@@ -88,7 +73,7 @@ public fun lock_investor<T>(
     let lock_state = registry.get_investor_locks_mut(investor);
     assert!(!lock_state.is_fully_locked(), EAlreadyLocked);
     lock_state.set_fully_locked(true);
-    event::emit(DSLockManagerInvestorFullyLocked<T> { investor });
+    emit_investor_fully_locked_event<T>(investor);
 }
 
 /// Unlocks a fully locked investor's account, allowing transfers again.
@@ -108,7 +93,7 @@ public fun unlock_investor<T>(
     let lock_state = registry.get_investor_locks_mut(investor);
     assert!(lock_state.is_fully_locked(), ENotLocked);
     lock_state.set_fully_locked(false);
-    event::emit(DSLockManagerInvestorFullyUnlocked<T> { investor });
+    emit_investor_fully_unlocked_event<T>(investor);
 }
 
 /// Sets the liquidate-only restriction for an investor.
@@ -128,7 +113,7 @@ public fun set_liquidate_only<T>(
     assert!(auth.owner_has_ability<T, SetLiquidateOnly>(ctx.sender()), ENotAuthorized);
     let lock_state = registry.get_investor_locks_mut(investor);
     lock_state.set_liquidate_only(enabled);
-    event::emit(DSLockManagerLiquidateOnlySet<T> { investor, enabled });
+    emit_liquidate_only_set_event<T>(investor, enabled);
 }
 
 /// Adds a time-based lock record for a specific token amount.
@@ -161,14 +146,7 @@ public fun add_lock<T>(
 
     lock_state.add_lock(value, reason_code, reason_string, release_time_ms);
 
-    event::emit(DSLockManagerLockAdded<T> {
-        investor,
-        index: idx,
-        value,
-        reason_code,
-        reason_string,
-        release_time_ms,
-    });
+    emit_lock_added_event<T>(investor, idx, value, reason_code, reason_string, release_time_ms);
 }
 
 /// Removes a lock record at the specified index.
@@ -190,9 +168,16 @@ public fun remove_lock<T>(
     let len = lock_state.locks_length();
     assert!(index < len, EIndexOutOfRange);
 
-    lock_state.remove_lock(index);
+    let lock = lock_state.remove_lock(index);
 
-    event::emit(DSLockManagerLockRemoved<T> { investor, index });
+    emit_lock_removed_event<T>(
+        investor,
+        index,
+        lock_value(&lock),
+        lock_reason_code(&lock),
+        lock_reason_string(&lock),
+        lock_release_time_ms(&lock),
+    );
 }
 
 public fun compute_transferable<T>(

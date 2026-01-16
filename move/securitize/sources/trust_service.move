@@ -14,42 +14,43 @@ use securitize::{
         SetTransferAgent,
         SetExchange
     },
+    events::{emit_role_added_event, emit_role_removed_event},
     version::Version
 };
 use std::type_name::{Self, TypeName};
 use sui::{
     bag::{Self, Bag},
     derived_object,
-    event,
     vec_map::{Self, VecMap},
     vec_set::{Self, VecSet}
 };
 
 // ==== Error Codes ====
-/// Direct role to role change is not allowed.
-const EDirectRoleToRoleChange: u64 = 0;
-/// Cannot remove master role.
-const ECannotRemoveMaster: u64 = 1;
-/// Not enough permissions.
-const ENotEnoughPermissions: u64 = 2;
-/// Cannot transfer ownership to self.
-const ESelfTransferNotAllowed: u64 = 3;
-/// Owner has no role assigned.
-const EOwnerHasNoRole: u64 = 4;
-/// Role type not found in the system.
-const ERoleNotFound: u64 = 5;
-/// Role type mismatch - stored role doesn't match expected.
-const ERoleTypeMismatch: u64 = 6;
-/// Role abilities mapping not found.
-const ERoleAbilitiesNotFound: u64 = 7;
-/// Ability already exists for this role.
-const EAbilityAlreadyExists: u64 = 8;
-/// Ability not found for this role.
-const EAbilityNotFound: u64 = 9;
-/// Role type already exists.
-const ERoleAlreadyExists: u64 = 10;
-/// Role has active members and cannot be removed.
-const ERoleHasActiveMembers: u64 = 11;
+
+#[error(code = 0)]
+const EDirectRoleToRoleChange: vector<u8> = b"Direct role to role change is not allowed";
+#[error(code = 1)]
+const ECannotRemoveMaster: vector<u8> = b"Cannot remove master role";
+#[error(code = 2)]
+const ENotEnoughPermissions: vector<u8> = b"Caller does not have sufficient permissions";
+#[error(code = 3)]
+const ESelfTransferNotAllowed: vector<u8> = b"Cannot transfer ownership to self";
+#[error(code = 4)]
+const EOwnerHasNoRole: vector<u8> = b"Owner has no role assigned";
+#[error(code = 5)]
+const ERoleNotFound: vector<u8> = b"Role type not found in the system";
+#[error(code = 6)]
+const ERoleTypeMismatch: vector<u8> = b"Role type mismatch - stored role doesn't match expected";
+#[error(code = 7)]
+const ERoleAbilitiesNotFound: vector<u8> = b"Role abilities mapping not found";
+#[error(code = 8)]
+const EAbilityAlreadyExists: vector<u8> = b"Ability already exists for this role";
+#[error(code = 9)]
+const EAbilityNotFound: vector<u8> = b"Ability not found for this role";
+#[error(code = 10)]
+const ERoleAlreadyExists: vector<u8> = b"Role type already exists";
+#[error(code = 11)]
+const ERoleHasActiveMembers: vector<u8> = b"Role has active members and cannot be removed";
 
 public struct TrustServiceKey<phantom T>() has copy, drop, store;
 
@@ -69,20 +70,6 @@ public struct Auth<phantom T> has key {
 /// Key structure for identifying role ownership
 public struct AddressKey has copy, drop, store {
     owner: address,
-}
-
-// ==== Events ====
-
-public struct DSTrustServiceRoleAdded<phantom T> has copy, drop {
-    target_address: address,
-    role: TypeName,
-    sender: address,
-}
-
-public struct DSTrustServiceRoleRemoved<phantom T> has copy, drop {
-    target_address: address,
-    role: TypeName,
-    sender: address,
 }
 
 // ==================== Roles ====================
@@ -295,11 +282,7 @@ public(package) fun internal_assign_role<T, R: drop>(
     *self.roles.get_mut(&roles_type) = *self.roles.get_mut(&roles_type) + 1;
 
     // Emit event
-    event::emit(DSTrustServiceRoleAdded<T> {
-        target_address: owner,
-        role: roles_type,
-        sender: ctx.sender(),
-    });
+    emit_role_added_event<T>(owner, roles_type, ctx.sender());
 }
 
 /// Remove a role R from an owner address
@@ -320,11 +303,7 @@ public(package) fun internal_remove_role<T, R: drop>(
     *self.roles.get_mut(&roles_type) = *self.roles.get_mut(&roles_type) - 1;
 
     // Emit event
-    event::emit(DSTrustServiceRoleRemoved<T> {
-        target_address: owner,
-        role: roles_type,
-        sender: ctx.sender(),
-    });
+    emit_role_removed_event<T>(owner, roles_type, ctx.sender());
 }
 
 // ==================== Ability Management Functions ====================

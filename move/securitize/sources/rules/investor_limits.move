@@ -6,24 +6,32 @@ module securitize::investor_limits;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_investor_limits_rule_created_event, emit_uint_rule_set_event},
     registry_service::InvestorInfo,
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
     version::Version,
 };
 use std::string::String;
-use sui::event;
 
 // ==== Error Codes ====
 
-const EMaxInvestorsExceeded: u64 = 0;
-const EMaxUSInvestorsExceeded: u64 = 1;
-const EMaxUSAccreditedExceeded: u64 = 2;
-const EMaxNonAccreditedExceeded: u64 = 3;
-const EMaxJPInvestorsExceeded: u64 = 4;
-const EMaxEURetailExceeded: u64 = 5;
-const EBelowMinimumInvestors: u64 = 6;
-const ENotAuthorized: u64 = 7;
+#[error(code = 0)]
+const EMaxInvestorsExceeded: vector<u8> = b"Maximum total investors limit exceeded";
+#[error(code = 1)]
+const EMaxUSInvestorsExceeded: vector<u8> = b"Maximum US investors limit exceeded";
+#[error(code = 2)]
+const EMaxUSAccreditedExceeded: vector<u8> = b"Maximum US accredited investors limit exceeded";
+#[error(code = 3)]
+const EMaxNonAccreditedExceeded: vector<u8> = b"Maximum non-accredited investors limit exceeded";
+#[error(code = 4)]
+const EMaxJPInvestorsExceeded: vector<u8> = b"Maximum JP investors limit exceeded";
+#[error(code = 5)]
+const EMaxEURetailExceeded: vector<u8> = b"Maximum EU retail investors limit exceeded";
+#[error(code = 6)]
+const EBelowMinimumInvestors: vector<u8> = b"Total investors would fall below minimum required";
+#[error(code = 7)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Compliance Region Constants ====
 
@@ -53,25 +61,6 @@ public struct InvestorLimits has drop, store {
     max_us_percentage: u64,
 }
 
-// ==== Events ====
-
-public struct DSComplianceInvestorLimitsRuleCreated<phantom T> has copy, drop {
-    total_investors_limit: u64,
-    minimum_total_investors: u64,
-    us_investors_limit: u64,
-    us_accredited_limit: u64,
-    non_accredited_limit: u64,
-    jp_investors_limit: u64,
-    eu_retail_limit: u64,
-    max_us_percentage: u64,
-}
-
-public struct DSComplianceInvestorLimitsRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
-}
-
 // ==================== Initialization ====================
 
 /// Create a new InvestorLimits rule
@@ -93,7 +82,7 @@ public fun new<T>(
 ): InvestorLimits {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    event::emit(DSComplianceInvestorLimitsRuleCreated<T> {
+    emit_investor_limits_rule_created_event<T>(
         total_investors_limit,
         minimum_total_investors,
         us_investors_limit,
@@ -102,7 +91,7 @@ public fun new<T>(
         jp_investors_limit,
         eu_retail_limit,
         max_us_percentage,
-    });
+    );
     InvestorLimits {
         total_investors_limit,
         minimum_total_investors,
@@ -131,11 +120,7 @@ public fun set_total_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"total_investors_limit".to_string(),
-        old_value: rule.total_investors_limit,
-        new_value: limit,
-    });
+    emit_uint_rule_set_event<T>(b"total_investors_limit".to_string(), rule.total_investors_limit, limit);
     rule.total_investors_limit = limit;
 }
 
@@ -153,11 +138,7 @@ public fun set_minimum_total_investors<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"minimum_total_investors".to_string(),
-        old_value: rule.minimum_total_investors,
-        new_value: minimum,
-    });
+    emit_uint_rule_set_event<T>(b"minimum_total_investors".to_string(), rule.minimum_total_investors, minimum);
     rule.minimum_total_investors = minimum;
 }
 
@@ -175,11 +156,7 @@ public fun set_us_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"us_investors_limit".to_string(),
-        old_value: rule.us_investors_limit,
-        new_value: limit,
-    });
+    emit_uint_rule_set_event<T>(b"us_investors_limit".to_string(), rule.us_investors_limit, limit);
     rule.us_investors_limit = limit;
 }
 
@@ -197,11 +174,7 @@ public fun set_us_accredited_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"us_accredited_limit".to_string(),
-        old_value: rule.us_accredited_limit,
-        new_value: limit,
-    });
+    emit_uint_rule_set_event<T>(b"us_accredited_limit".to_string(), rule.us_accredited_limit, limit);
     rule.us_accredited_limit = limit;
 }
 
@@ -219,11 +192,7 @@ public fun set_non_accredited_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"non_accredited_limit".to_string(),
-        old_value: rule.non_accredited_limit,
-        new_value: limit,
-    });
+    emit_uint_rule_set_event<T>(b"non_accredited_limit".to_string(), rule.non_accredited_limit, limit);
     rule.non_accredited_limit = limit;
 }
 
@@ -241,11 +210,7 @@ public fun set_jp_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"jp_investors_limit".to_string(),
-        old_value: rule.jp_investors_limit,
-        new_value: limit,
-    });
+    emit_uint_rule_set_event<T>(b"jp_investors_limit".to_string(), rule.jp_investors_limit, limit);
     rule.jp_investors_limit = limit;
 }
 
@@ -263,11 +228,7 @@ public fun set_eu_retail_limit<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"eu_retail_limit".to_string(),
-        old_value: rule.eu_retail_limit,
-        new_value: limit,
-    });
+    emit_uint_rule_set_event<T>(b"eu_retail_limit".to_string(), rule.eu_retail_limit, limit);
     rule.eu_retail_limit = limit;
 }
 
@@ -285,11 +246,7 @@ public fun set_max_us_percentage<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceInvestorLimitsRuleSet<T, u64> {
-        field: b"max_us_percentage".to_string(),
-        old_value: rule.max_us_percentage,
-        new_value: percentage,
-    });
+    emit_uint_rule_set_event<T>(b"max_us_percentage".to_string(), rule.max_us_percentage, percentage);
     rule.max_us_percentage = percentage;
 }
 
