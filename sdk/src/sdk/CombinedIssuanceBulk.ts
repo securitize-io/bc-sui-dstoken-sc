@@ -1,15 +1,15 @@
-import {Investors} from "./investors";
 import {Investor} from "./domains";
 import {Bulk} from "./Bulk";
 import {Transaction} from "@mysten/sui/transactions";
 import {Keypair} from "@mysten/sui/cryptography";
+import {CombinedIssuance} from "./CombinedIssuance";
 
-export class InvestorsBulk extends Bulk {
-    private investors: Investors;
+export class CombinedIssuanceBulk extends Bulk {
+    private combinedIssuance: CombinedIssuance
 
     constructor(tokenAddress: string) {
-        super(165)
-        this.investors = new Investors(tokenAddress)
+        super(124)
+        this.combinedIssuance = new CombinedIssuance(tokenAddress)
     }
 
     async register(investors: Investor[], signer: string) {
@@ -21,9 +21,6 @@ export class InvestorsBulk extends Bulk {
     }
 
     private getBuildOperation() {
-        return (investor: Investor, ptb: Transaction) => {
-            this.investors.registerInvestorPTB(investor.id, ptb);
-            this.investors.addWalletPTB(investor.id, investor.wallet, ptb);
-        };
+        return (investor: Investor, ptb: Transaction) => this.combinedIssuance.registerPTB(investor, ptb)
     }
 }

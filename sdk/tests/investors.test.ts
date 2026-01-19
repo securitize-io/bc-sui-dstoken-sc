@@ -44,9 +44,18 @@ describe('Investors', () => {
                 testInvestor1,
                 Country.US,
                 [testWallet1],
-                [AttributeType.KYC_APPROVED, AttributeType.PROFESSIONAL],
-                [AttributeStatus.APPROVED, AttributeStatus.PENDING],
-                [111, 222],
+                [
+                    {
+                        name: AttributeType.KYC_APPROVED,
+                        status: AttributeStatus.APPROVED,
+                        expiry: 111,
+                    },
+                    {
+                        name: AttributeType.PROFESSIONAL,
+                        status: AttributeStatus.PENDING,
+                        expiry: 222,
+                    },
+                ],
                 sender
             )
         )

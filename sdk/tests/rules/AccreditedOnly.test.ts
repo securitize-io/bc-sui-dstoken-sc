@@ -74,6 +74,18 @@ describe('AccreditedOnly Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(accreditedOnly.register(sender, false, false))
+
+            await executeTxFunc(accreditedOnly.setForceAccredited(true, sender))
+            await executeTxFunc(accreditedOnly.setForceUsAccredited(true, sender))
+            await expect(accreditedOnly.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(accreditedOnly.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle undefined flags (defaults to false)', async () => {
             await executeTxFunc(

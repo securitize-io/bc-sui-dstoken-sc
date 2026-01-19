@@ -2,6 +2,7 @@ import { ADMIN_KEYPAIR } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from '../test_utils'
 import { HoldingLimits } from '../../src/sdk/rules/HoldingLimits'
+import { Regions } from '../../src/sdk/domains/Region'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -106,6 +107,20 @@ describe('HoldingLimits Rule', () => {
             const ptb = holdingLimits.registerPTB(100n, 1000000n, 500n, 300n)
             expect(ptb).toBeDefined()
             expect(ptb.blockData).toBeDefined()
+        })
+    })
+
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(holdingLimits.register(sender, 100n, 1000000n, 500n, 300n))
+
+            await executeTxFunc(holdingLimits.setMinHoldings(200n, sender))
+            await executeTxFunc(holdingLimits.setMaxHoldings(2000000n, sender))
+            await executeTxFunc(holdingLimits.setRegionMinHoldings(Regions.US, 1000n, sender))
+            await executeTxFunc(holdingLimits.setRegionMinHoldings(Regions.EU, 800n, sender))
+            await expect(holdingLimits.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(holdingLimits.unregister(sender))
         })
     })
 

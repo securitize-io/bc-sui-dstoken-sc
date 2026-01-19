@@ -32,4 +32,30 @@ export class ForceFullTransfer extends Rule {
         const ptb = this.registerPTB(force_full_transfer_us, force_full_transfer_worldwide)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    setForceUsPTB(force?: boolean, ptbDetails?: PTBDetails) {
+        if (force === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_force_us', [ptbDetails.ptb.pure.bool(force)], ptbDetails)
+    }
+
+    setForceUs(force: boolean, signer: string) {
+        const ptb = this.setForceUsPTB(force)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+
+    setForceWorldwidePTB(force?: boolean, ptbDetails?: PTBDetails) {
+        if (force === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_force_worldwide', [ptbDetails.ptb.pure.bool(force)], ptbDetails)
+    }
+
+    setForceWorldwide(force: boolean, signer: string) {
+        const ptb = this.setForceWorldwidePTB(force)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
 }

@@ -1,11 +1,13 @@
 import {SuiClient} from "../easysui";
-import {ComplianceRules, Regions} from "./domains";
+import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains";
 import {AccreditedOnly} from "./rules/AccreditedOnly";
 import {FlowbackRestriction} from "./rules/FlowbackRestriction";
 import {ForceFullTransfer} from "./rules/ForceFullTransfer";
 import {HoldingLimits} from "./rules/HoldingLimits";
 import {InvestorLimits} from "./rules/InvestorLimits";
-import {newPTBDetails, PTBDetails} from "./domains/PTBDetails";
+import {AuthorizedSecurities} from "./rules/AuthorizedSecurities";
+import {BackdatingIssuance} from "./rules/BackdatingIssuance";
+import {LockupRestriction} from "./rules/LockupRestriction";
 import {getTokenDetails} from "./token";
 
 export class Rules {
@@ -47,7 +49,11 @@ export class Rules {
             jpInvestorsLimit: allFields.jp_investors_limit && parseInt(allFields.jp_investors_limit),
             usAccreditedInvestorsLimit: allFields.us_accredited_limit && parseInt(allFields.us_accredited_limit),
             nonAccreditedInvestorsLimit: allFields.non_accredited_limit && parseInt(allFields.non_accredited_limit),
-            maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage)
+            maxUSInvestorsPercentage: allFields.max_us_percentage && parseInt(allFields.max_us_percentage),
+            authorizedSecurities: allFields.max_supply && BigInt(allFields.max_supply).toString(),
+            disallowBackDating: allFields.disallow_backdating,
+            usLockPeriod: allFields.us_lock_period_ms && parseInt(allFields.us_lock_period_ms),
+            nonUSLockPeriod: allFields.non_us_lock_period_ms && parseInt(allFields.non_us_lock_period_ms)
         }
 
         const regionMinTokens = allFields?.region_min_tokens?.fields?.contents?.map((c: any) => c.fields)
@@ -67,33 +73,131 @@ export class Rules {
 
     // ==== Rule Management Functions ====
 
-    updatePTB(
+    async updatePTB(
         rules: ComplianceRules,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
 
-       new AccreditedOnly(this.tokenAddress).registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
-       new FlowbackRestriction(this.tokenAddress).registerPTB(rules.blockFlowbackEndTime, ptbDetails)
-       new ForceFullTransfer(this.tokenAddress).registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
-       new HoldingLimits(this.tokenAddress).registerPTB(
-            BigInt(rules.minimumHoldingsPerInvestor || 0),
-            BigInt(rules.maximumHoldingsPerInvestor || 0),
-            BigInt(rules.minUSTokens || 0),
-            BigInt(rules.minEUTokens || 0),
-            ptbDetails,
-        )
-        new InvestorLimits(this.tokenAddress).registerPTB(
-            rules.totalInvestorsLimit,
-            rules.minimumTotalInvestors,
-            rules.usInvestorsLimit,
-            rules.usAccreditedInvestorsLimit,
-            rules.nonAccreditedInvestorsLimit,
-            rules.jpInvestorsLimit,
-            rules.euRetailInvestorsLimit,
-            rules.maxUSInvestorsPercentage,
-            ptbDetails,
-        )
+        if ('forceAccredited' in rules || 'forceAccreditedUS' in rules) {
+            const accreditedOnly = new AccreditedOnly(this.tokenAddress)
+            if (await accreditedOnly.exists()) {
+                accreditedOnly.setForceAccreditedPTB(rules.forceAccredited, ptbDetails)
+                accreditedOnly.setForceUsAccreditedPTB(rules.forceAccreditedUS, ptbDetails)
+            } else {
+                accreditedOnly.registerPTB(rules.forceAccredited, rules.forceAccreditedUS, ptbDetails)
+            }
+        }
+
+        if ('blockFlowbackEndTime' in rules) {
+            const flowbackRestriction = new FlowbackRestriction(this.tokenAddress)
+            if (await flowbackRestriction.exists()) {
+                flowbackRestriction.setFlowbackEndTimePTB(rules.blockFlowbackEndTime, ptbDetails)
+            } else {
+                flowbackRestriction.registerPTB(rules.blockFlowbackEndTime, ptbDetails)
+            }
+        }
+
+        if ('forceFullTransfer' in rules || 'worldWideForceFullTransfer' in rules) {
+            const forceFullTransfer = new ForceFullTransfer(this.tokenAddress)
+            if (await forceFullTransfer.exists()) {
+                forceFullTransfer.setForceUsPTB(rules.forceFullTransfer, ptbDetails)
+                forceFullTransfer.setForceWorldwidePTB(rules.worldWideForceFullTransfer, ptbDetails)
+            } else {
+                forceFullTransfer.registerPTB(rules.forceFullTransfer, rules.worldWideForceFullTransfer, ptbDetails)
+            }
+        }
+
+        if (
+            'minimumHoldingsPerInvestor' in rules ||
+            'maximumHoldingsPerInvestor' in rules ||
+            'minUSTokens' in rules ||
+            'minEUTokens' in rules
+        ) {
+            const holdingLimits = new HoldingLimits(this.tokenAddress)
+            if (await holdingLimits.exists()) {
+                holdingLimits.setMinHoldingsPTB(rules.minimumHoldingsPerInvestor ? BigInt(rules.minimumHoldingsPerInvestor) : undefined, ptbDetails)
+                holdingLimits.setMaxHoldingsPTB(rules.maximumHoldingsPerInvestor ? BigInt(rules.maximumHoldingsPerInvestor) : undefined, ptbDetails)
+                if (rules.minUSTokens !== undefined) {
+                    holdingLimits.setRegionMinHoldingsPTB(Regions.US, BigInt(rules.minUSTokens), ptbDetails)
+                }
+                if (rules.minEUTokens !== undefined) {
+                    holdingLimits.setRegionMinHoldingsPTB(Regions.EU, BigInt(rules.minEUTokens), ptbDetails)
+                }
+            } else {
+                holdingLimits.registerPTB(
+                    BigInt(rules.minimumHoldingsPerInvestor || 0),
+                    BigInt(rules.maximumHoldingsPerInvestor || 0),
+                    BigInt(rules.minUSTokens || 0),
+                    BigInt(rules.minEUTokens || 0),
+                    ptbDetails,
+                )
+            }
+        }
+
+        if (
+            'totalInvestorsLimit' in rules ||
+            'minimumTotalInvestors' in rules ||
+            'usInvestorsLimit' in rules ||
+            'usAccreditedInvestorsLimit' in rules ||
+            'nonAccreditedInvestorsLimit' in rules ||
+            'jpInvestorsLimit' in rules ||
+            'euRetailInvestorsLimit' in rules ||
+            'maxUSInvestorsPercentage' in rules
+        ) {
+            const investorLimits = new InvestorLimits(this.tokenAddress)
+            if (await investorLimits.exists()) {
+                investorLimits.setTotalLimitPTB(rules.totalInvestorsLimit, ptbDetails)
+                investorLimits.setMinimumTotalInvestorsPTB(rules.minimumTotalInvestors, ptbDetails)
+                investorLimits.setUsLimitPTB(rules.usInvestorsLimit, ptbDetails)
+                investorLimits.setUsAccreditedLimitPTB(rules.usAccreditedInvestorsLimit, ptbDetails)
+                investorLimits.setNonAccreditedLimitPTB(rules.nonAccreditedInvestorsLimit, ptbDetails)
+                investorLimits.setJpLimitPTB(rules.jpInvestorsLimit, ptbDetails)
+                investorLimits.setEuRetailLimitPTB(rules.euRetailInvestorsLimit, ptbDetails)
+                investorLimits.setMaxUsPercentagePTB(rules.maxUSInvestorsPercentage, ptbDetails)
+            } else {
+                investorLimits.registerPTB(
+                    rules.totalInvestorsLimit,
+                    rules.minimumTotalInvestors,
+                    rules.usInvestorsLimit,
+                    rules.usAccreditedInvestorsLimit,
+                    rules.nonAccreditedInvestorsLimit,
+                    rules.jpInvestorsLimit,
+                    rules.euRetailInvestorsLimit,
+                    rules.maxUSInvestorsPercentage,
+                    ptbDetails,
+                )
+            }
+        }
+
+        if ('authorizedSecurities' in rules) {
+            const authorizedSecurities = new AuthorizedSecurities(this.tokenAddress)
+            if (await authorizedSecurities.exists()) {
+                authorizedSecurities.setMaxSupplyPTB(rules.authorizedSecurities ? BigInt(rules.authorizedSecurities) : undefined, ptbDetails)
+            } else {
+                authorizedSecurities.registerPTB(BigInt(rules.authorizedSecurities || 0), ptbDetails)
+            }
+        }
+
+        if ('disallowBackDating' in rules) {
+            const backdatingIssuance = new BackdatingIssuance(this.tokenAddress)
+            if (await backdatingIssuance.exists()) {
+                backdatingIssuance.setDisallowBackdatingPTB(rules.disallowBackDating, ptbDetails)
+            } else {
+                backdatingIssuance.registerPTB(rules.disallowBackDating, ptbDetails)
+            }
+        }
+
+        if ('usLockPeriod' in rules || 'nonUSLockPeriod' in rules) {
+            const lockupRestriction = new LockupRestriction(this.tokenAddress)
+            if (await lockupRestriction.exists()) {
+                lockupRestriction.setUsLockPeriodPTB(rules.usLockPeriod, ptbDetails)
+                lockupRestriction.setNonUsLockPeriodPTB(rules.nonUSLockPeriod, ptbDetails)
+            } else {
+                lockupRestriction.registerPTB(rules.usLockPeriod, rules.nonUSLockPeriod, ptbDetails)
+            }
+        }
+
         return ptbDetails.ptb
     }
 
@@ -101,7 +205,7 @@ export class Rules {
         signer: string,
         rules: ComplianceRules,
     ) {
-        const ptb = this.updatePTB(rules)
+        const ptb = await this.updatePTB(rules)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 }

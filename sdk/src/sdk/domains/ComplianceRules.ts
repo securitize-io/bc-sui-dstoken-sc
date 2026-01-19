@@ -21,9 +21,9 @@ export interface ComplianceRules {
   maxUSInvestorsPercentage?: number; // Mapped to InvestorLimits.max_us_percentage
   minimumTotalInvestors?: number; // Mapped to InvestorLimits.minimum_total_investors
 
-  nonUSLockPeriod?: number; // TODO: Haris to add LOCK rules
-  usLockPeriod?: number; // TODO: Haris to add LOCK rules
-  disallowBackDating?: boolean; // TODO: Haris to add LOCK rules
+  nonUSLockPeriod?: number; // Mapped to LockupRestriction.non_us_lock_period_ms
+  usLockPeriod?: number; // Mapped to LockupRestriction.us_lock_period_ms
+  disallowBackDating?: boolean; // Mapped to BackdatingIssuance.allow_backdating
 
-  authorizedSecurities?: string; // TODO: Haris to add the rule
+  authorizedSecurities?: string; // Mapped to AuthorizedSecurities.max_supply
 }

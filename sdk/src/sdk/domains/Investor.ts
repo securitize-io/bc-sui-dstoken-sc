@@ -14,5 +14,6 @@ export interface Investor {
   wallet: string;
   value: string;
   reason: string;
+  issuanceTime: number;
   lock?: InvestorLock;
 }

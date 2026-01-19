@@ -74,6 +74,18 @@ describe('ForceFullTransfer Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            await executeTxFunc(forceFullTransfer.register(sender, false, false))
+
+            await executeTxFunc(forceFullTransfer.setForceUs(true, sender))
+            await executeTxFunc(forceFullTransfer.setForceWorldwide(true, sender))
+            await expect(forceFullTransfer.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(forceFullTransfer.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle undefined flags (defaults to false)', async () => {
             await executeTxFunc(

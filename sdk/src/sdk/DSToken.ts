@@ -50,7 +50,7 @@ export class DSToken {
         return result ?? false
     }
 
-    async getTotalIssued(treasuryCap?: string) {
+    async getTotalIssued(treasuryCap?: string): Promise<string> {
         treasuryCap ??= (await this.getCurrency()).treasury_cap_id
 
         if (!treasuryCap) {
@@ -140,7 +140,7 @@ export class DSToken {
     issuePTB(
         to: string,
         value: bigint,
-        valuesLocked: number[],
+        valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
         ptb?: Transaction,
@@ -184,11 +184,65 @@ export class DSToken {
         signer: string,
         to: string,
         value: bigint,
-        valuesLocked: number[],
+        valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
     ) {
         const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes, issuanceTimeMS)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    issueNoVaultPTB(
+        to: string,
+        value: bigint,
+        valuesLocked: bigint[],
+        releaseTimes: number[],
+        issuanceTimeMS: number,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        const args = [
+            this.tokenDetails.treasury,
+            this.tokenDetails.auth,
+            this.tokenDetails.investorInfo,
+            this.tokenDetails.complianceConfig,
+            this.tokenDetails.pasRule,
+            Config.vars.PAS_NAMESPACE,
+            to,
+            value,
+            Config.vars.VERSION,
+            valuesLocked,
+            releaseTimes,
+            issuanceTimeMS,
+            CLOCK_ID,
+        ]
+        const argsTypes = [
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.object,
+            MoveType.address,
+            MoveType.u64,
+            MoveType.object,
+            MoveType.vec_u64,
+            MoveType.vec_u64,
+            MoveType.u64,
+            MoveType.object,
+        ]
+        return this.buildSetPTB('issue_tokens_no_vault', args, ptb, argsTypes)
+    }
+
+    async issueNoVault(
+        signer: string,
+        to: string,
+        value: bigint,
+        valuesLocked: bigint[],
+        releaseTimes: number[],
+        issuanceTimeMS: number,
+    ) {
+        const ptb = this.issueNoVaultPTB(to, value, valuesLocked, releaseTimes, issuanceTimeMS)
         return this.buildSetBytes(ptb, signer)
     }
 

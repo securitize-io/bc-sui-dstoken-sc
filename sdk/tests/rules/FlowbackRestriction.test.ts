@@ -81,6 +81,19 @@ describe('FlowbackRestriction Rule', () => {
         })
     })
 
+    describe('Rule Updates', () => {
+        it('should be able to set the values', async () => {
+            const initialEndTime = Date.now() + 30 * 24 * 60 * 60 * 1000
+            await executeTxFunc(flowbackRestriction.register(sender, initialEndTime))
+
+            const newEndTime = Date.now() + 90 * 24 * 60 * 60 * 1000
+            await executeTxFunc(flowbackRestriction.setFlowbackEndTime(newEndTime, sender))
+            await expect(flowbackRestriction.exists(sender)).resolves.toBe(true)
+
+            await executeTxFunc(flowbackRestriction.unregister(sender))
+        })
+    })
+
     describe('Edge Cases', () => {
         it('should handle zero end time', async () => {
             await executeTxFunc(

@@ -101,8 +101,7 @@ export async function createDSToken(request: DeploymentRequest) {
             id: tokenAddress,
         }
     } catch (e: any) {
-        throw e
-        // throw handleError(e, tokenSymbol)
+        throw handleError(e, tokenSymbol)
     }
 }
 

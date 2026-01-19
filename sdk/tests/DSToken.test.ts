@@ -114,12 +114,23 @@ describe('DSToken', () => {
             await assertInvestorBalance(tokenAddress, 'testInvestor', '1000000')
         })
 
+        it('should issue tokens with no vault', async () => {
+            const totalIssued = await dsToken.getTotalIssued()
+            expect(totalIssued).toBe('1000000')
+
+            await executeTxFunc(dsToken.issueNoVault(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
+
+            const totalIssuedAfter = await dsToken.getTotalIssued()
+            expect(totalIssuedAfter).toBe('2000000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor', '2000000')
+        })
+
         it('should burn tokens', async () => {
             await executeTxFunc(dsToken.burn(sender, sender, 500_000n, 'reason'))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
-            expect(totalIssuedAfter).toBe('500000')
-            await assertInvestorBalance(tokenAddress, 'testInvestor', '500000')
+            expect(totalIssuedAfter).toBe('1500000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor', '1500000')
         })
     })
 
@@ -149,14 +160,14 @@ describe('DSToken', () => {
     describe('transfer', () => {
         it('should transfer tokens', async () => {
             await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
-            await assertInvestorBalance(tokenAddress, 'testInvestor', '1500000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor', '2500000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '0')
 
             await executeTxFunc(
                 dsToken.transfer(sender, sender, investor2.toSuiAddress(), 300_000n)
             )
 
-            await assertInvestorBalance(tokenAddress, 'testInvestor', '1200000')
+            await assertInvestorBalance(tokenAddress, 'testInvestor', '2200000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '300000')
         })
     })

@@ -28,4 +28,17 @@ export class FlowbackRestriction extends Rule {
         const ptb = this.registerPTB(block_flowback_end_time_ms)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    setFlowbackEndTimePTB(endTimeMs?: number, ptbDetails?: PTBDetails) {
+        if (endTimeMs === undefined) {
+            return
+        }
+        ptbDetails ??= newPTBDetails()
+        return this.setRule('set_flowback_end_time', [ptbDetails.ptb.pure.u64(endTimeMs)], ptbDetails)
+    }
+
+    setFlowbackEndTime(endTimeMs: number, signer: string) {
+        const ptb = this.setFlowbackEndTimePTB(endTimeMs)!
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
 }
