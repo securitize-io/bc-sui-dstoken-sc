@@ -380,9 +380,16 @@ public fun return_rule<T, R: store + drop>(
     self.rules_bag.add(rule_type, rule);
 }
 
+/// Borrow an immutable reference to a rule configuration.
+/// Use this for read-only access to rule state.
+public fun borrow_rule<T, R: store + drop>(self: &ComplianceConfig<T>): &R {
+    let rule_type = type_name::with_defining_ids<R>();
+    self.rules_bag.borrow(rule_type)
+}
+
 /// Get immutable reference to the rules vector
-public fun rules_vector<T>(config: &ComplianceConfig<T>): &vector<TypeName> {
-    &config.rules
+public fun rules_vector<T>(self: &ComplianceConfig<T>): &vector<TypeName> {
+    &self.rules
 }
 
 // ==================== Country Compliance Configuration ====================
