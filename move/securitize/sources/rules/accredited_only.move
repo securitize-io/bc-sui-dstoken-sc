@@ -6,18 +6,20 @@ module securitize::accredited_only;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_accredited_only_rule_created_event, emit_bool_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
-use std::string::String;
-use sui::event;
 
 // ==== Error Codes ====
 
-const ENotAccredited: u64 = 0;
-const ENotUSAccredited: u64 = 1;
-const ENotAuthorized: u64 = 2;
+#[error(code = 0)]
+const ENotAccredited: vector<u8> = b"Investor is not accredited";
+#[error(code = 1)]
+const ENotUSAccredited: vector<u8> = b"US investor is not accredited";
+#[error(code = 2)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Compliance Region Constants ====
 
@@ -31,19 +33,6 @@ public struct AccreditedOnly has drop, store {
     force_accredited: bool,
     /// Require US accreditation for US investors
     force_us_accredited: bool,
-}
-
-// ==== Events ====
-
-public struct DSComplianceAccreditedOnlyRuleCreated<phantom T> has copy, drop {
-    force_accredited: bool,
-    force_us_accredited: bool,
-}
-
-public struct DSComplianceAccreditedOnlyRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -61,10 +50,7 @@ public fun new<T>(
 ): AccreditedOnly {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    event::emit(DSComplianceAccreditedOnlyRuleCreated<T> {
-        force_accredited,
-        force_us_accredited,
-    });
+    emit_accredited_only_rule_created_event<T>(force_accredited, force_us_accredited);
     AccreditedOnly {
         force_accredited,
         force_us_accredited,
@@ -87,11 +73,7 @@ public fun set_force_accredited<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
-        field: b"force_accredited".to_string(),
-        old_value: rule.force_accredited,
-        new_value: force,
-    });
+    emit_bool_rule_set_event<T>(b"force_accredited".to_string(), rule.force_accredited, force);
     rule.force_accredited = force;
 }
 
@@ -109,11 +91,11 @@ public fun set_force_us_accredited<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceAccreditedOnlyRuleSet<T, bool> {
-        field: b"force_us_accredited".to_string(),
-        old_value: rule.force_us_accredited,
-        new_value: force,
-    });
+    emit_bool_rule_set_event<T>(
+        b"force_us_accredited".to_string(),
+        rule.force_us_accredited,
+        force,
+    );
     rule.force_us_accredited = force;
 }
 

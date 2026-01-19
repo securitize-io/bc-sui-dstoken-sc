@@ -7,16 +7,16 @@ module securitize::backdating_issuance;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_backdating_issuance_rule_created_event, emit_bool_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
-use std::string::String;
-use sui::event;
 
 // ==== Error Codes ====
 
-const ENotAuthorized: u64 = 0;
+#[error(code = 0)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Structs ====
 
@@ -24,18 +24,6 @@ const ENotAuthorized: u64 = 0;
 public struct BackdatingIssuance has drop, store {
     /// Whether backdating is allowed for issuances
     disallow_backdating: bool,
-}
-
-// ==== Events ====
-
-public struct DSComplianceBackdatingIssuanceRuleCreated<phantom T> has copy, drop {
-    disallow_backdating: bool,
-}
-
-public struct DSComplianceBackdatingIssuanceRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -52,9 +40,7 @@ public fun new<T>(
 ): BackdatingIssuance {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    event::emit(DSComplianceBackdatingIssuanceRuleCreated<T> {
-        disallow_backdating,
-    });
+    emit_backdating_issuance_rule_created_event<T>(disallow_backdating);
     BackdatingIssuance {
         disallow_backdating,
     }
@@ -76,11 +62,11 @@ public fun set_disallow_backdating<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceBackdatingIssuanceRuleSet<T, bool> {
-        field: b"disallow_backdating".to_string(),
-        old_value: rule.disallow_backdating,
-        new_value: disallow,
-    });
+    emit_bool_rule_set_event<T>(
+        b"disallow_backdating".to_string(),
+        rule.disallow_backdating,
+        disallow,
+    );
     rule.disallow_backdating = disallow;
 }
 

@@ -11,6 +11,15 @@ use securitize::{
     accredited_only::AccreditedOnly,
     authorized_securities::AuthorizedSecurities,
     backdating_issuance::BackdatingIssuance,
+    events::{
+        emit_compliance_rule_added_event,
+        emit_compliance_rule_removed_event,
+        emit_compliance_transfer_recorded_event,
+        emit_compliance_issuance_recorded_event,
+        emit_compliance_burn_recorded_event,
+        emit_compliance_seize_recorded_event,
+        emit_country_compliance_set_event
+    },
     flowback_restriction::FlowbackRestriction,
     force_full_transfer::ForceFullTransfer,
     holding_limits::HoldingLimits,
@@ -24,19 +33,28 @@ use securitize::{
     wallet_manager::is_issuer_wallet
 };
 use std::{string::String, type_name::{Self, TypeName}};
-use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object, event};
+use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object};
 
 // ==== Error Codes ====
 
-const ERuleNotFound: u64 = 0;
-const ERuleAlreadyExists: u64 = 1;
-const EDestinationRestricted: u64 = 2;
-const ENotWhitelisted: u64 = 3;
-const ETotalInvestorsUnderflow: u64 = 4;
-const ETokensLocked: u64 = 6;
-const EInvestorLiquidateOnly: u64 = 7;
-const ENotIssuerWallet: u64 = 8;
-const ENotAuthorized: u64 = 9;
+#[error(code = 0)]
+const ERuleNotFound: vector<u8> = b"Compliance rule not found in the registry";
+#[error(code = 1)]
+const ERuleAlreadyExists: vector<u8> = b"Compliance rule already exists in the registry";
+#[error(code = 2)]
+const EDestinationRestricted: vector<u8> = b"Destination country is restricted for transfers";
+#[error(code = 3)]
+const ENotWhitelisted: vector<u8> = b"Investor is not whitelisted for this token";
+#[error(code = 4)]
+const ETotalInvestorsUnderflow: vector<u8> = b"Total investors count would underflow";
+#[error(code = 6)]
+const ETokensLocked: vector<u8> = b"Transfer amount exceeds unlocked token balance";
+#[error(code = 7)]
+const EInvestorLiquidateOnly: vector<u8> = b"Investor is in liquidate-only mode";
+#[error(code = 8)]
+const ENotIssuerWallet: vector<u8> = b"Destination must be an issuer wallet";
+#[error(code = 9)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Compliance Region Constants ====
 
@@ -83,43 +101,6 @@ public struct PartyInfo has copy, drop {
     is_exit_investor: bool,
     is_new_investor: bool,
     is_special_wallet: bool,
-}
-
-// ==== Events ====
-
-public struct DSComplianceRuleAdded<phantom T> has copy, drop {
-    rule_type: TypeName,
-}
-
-public struct DSComplianceRuleRemoved<phantom T> has copy, drop {
-    rule_type: TypeName,
-}
-
-public struct DSComplianceTransferRecorded<phantom T> has copy, drop {
-    from: address,
-    to: address,
-    amount: u64,
-}
-
-public struct DSComplianceIssuanceRecorded<phantom T> has copy, drop {
-    to: address,
-    amount: u64,
-}
-
-public struct DSComplianceBurnRecorded<phantom T> has copy, drop {
-    from: address,
-    amount: u64,
-}
-
-public struct DSComplianceSeizeRecorded<phantom T> has copy, drop {
-    from: address,
-    amount: u64,
-}
-
-public struct DSCountryComplianceSet<phantom T> has copy, drop {
-    country: String,
-    previous_value: u64,
-    new_value: u64,
 }
 
 // ==================== Initialization Functions ====================
@@ -326,7 +307,7 @@ public fun register_rule<T, R: store>(
     // Add the typename to the rules vector
     self.rules.push_back(rule_type);
     // Emit event
-    event::emit(DSComplianceRuleAdded<T> { rule_type });
+    emit_compliance_rule_added_event<T>(rule_type);
 }
 
 /// Unregister a rule from type `T`.
@@ -353,7 +334,7 @@ public fun unregister_rule<T, R: store + drop>(
     // Remove the rule object from the bag (it will be dropped automatically)
     let _rule: R = self.rules_bag.remove(rule_type);
     // Emit event
-    event::emit(DSComplianceRuleRemoved<T> { rule_type });
+    emit_compliance_rule_removed_event<T>(rule_type);
 }
 
 /// Check if a specific rule type is registered
@@ -422,11 +403,7 @@ public fun set_country_compliance<T>(
     assert!(auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender()), ENotAuthorized);
     let previous_value = registry.get_country_compliance(country);
     registry.set_country_compliance(country, compliance_region);
-    event::emit(DSCountryComplianceSet<T> {
-        country,
-        previous_value,
-        new_value: compliance_region,
-    });
+    emit_country_compliance_set_event<T>(country, previous_value, compliance_region);
 }
 
 /// Get compliance region for a country
@@ -464,10 +441,7 @@ public(package) fun record_issuance<T>(
 
     cleanup_party_issuances(config, registry, to, issuance.timestamp_ms);
 
-    event::emit(DSComplianceIssuanceRecorded<T> {
-        to: to.addr,
-        amount: issuance.amount,
-    });
+    emit_compliance_issuance_recorded_event<T>(to.addr, issuance.amount);
 }
 
 /// Record transfer and update investor counts
@@ -503,11 +477,7 @@ public(package) fun record_transfer<T>(
     cleanup_party_issuances(config, registry, from, transfer.timestamp_ms);
     cleanup_party_issuances(config, registry, to, transfer.timestamp_ms);
 
-    event::emit(DSComplianceTransferRecorded<T> {
-        from: from.addr,
-        to: to.addr,
-        amount: transfer.amount,
-    });
+    emit_compliance_transfer_recorded_event<T>(from.addr, to.addr, transfer.amount);
 }
 
 /// Record burn and update investor counts
@@ -524,10 +494,7 @@ public(package) fun record_burn<T>(registry: &mut InvestorInfo<T>, from: &PartyI
         );
     };
 
-    event::emit(DSComplianceBurnRecorded<T> {
-        from: from.addr,
-        amount,
-    });
+    emit_compliance_burn_recorded_event<T>(from.addr, amount);
 }
 
 /// Record seize (clawback) and update investor counts
@@ -544,10 +511,7 @@ public(package) fun record_seize<T>(registry: &mut InvestorInfo<T>, from: &Party
         );
     };
 
-    event::emit(DSComplianceSeizeRecorded<T> {
-        from: from.addr,
-        amount,
-    });
+    emit_compliance_seize_recorded_event<T>(from.addr, amount);
 }
 
 /// Adjust total investor counts (increment or decrement)

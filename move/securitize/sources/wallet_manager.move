@@ -8,11 +8,11 @@ module securitize::wallet_manager;
 use pas::{namespace::Namespace, vault};
 use securitize::{
     abilities::{SetIssuerWallet, SetPlatformWallet, RemoveSpecialWallet},
+    events::{emit_special_wallet_added_event, emit_special_wallet_removed_event},
     registry_service::InvestorInfo,
     trust_service::{Auth, Master, Issuer},
     version::Version
 };
-use sui::event;
 
 // ==== Constants ====
 
@@ -23,30 +23,14 @@ const PLATFORM: u64 = 2;
 
 // ==== Error Codes ====
 
-/// The input wallet address belongs to an investor
-const EWalletBelongsToInvestor: u64 = 0;
-/// Direct wallet type change is not allowed
-const EDirectWalletChange: u64 = 1;
-/// The input wallet is not a special wallet
-const ENotSpecialWallet: u64 = 2;
-/// The caller is not authorized to perform this action
-const ENotAuthorized: u64 = 3;
-
-// ==== Events ====
-
-/// Emitted when a special wallet is added to the registry
-public struct DSWalletManagerSpecialWalletAdded<phantom T> has copy, drop {
-    wallet: address,
-    wallet_type: u64,
-    caller: address,
-}
-
-/// Emitted when a special wallet is removed from the registry
-public struct DSWalletManagerSpecialWalletRemoved<phantom T> has copy, drop {
-    wallet: address,
-    old_type: u64,
-    caller: address,
-}
+#[error(code = 0)]
+const EWalletBelongsToInvestor: vector<u8> = b"Wallet address belongs to an investor";
+#[error(code = 1)]
+const EDirectWalletChange: vector<u8> = b"Direct wallet type change is not allowed";
+#[error(code = 2)]
+const ENotSpecialWallet: vector<u8> = b"Wallet is not a special wallet";
+#[error(code = 3)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 /// Initializes the Wallet Manager abilities for the given token type T.
 /// Called by the setup module during token deployment.
@@ -118,11 +102,7 @@ public fun remove_special_wallet<T>(
     assert!(auth.owner_has_ability<T, RemoveSpecialWallet>(ctx.sender()), ENotAuthorized);
     assert!(investor_info.is_special_wallet(wallet), ENotSpecialWallet);
     let old_type = investor_info.remove_special_wallet(wallet);
-    event::emit(DSWalletManagerSpecialWalletRemoved<T> {
-        wallet,
-        old_type,
-        caller: ctx.sender(),
-    });
+    emit_special_wallet_removed_event<T>(wallet, old_type, ctx.sender());
 }
 
 /// Internal function to set a special wallet with the given type.
@@ -140,11 +120,7 @@ fun set_special_wallet<T>(
         vault::create_and_share(namespace, wallet);
     };
     investor_info.set_special_wallet(wallet, wallet_type);
-    event::emit(DSWalletManagerSpecialWalletAdded<T> {
-        wallet,
-        wallet_type,
-        caller: ctx.sender(),
-    });
+    emit_special_wallet_added_event<T>(wallet, wallet_type, ctx.sender());
 }
 
 // ==== View Functions ====
