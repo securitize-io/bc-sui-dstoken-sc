@@ -33,3 +33,6 @@ gas_cost_estimation.csv
 .npmrc
 
 **/.changeset/*.md
+
+temp_tokens/
+Pub.*.toml

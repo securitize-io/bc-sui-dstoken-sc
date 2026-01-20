@@ -4,15 +4,13 @@ import dotenv from 'dotenv'
 import { Keypair } from '@mysten/sui/cryptography'
 import { getFullnodeUrl } from '@mysten/sui/client'
 import { getKeypair } from '../utils/keypair'
-import { STATIC_CONFIGS } from './static'
-import {SUI_CLOCK_OBJECT_ID} from "@mysten/sui/utils";
+import { STATIC_CONFIGS, Network } from './static'
+import {SUI_CLOCK_OBJECT_ID, normalizeSuiAddress} from "@mysten/sui/utils";
 dotenv.config({ path: path.resolve(process.cwd(), '.env'), quiet: true })
 
 export const DENY_LIST_ID = '0x403'
 export const CLOCK_ID = SUI_CLOCK_OBJECT_ID
-export const COIN_REGISTRY = '0x000000000000000000000000000000000000000000000000000000000000000c'
-
-export type Network = 'mainnet' | 'testnet' | 'devnet' | 'localnet'
+export const COIN_REGISTRY = normalizeSuiAddress('0xc')
 
 // Base configuration that the SDK provides
 export interface BaseConfigVars {

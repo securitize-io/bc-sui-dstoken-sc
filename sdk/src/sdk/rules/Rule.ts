@@ -2,7 +2,7 @@ import {ADMIN_KEYPAIR, SuiClient} from "../../easysui";
 import {Config} from "../utils/config";
 import {getTokenDetails} from "../token";
 import {Transaction, TransactionResult} from "@mysten/sui/transactions";
-import {PTBDetails} from "../domains";
+import {newPTBDetails, PTBDetails} from "../domains";
 
 export class Rule {
     private readonly tokenAddress: string;
@@ -43,11 +43,14 @@ export class Rule {
         return `${Config.vars.PACKAGE_ID}::${this.ruleModule}::${this.ruleType}`
     }
 
-    private buildGetPTB(func: string, args: any[] = []) {
+    private buildGetPTB(func: string, args: any[] = [], ptbDetails: PTBDetails) {
         return SuiClient.getPTB(
             this.getComplianceTarget(func),
             [this.tokenAddress, this.ruleTypeArg],
-            [this.tokenDetails.complianceConfig, ...args],
+            [
+                ptbDetails.tokenDetails?.complianceConfig || this.tokenDetails.complianceConfig,
+                ...args
+            ],
         )
     }
 
@@ -67,9 +70,10 @@ export class Rule {
 
     // ==== View Functions ====
 
-    async exists(sender?: string): Promise<boolean> {
+    async exists(sender?: string, ptbDetails?: PTBDetails): Promise<boolean> {
         sender ??= ADMIN_KEYPAIR!.toSuiAddress()
-        const ptb = this.buildGetPTB('has_rule')
+        ptbDetails ??= newPTBDetails()
+        const ptb = this.buildGetPTB('has_rule', [], ptbDetails)
         const result = await SuiClient.devInspectBool(ptb, sender)
         return result ?? false
     }

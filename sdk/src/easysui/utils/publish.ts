@@ -1,13 +1,11 @@
 import fs from 'fs'
 import {
-    SuiClient,
     SuiObjectChangeCreated,
     SuiObjectChangePublished,
     SuiTransactionBlockResponse,
 } from '@mysten/sui/client'
 import { Keypair } from '@mysten/sui/cryptography'
 import { ADMIN_KEYPAIR, Config } from '../config/config'
-import { Transaction } from '@mysten/sui/transactions'
 
 import { execSync } from 'child_process'
 
@@ -34,10 +32,7 @@ export class PublishSingleton {
 
         if (!PublishSingleton.instance) {
             const publishResp = await PublishSingleton.publishPackage(signer, _packagePath)
-            const packageId = this.findPublishedPackage(publishResp)?.packageId
-            if (!packageId) {
-                throw new Error('Expected to find package published')
-            }
+            this.findPublishedPackageId(publishResp)
             // suiClientGen(packageId)
             PublishSingleton.instance = new PublishSingleton(publishResp)
         }
@@ -55,23 +50,24 @@ export class PublishSingleton {
     }
 
     public static get packageId(): string {
-        const packageChng = this.findPublishedPackage(this.publishResponse())
-        if (!packageChng) {
-            throw new Error('Expected to find package published')
-        }
-        return packageChng.packageId
+        return this.findPublishedPackageId(this.publishResponse())
     }
 
-    public static findObjectIdByType(type: string, fail: boolean = true): string {
-        const obj = this.findObjectChangeCreatedByType(this.publishResponse(), type)
+    public static findObjectIdByType(type: string, fail: boolean = true, resp?: SuiTransactionBlockResponse): string {
+        resp ??= this.publishResponse()
+        const obj = this.findObjectChangeCreatedByType(resp, type)
         if (fail && !obj) {
             throw new Error(`Expected to find ${type} shared object created.`)
         }
         return obj?.objectId || ''
     }
 
+    public static findUpgradeCapId(resp: SuiTransactionBlockResponse): string {
+        return this.findObjectIdByType('0x2::package::UpgradeCap', true, resp)
+    }
+
     public static get upgradeCapId(): string {
-        return this.findObjectIdByType(`0x2::package::UpgradeCap`)
+        return this.findUpgradeCapId(this.publishResponse())
     }
 
     public static get usdcTreasuryCap(): string {
@@ -81,8 +77,8 @@ export class PublishSingleton {
         )
     }
 
-    static getPublishTx(packagePath: string, sender: string) {
-        const transaction = new Transaction()
+    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {
+        const network = Config.vars.NETWORK
 
         if (!fs.existsSync(packagePath)) {
             throw new Error(`Package doesn't exist under: ${packagePath}`)
@@ -92,61 +88,60 @@ export class PublishSingleton {
             fs.unlinkSync(`${packagePath}/Move.lock`)
         }
         fs.rmSync(`${packagePath}/build`, { recursive: true, force: true })
-        const network = Config.vars.NETWORK
 
-        const e = network === 'mainnet' ? 'mainnet' : 'testnet'
-        let buildCommand = `sui move build -e ${e} --dump-bytecode-as-base64 --path ${packagePath}`
-        if (network === 'localnet' || network === 'devnet' || network === 'testnet') { // TODO: remove testnet
+        const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
+        const publishCmd = isEphemeralChain ? `test-publish --build-env testnet` : 'publish'
+
+        let buildCommand = `sui client ${publishCmd} ${packagePath}`
+
+        if (network === 'localnet' || network === 'devnet') {
             buildCommand += ' --with-unpublished-dependencies'
         }
 
-        const { modules, dependencies } = JSON.parse(execSync(buildCommand, { encoding: 'utf-8' }))
+        buildCommand += inBytes ? ` --serialize-unsigned-transaction --sender ${sender}` : ' --json'
 
-        const upgradeCap = transaction.publish({
-            modules,
-            dependencies,
-        })
+        return buildCommand
+    }
 
-        transaction.transferObjects([upgradeCap], sender)
-        return transaction
+    static cleanPubFile() {
+        const network = Config.vars.NETWORK
+        if (fs.existsSync(`Pub.${network}.toml`)) {
+            fs.unlinkSync(`Pub.${network}.toml`)
+        }
     }
 
     static async getPublishBytes(signer?: string, packagePath?: string): Promise<string> {
         signer ??= ADMIN_KEYPAIR!.toSuiAddress()
         const _packagePath = this.getPackagePath(packagePath)
-        const transaction = this.getPublishTx(_packagePath, signer)
-        const client = new SuiClient({ url: Config.vars.RPC })
-        const txBytes = await transaction.build({ client, onlyTransactionKind: true })
-        return Buffer.from(txBytes).toString('base64')
+        const cmd = this.getPublishCmd(_packagePath, signer, true)
+        return execSync(cmd, { encoding: 'utf-8' }).trim()
     }
 
     static async publishPackage(
         signer: Keypair,
         packagePath: string
     ): Promise<SuiTransactionBlockResponse> {
-        const transaction = this.getPublishTx(packagePath, signer.toSuiAddress())
-        const client = new SuiClient({ url: Config.vars.RPC })
-        const resp = await client.signAndExecuteTransaction({
-            transaction,
-            signer,
-            options: {
-                showObjectChanges: true,
-                showEffects: true,
-            },
-        })
-        if (resp.effects?.status.status !== 'success') {
-            throw new Error(`Failure during publish transaction:\n${JSON.stringify(resp, null, 2)}`)
+        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress())
+        const res = execSync(cmd, { encoding: 'utf-8' })
+        const match = res.match(/\{[\s\S]*\}/);
+        if (!match) {
+            throw new Error(`No JSON found in the publish command output: ${res}`);
         }
-        await client.waitForTransaction({ digest: resp.digest })
-        return resp
+        return JSON.parse(match[0])
     }
 
-    static findPublishedPackage(
+    static findPublishedPackageId(
         resp: SuiTransactionBlockResponse
-    ): SuiObjectChangePublished | undefined {
-        return resp.objectChanges?.find(
+    ): string {
+        const packageChng = resp.objectChanges?.find(
             (chng): chng is SuiObjectChangePublished => chng.type === 'published'
         )
+
+        if (!packageChng) {
+            throw new Error('Expected to find package published')
+        }
+
+        return packageChng.packageId
     }
 
     static findObjectChangeCreatedByType(

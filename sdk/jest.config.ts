@@ -16,7 +16,7 @@ const config: Config.InitialOptions = {
       },
     ],
   },
-  // setupFilesAfterEnv: ['./setup-jest.ts'],
+  globalSetup: '<rootDir>/tests/setup.ts',
   testMatch: [
     "<rootDir>/tests/**/*.test.ts", // Then run all other test files
   ],

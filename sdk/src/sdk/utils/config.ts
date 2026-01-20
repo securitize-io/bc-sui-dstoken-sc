@@ -5,7 +5,7 @@ interface ConfigVars extends BaseConfigVars {
     VERSION: string,
     PAS_PACKAGE_ID: string,
     PAS_NAMESPACE: string,
-
+    TEMP_PATH: string,
 }
 
 export class Config extends BaseConfig<ConfigVars> {
@@ -16,8 +16,9 @@ export class Config extends BaseConfig<ConfigVars> {
             ...baseVars,
             SETUP_REGISTRY: process.env.SETUP_REGISTRY || '',
             VERSION: process.env.VERSION || '',
-            PAS_PACKAGE_ID: process.env.PACKAGE_ID!, // TODO: change this to process.env.PAS_PACKAGE_ID
+            PAS_PACKAGE_ID: process.env.PAS_PACKAGE_ID!,
             PAS_NAMESPACE: process.env.PAS_NAMESPACE || '',
+            TEMP_PATH: process.env.TEMP_PATH || './temp_tokens',
         }
     }
 
@@ -25,7 +26,6 @@ export class Config extends BaseConfig<ConfigVars> {
         return {
             SETUP_REGISTRY: "{packageId}::setup::SetupRegistry",
             VERSION: "{packageId}::version::Version",
-            PAS_NAMESPACE: "{packageId}::namespace::Namespace",
         }
     }
 }
