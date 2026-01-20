@@ -14,6 +14,14 @@ use pas::{
 use securitize::{
     abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser},
     compliance_service::{Self, ComplianceConfig},
+    events::{
+        emit_issue_event,
+        emit_burn_event,
+        emit_seize_event,
+        emit_transfer_event,
+        emit_pause_event,
+        emit_unpause_event
+    },
     registry_service::InvestorInfo,
     trust_service::{Auth, Master, Issuer, TransferAgent},
     version::Version
@@ -24,32 +32,32 @@ use sui::{
     coin::TreasuryCap,
     coin_registry::{Currency, MetadataCap},
     derived_object,
-    dynamic_object_field as dof,
-    event
+    dynamic_object_field as dof
 };
 
 // ==== Error Codes ====
 
-/// Error code when attempting to pause an already paused treasury
-const ETreasuryAlreadyPaused: u64 = 0;
-/// Error code when attempting to unpause a treasury that is not paused
-const ETreasuryNotPaused: u64 = 1;
-/// Error code when the caller is not authorized to perform the action
-const ENotAuthorized: u64 = 2;
-/// Error code when attempting transfer while token transfers are paused
-const ETreasuryPaused: u64 = 3;
-/// Error code when the vault owner does not match the expected address
-const EVaultOwnerMismatch: u64 = 4;
-/// Error code when the value to issue/transfer is zero
-const EValueZero: u64 = 5;
-/// Error code when the lengths of locked values and release times do not match
-const EInvalidLengthOfParameters: u64 = 6;
-/// Error code when the total locked value exceeds the issued value
-const EValueLockedLargerThanValue: u64 = 7;
-/// Error code when there is not enough balance to perform the operation
-const ENotEnoughBalance: u64 = 9;
-/// Error code when there is an Arithmetic Overflow
-const EArithmeticOverflow: u64 = 10;
+#[error(code = 0)]
+const ETreasuryAlreadyPaused: vector<u8> = b"Treasury is already paused";
+#[error(code = 1)]
+const ETreasuryNotPaused: vector<u8> = b"Treasury is not paused";
+#[error(code = 2)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 3)]
+const ETreasuryPaused: vector<u8> = b"Token transfers are paused";
+#[error(code = 4)]
+const EVaultOwnerMismatch: vector<u8> = b"Vault owner does not match the expected address";
+#[error(code = 5)]
+const EValueZero: vector<u8> = b"Value to issue or transfer cannot be zero";
+#[error(code = 6)]
+const EInvalidLengthOfParameters: vector<u8> =
+    b"Locked values and release times arrays must have the same length";
+#[error(code = 7)]
+const EValueLockedLargerThanValue: vector<u8> = b"Total locked value exceeds the issued value";
+#[error(code = 9)]
+const ENotEnoughBalance: vector<u8> = b"Not enough balance to perform the operation";
+#[error(code = 10)]
+const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
 /// Witness struct for the Ds Protocol.
 /// To be used inside the Permissioned Token Standard.
@@ -69,41 +77,6 @@ public struct Treasury<phantom T> has key {
 
 /// Key used to store the TreasuryCap<T> in the RwaRule<T>.
 public struct TreasuryCapKey() has copy, drop, store;
-
-// ==== Events ====
-
-public struct Issue<phantom T> has copy, drop {
-    to: address,
-    value: u64,
-    value_locked: u64,
-}
-
-public struct Burn<phantom T> has copy, drop {
-    burner: address,
-    value: u64,
-    reason: String,
-}
-
-public struct Seize<phantom T> has copy, drop {
-    from: address,
-    to: address,
-    value: u64,
-    reason: String,
-}
-
-public struct Transfer<phantom T> has copy, drop {
-    from: address,
-    to: address,
-    value: u64,
-}
-
-public struct Pause<phantom T> has copy, drop {
-    pauser: address,
-}
-
-public struct Unpause<phantom T> has copy, drop {
-    pauser: address,
-}
 
 /// Initializes a new Treasury for the given token type T.
 ///
@@ -294,16 +267,8 @@ fun issue_tokens_internal<T>(
         i = i + 1;
     };
     assert!(total_locked <= value, EValueLockedLargerThanValue);
-    event::emit(Issue<T> {
-        to,
-        value,
-        value_locked: total_locked,
-    });
-    event::emit(Transfer<T> {
-        from: @0x0,
-        to,
-        value,
-    });
+    emit_issue_event<T>(to, value, total_locked);
+    emit_transfer_event<T>(@0x0, to, value);
 }
 
 /// Burns tokens from the specified vault, reducing the total supply.
@@ -345,18 +310,13 @@ public fun burn<T>(
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
         assert!(total_balance >= value, ENotEnoughBalance);
-        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
+        investors.update_investor_total_balance(
+            id,
+            ((total_balance as u128) - (value as u128)) as u64,
+        );
     };
-    event::emit(Burn<T> {
-        burner: from_address,
-        value: value,
-        reason: reason,
-    });
-    event::emit(Transfer<T> {
-        from: from_address,
-        to: @0x0,
-        value,
-    });
+    emit_burn_event<T>(from_address, value, reason);
+    emit_transfer_event<T>(from_address, @0x0, value);
 }
 
 /// Seizes tokens from one vault and transfers them to another vault.
@@ -406,17 +366,8 @@ public fun seize<T>(
         assert!(total_balance >= value, ENotEnoughBalance);
         investors.update_investor_total_balance(id, (total_balance - value));
     };
-    event::emit(Seize<T> {
-        from: from_address,
-        to: to_address,
-        value,
-        reason: reason,
-    });
-    event::emit(Transfer<T> {
-        from: from_address,
-        to: to_address,
-        value,
-    });
+    emit_seize_event<T>(from_address, to_address, value, reason);
+    emit_transfer_event<T>(from_address, to_address, value);
 }
 
 /// Processes a token transfer request between vaults.
@@ -466,15 +417,14 @@ public fun transfer<T>(
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
         assert!(total_balance >= value, ENotEnoughBalance);
-        investors.update_investor_total_balance(id, ((total_balance as u128) - (value as u128)) as u64);
+        investors.update_investor_total_balance(
+            id,
+            ((total_balance as u128) - (value as u128)) as u64,
+        );
     };
     // Resolve the request
     rule.resolve_transfer(request, DsProtocol());
-    event::emit(Transfer<T> {
-        from: from_address,
-        to: to_address,
-        value,
-    });
+    emit_transfer_event<T>(from_address, to_address, value);
 }
 
 /// Updates the token's metadata (name, description, and/or icon URL).
@@ -517,9 +467,7 @@ public fun pause<T>(
     assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(!treasury.is_paused(), ETreasuryAlreadyPaused);
     treasury.paused = true;
-    event::emit(Pause<T> {
-        pauser: ctx.sender(),
-    });
+    emit_pause_event<T>(ctx.sender());
 }
 
 /// Unpauses the treasury, allowing token operations to resume.
@@ -538,9 +486,7 @@ public fun unpause<T>(
     assert!(auth.owner_has_ability<T, Pauser>(ctx.sender()), ENotAuthorized);
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
-    event::emit(Unpause<T> {
-        pauser: ctx.sender(),
-    });
+    emit_unpause_event<T>(ctx.sender());
 }
 
 // ==== View Functions ====

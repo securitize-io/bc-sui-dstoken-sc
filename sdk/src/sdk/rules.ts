@@ -1,13 +1,15 @@
 import {ADMIN_KEYPAIR, SuiClient} from "../easysui";
 import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains";
-import {AccreditedOnly} from "./rules/AccreditedOnly";
-import {FlowbackRestriction} from "./rules/FlowbackRestriction";
-import {ForceFullTransfer} from "./rules/ForceFullTransfer";
-import {HoldingLimits} from "./rules/HoldingLimits";
-import {InvestorLimits} from "./rules/InvestorLimits";
-import {AuthorizedSecurities} from "./rules/AuthorizedSecurities";
-import {BackdatingIssuance} from "./rules/BackdatingIssuance";
-import {LockupRestriction} from "./rules/LockupRestriction";
+import {
+    AccreditedOnly,
+    FlowbackRestriction,
+    ForceFullTransfer,
+    HoldingLimits,
+    InvestorLimits,
+    AuthorizedSecurities,
+    BackdatingIssuance,
+    LockupRestriction,
+} from "./all_rules"
 import {getTokenDetails} from "./token";
 
 export class Rules {

@@ -10,19 +10,22 @@ module securitize::lockup_restriction;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_lockup_restriction_rule_created_event, emit_uint_rule_set_event},
     registry_service::Issuance,
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
-use std::string::String;
-use sui::event;
 
 // ==== Error Codes ====
 
-const EUnderLockup: u64 = 0;
-const ELockPeriodTooLong: u64 = 1;
-const ENotAuthorized: u64 = 2;
+#[error(code = 0)]
+const EUnderLockup: vector<u8> =
+    b"Transfer amount exceeds unlocked tokens - issuance still under lockup";
+#[error(code = 1)]
+const ELockPeriodTooLong: vector<u8> = b"Lock period exceeds maximum allowed (200 years)";
+#[error(code = 2)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Constants ====
 
@@ -40,19 +43,6 @@ public struct LockupRestriction has drop, store {
     us_lock_period_ms: u64,
     /// Lock period for non-US investors (in milliseconds)
     non_us_lock_period_ms: u64,
-}
-
-// ==== Events ====
-
-public struct DSComplianceLockupRestrictionRuleCreated<phantom T> has copy, drop {
-    us_lock_period_ms: u64,
-    non_us_lock_period_ms: u64,
-}
-
-public struct DSComplianceLockupRestrictionRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -73,10 +63,7 @@ public fun new<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
-    event::emit(DSComplianceLockupRestrictionRuleCreated<T> {
-        us_lock_period_ms,
-        non_us_lock_period_ms,
-    });
+    emit_lockup_restriction_rule_created_event<T>(us_lock_period_ms, non_us_lock_period_ms);
     LockupRestriction {
         us_lock_period_ms,
         non_us_lock_period_ms,
@@ -101,11 +88,11 @@ public fun set_us_lock_period<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
-        field: b"us_lock_period_ms".to_string(),
-        old_value: rule.us_lock_period_ms,
-        new_value: period_ms,
-    });
+    emit_uint_rule_set_event<T>(
+        b"us_lock_period_ms".to_string(),
+        rule.us_lock_period_ms,
+        period_ms,
+    );
     rule.us_lock_period_ms = period_ms;
 }
 
@@ -125,11 +112,11 @@ public fun set_non_us_lock_period<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceLockupRestrictionRuleSet<T, u64> {
-        field: b"non_us_lock_period_ms".to_string(),
-        old_value: rule.non_us_lock_period_ms,
-        new_value: period_ms,
-    });
+    emit_uint_rule_set_event<T>(
+        b"non_us_lock_period_ms".to_string(),
+        rule.non_us_lock_period_ms,
+        period_ms,
+    );
     rule.non_us_lock_period_ms = period_ms;
 }
 

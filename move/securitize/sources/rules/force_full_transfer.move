@@ -6,17 +6,19 @@ module securitize::force_full_transfer;
 
 use securitize::{
     abilities::ManageRules,
+    events::{emit_force_full_transfer_rule_created_event, emit_bool_rule_set_event},
     rule_wrapper::RuleWrapper,
     trust_service::Auth,
-    version::Version,
+    version::Version
 };
-use std::string::String;
-use sui::event;
 
 // ==== Error Codes ====
 
-const EPartialTransferNotAllowed: u64 = 0;
-const ENotAuthorized: u64 = 1;
+#[error(code = 0)]
+const EPartialTransferNotAllowed: vector<u8> =
+    b"Partial transfers not allowed - must transfer entire balance";
+#[error(code = 1)]
+const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
 
 // ==== Compliance Region Constants ====
 
@@ -30,19 +32,6 @@ public struct ForceFullTransfer has drop, store {
     force_full_transfer_us: bool,
     /// Require all investors worldwide to transfer entire balance
     force_full_transfer_worldwide: bool,
-}
-
-// ==== Events ====
-
-public struct DSComplianceForceFullTransferRuleCreated<phantom T> has copy, drop {
-    force_full_transfer_us: bool,
-    force_full_transfer_worldwide: bool,
-}
-
-public struct DSComplianceForceFullTransferRuleSet<phantom T, V: copy + drop> has copy, drop {
-    field: String,
-    old_value: V,
-    new_value: V,
 }
 
 // ==================== Initialization ====================
@@ -60,10 +49,10 @@ public fun new<T>(
 ): ForceFullTransfer {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    event::emit(DSComplianceForceFullTransferRuleCreated<T> {
+    emit_force_full_transfer_rule_created_event<T>(
         force_full_transfer_us,
         force_full_transfer_worldwide,
-    });
+    );
     ForceFullTransfer {
         force_full_transfer_us,
         force_full_transfer_worldwide,
@@ -86,11 +75,11 @@ public fun set_force_us<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
-        field: b"force_full_transfer_us".to_string(),
-        old_value: rule.force_full_transfer_us,
-        new_value: force,
-    });
+    emit_bool_rule_set_event<T>(
+        b"force_full_transfer_us".to_string(),
+        rule.force_full_transfer_us,
+        force,
+    );
     rule.force_full_transfer_us = force;
 }
 
@@ -108,11 +97,11 @@ public fun set_force_worldwide<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_mut();
-    event::emit(DSComplianceForceFullTransferRuleSet<T, bool> {
-        field: b"force_full_transfer_worldwide".to_string(),
-        old_value: rule.force_full_transfer_worldwide,
-        new_value: force,
-    });
+    emit_bool_rule_set_event<T>(
+        b"force_full_transfer_worldwide".to_string(),
+        rule.force_full_transfer_worldwide,
+        force,
+    );
     rule.force_full_transfer_worldwide = force;
 }
 

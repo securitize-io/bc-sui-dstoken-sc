@@ -1,7 +1,6 @@
-import { ADMIN_KEYPAIR } from '../../src'
+import { ADMIN_KEYPAIR, AuthorizedSecurities } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from '../test_utils'
-import { AuthorizedSecurities } from '../../src/sdk/rules/AuthorizedSecurities'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
