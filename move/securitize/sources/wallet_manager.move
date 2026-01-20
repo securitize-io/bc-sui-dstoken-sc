@@ -116,7 +116,7 @@ fun set_special_wallet<T>(
 ) {
     assert!(!investor_info.is_wallet(wallet), EWalletBelongsToInvestor);
     assert!(!investor_info.is_special_wallet(wallet), EDirectWalletChange);
-    if (!vault::exists(namespace, wallet)) {
+    if (!namespace.vault_exists(wallet)) {
         vault::create_and_share(namespace, wallet);
     };
     investor_info.set_special_wallet(wallet, wallet_type);

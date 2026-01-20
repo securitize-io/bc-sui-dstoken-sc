@@ -75,7 +75,7 @@ public struct Treasury<phantom T> has key {
     paused: bool,
 }
 
-/// Key used to store the TreasuryCap<T> in the RwaRule<T>.
+/// Key used to store the TreasuryCap<T> in the Treasury<T>.
 public struct TreasuryCapKey() has copy, drop, store;
 
 /// Initializes a new Treasury for the given token type T.
@@ -85,6 +85,7 @@ public(package) fun new<T: key>(
     uid: &mut UID,
     auth: &mut Auth<T>,
     namespace: &mut Namespace,
+    rule_permit: internal::Permit<T>,
     treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
@@ -109,9 +110,12 @@ public(package) fun new<T: key>(
         metadata_cap,
         paused: false,
     };
-    // Register the RwaRule
-    let clawback_allowed = true;
-    rule::new(namespace, &treasury_cap, clawback_allowed, DsProtocol());
+    // Register PAS rule
+    let clawback = true;
+    let mut rule = rule::new(namespace, rule_permit, DsProtocol());
+    rule.enable_funds_management(DsProtocol(), clawback);
+    rule.share();
+
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
     treasury
 }
@@ -135,7 +139,6 @@ public fun issue_tokens<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    rule: &Rule<T>,
     to: &Vault,
     to_address: address,
     value: u64,
@@ -168,10 +171,8 @@ public fun issue_tokens<T>(
     );
     let balance = treasury_cap.mint_balance(value);
     // Deposit to the investor's vault
-    rule.deposit(
-        to,
+    to.deposit_funds(
         balance,
-        DsProtocol(),
     );
 }
 
@@ -186,7 +187,6 @@ public fun issue_tokens_no_vault<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    rule: &Rule<T>,
     namespace: &Namespace,
     to: address,
     value: u64,
@@ -217,14 +217,7 @@ public fun issue_tokens_no_vault<T>(
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
-    // Deposit to the investor's vault
-    rule.unsafe_deposit(
-        namespace,
-        balance,
-        to,
-        DsProtocol(),
-        ctx,
-    );
+    balance.send_funds(namespace.vault_address(to));
 }
 
 fun issue_tokens_internal<T>(
@@ -296,7 +289,7 @@ public fun burn<T>(
     // TODO: Bring back once we have object balance reads.
     // assert!(from.balance<T>() >= value, ENotEnoughBalance);
     compliance_service::validate_burn(investors, from_address, value);
-    let balance = rule.unsafe_clawback(
+    let balance = rule.clawback_funds(
         from,
         value,
         DsProtocol(),
@@ -347,12 +340,13 @@ public fun seize<T>(
     // assert!(from.balance<T>() >= value, ENotEnoughBalance);
     compliance_service::validate_seize(investors, from_address, to_address, value);
     // Withdraw from the investor's vault and deposit to the treasury's vault
-    rule.clawback(
+    let balance = rule.clawback_funds(
         from,
-        to,
         value,
         DsProtocol(),
     );
+    to.deposit_funds(balance);
+
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
@@ -423,7 +417,7 @@ public fun transfer<T>(
         );
     };
     // Resolve the request
-    rule.resolve_transfer(request, DsProtocol());
+    rule.resolve_transfer_funds(request, DsProtocol());
     emit_transfer_event<T>(from_address, to_address, value);
 }
 

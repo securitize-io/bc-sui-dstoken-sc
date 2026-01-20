@@ -396,7 +396,7 @@ public fun add_wallet<T>(
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     assert!(!investor_info.is_wallet(wallet_addr), EWalletAlreadyExists);
     // TODO assert balance == 0
-    if (!vault::exists(namespace, wallet_addr)) {
+    if (!namespace.vault_exists(wallet_addr)) {
         vault::create_and_share(namespace, wallet_addr);
     };
     let wallet = Wallet {
