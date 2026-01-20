@@ -1,7 +1,6 @@
-import { ADMIN_KEYPAIR } from '../../src'
+import { ADMIN_KEYPAIR, FlowbackRestriction } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from '../test_utils'
-import { FlowbackRestriction } from '../../src/sdk/rules/FlowbackRestriction'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 

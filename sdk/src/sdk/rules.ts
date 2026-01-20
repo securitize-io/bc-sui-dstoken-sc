@@ -1,14 +1,16 @@
-import {SuiClient} from "../easysui";
-import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains";
-import {AccreditedOnly} from "./rules/AccreditedOnly";
-import {FlowbackRestriction} from "./rules/FlowbackRestriction";
-import {ForceFullTransfer} from "./rules/ForceFullTransfer";
-import {HoldingLimits} from "./rules/HoldingLimits";
-import {InvestorLimits} from "./rules/InvestorLimits";
-import {AuthorizedSecurities} from "./rules/AuthorizedSecurities";
-import {BackdatingIssuance} from "./rules/BackdatingIssuance";
-import {LockupRestriction} from "./rules/LockupRestriction";
-import {getTokenDetails} from "./token";
+import {ADMIN_KEYPAIR, SuiClient} from "../easysui"
+import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains"
+import {
+    AccreditedOnly,
+    FlowbackRestriction,
+    ForceFullTransfer,
+    HoldingLimits,
+    InvestorLimits,
+    AuthorizedSecurities,
+    BackdatingIssuance,
+    LockupRestriction,
+} from "./all_rules"
+import {getTokenDetails} from "./token"
 
 export class Rules {
     private readonly tokenAddress: string;
@@ -78,10 +80,11 @@ export class Rules {
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
+        const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
         if ('forceAccredited' in rules || 'forceAccreditedUS' in rules) {
             const accreditedOnly = new AccreditedOnly(this.tokenAddress)
-            if (await accreditedOnly.exists()) {
+            if (await accreditedOnly.exists(sender, ptbDetails)) {
                 accreditedOnly.setForceAccreditedPTB(rules.forceAccredited, ptbDetails)
                 accreditedOnly.setForceUsAccreditedPTB(rules.forceAccreditedUS, ptbDetails)
             } else {
@@ -91,7 +94,7 @@ export class Rules {
 
         if ('blockFlowbackEndTime' in rules) {
             const flowbackRestriction = new FlowbackRestriction(this.tokenAddress)
-            if (await flowbackRestriction.exists()) {
+            if (await flowbackRestriction.exists(sender, ptbDetails)) {
                 flowbackRestriction.setFlowbackEndTimePTB(rules.blockFlowbackEndTime, ptbDetails)
             } else {
                 flowbackRestriction.registerPTB(rules.blockFlowbackEndTime, ptbDetails)
@@ -100,7 +103,7 @@ export class Rules {
 
         if ('forceFullTransfer' in rules || 'worldWideForceFullTransfer' in rules) {
             const forceFullTransfer = new ForceFullTransfer(this.tokenAddress)
-            if (await forceFullTransfer.exists()) {
+            if (await forceFullTransfer.exists(sender, ptbDetails)) {
                 forceFullTransfer.setForceUsPTB(rules.forceFullTransfer, ptbDetails)
                 forceFullTransfer.setForceWorldwidePTB(rules.worldWideForceFullTransfer, ptbDetails)
             } else {
@@ -115,7 +118,7 @@ export class Rules {
             'minEUTokens' in rules
         ) {
             const holdingLimits = new HoldingLimits(this.tokenAddress)
-            if (await holdingLimits.exists()) {
+            if (await holdingLimits.exists(sender, ptbDetails)) {
                 holdingLimits.setMinHoldingsPTB(rules.minimumHoldingsPerInvestor ? BigInt(rules.minimumHoldingsPerInvestor) : undefined, ptbDetails)
                 holdingLimits.setMaxHoldingsPTB(rules.maximumHoldingsPerInvestor ? BigInt(rules.maximumHoldingsPerInvestor) : undefined, ptbDetails)
                 if (rules.minUSTokens !== undefined) {
@@ -146,7 +149,7 @@ export class Rules {
             'maxUSInvestorsPercentage' in rules
         ) {
             const investorLimits = new InvestorLimits(this.tokenAddress)
-            if (await investorLimits.exists()) {
+            if (await investorLimits.exists(sender, ptbDetails)) {
                 investorLimits.setTotalLimitPTB(rules.totalInvestorsLimit, ptbDetails)
                 investorLimits.setMinimumTotalInvestorsPTB(rules.minimumTotalInvestors, ptbDetails)
                 investorLimits.setUsLimitPTB(rules.usInvestorsLimit, ptbDetails)
@@ -172,7 +175,7 @@ export class Rules {
 
         if ('authorizedSecurities' in rules) {
             const authorizedSecurities = new AuthorizedSecurities(this.tokenAddress)
-            if (await authorizedSecurities.exists()) {
+            if (await authorizedSecurities.exists(sender, ptbDetails)) {
                 authorizedSecurities.setMaxSupplyPTB(rules.authorizedSecurities ? BigInt(rules.authorizedSecurities) : undefined, ptbDetails)
             } else {
                 authorizedSecurities.registerPTB(BigInt(rules.authorizedSecurities || 0), ptbDetails)
@@ -181,7 +184,7 @@ export class Rules {
 
         if ('disallowBackDating' in rules) {
             const backdatingIssuance = new BackdatingIssuance(this.tokenAddress)
-            if (await backdatingIssuance.exists()) {
+            if (await backdatingIssuance.exists(sender, ptbDetails)) {
                 backdatingIssuance.setDisallowBackdatingPTB(rules.disallowBackDating, ptbDetails)
             } else {
                 backdatingIssuance.registerPTB(rules.disallowBackDating, ptbDetails)
@@ -190,7 +193,7 @@ export class Rules {
 
         if ('usLockPeriod' in rules || 'nonUSLockPeriod' in rules) {
             const lockupRestriction = new LockupRestriction(this.tokenAddress)
-            if (await lockupRestriction.exists()) {
+            if (await lockupRestriction.exists(sender, ptbDetails)) {
                 lockupRestriction.setUsLockPeriodPTB(rules.usLockPeriod, ptbDetails)
                 lockupRestriction.setNonUsLockPeriodPTB(rules.nonUSLockPeriod, ptbDetails)
             } else {

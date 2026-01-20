@@ -69,7 +69,7 @@ export async function createDSToken(request: DeploymentRequest) {
         })
 
         if (request.complianceRules) {
-            new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
+            await new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
         }
 
         if (request.countriesComplianceStatuses) {
