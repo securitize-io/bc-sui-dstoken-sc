@@ -1,5 +1,13 @@
 # @securitize/sui-sdk
 
+## 1.5.0
+
+### Minor Changes
+
+- Expost compliance configuration wrappers
+- Update to latest version
+- Set compliance rules and unregister
+
 ## 1.1.0
 
 ### Minor Changes
