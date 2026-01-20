@@ -78,6 +78,7 @@ public struct ComplianceConfig<phantom T> has key {
 public struct TransferInfo has copy, drop {
     amount: u64,
     equal_country: bool,
+    equal_region: bool,
     timestamp_ms: u64,
 }
 
@@ -164,6 +165,7 @@ public(package) fun validate_transfer<T>(
     let transfer = TransferInfo {
         amount,
         equal_country: &from_info.country == &to_info.country,
+        equal_region: from_info.region == to_info.region,
         timestamp_ms: current_time_ms,
     };
 
@@ -662,11 +664,13 @@ fun validate_transfer_rule<T>(
             registry,
             from.is_accredited,
             from.is_exit_investor,
+            from.is_qualified,
             to.region,
             to.country,
             to.is_accredited,
             to.is_qualified,
             to.is_new_investor,
+            transfer.equal_region,
             transfer.equal_country,
         );
     } else if (rule == type_name::with_defining_ids<ForceFullTransfer>()) {
