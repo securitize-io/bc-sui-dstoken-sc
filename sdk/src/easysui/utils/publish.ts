@@ -103,10 +103,13 @@ export class PublishSingleton {
         return buildCommand
     }
 
+    static get pubFile() {
+        return `Pub.${Config.vars.NETWORK}.toml`
+    }
+
     static cleanPubFile() {
-        const network = Config.vars.NETWORK
-        if (fs.existsSync(`Pub.${network}.toml`)) {
-            fs.unlinkSync(`Pub.${network}.toml`)
+        if (fs.existsSync(this.pubFile)) {
+            fs.unlinkSync(this.pubFile)
         }
     }
 

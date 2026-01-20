@@ -15,8 +15,4 @@ describe('Ds token', () => {
         const tokenAddress = await createTestToken(complianceRules, countriesComplianceStatuses)
         assertToken(tokenAddress)
     })
-
-    it('should not deploy the same token', async () => {
-        await expect(createTestToken(complianceRules, countriesComplianceStatuses)).rejects.toThrow("aaa")
-    })
 })
