@@ -2,16 +2,13 @@
 module securitize::force_full_transfer_tests;
 
 use securitize::{
-    abilities::ManageRules,
     force_full_transfer,
     rule_wrapper,
-    setup::{Self, SetupRegistry},
-    trust_service::{Self, Auth, Master},
-    version::{Self, Version}
+    test_helpers::{TEST_VOLORO, setup_with_treasury},
+    trust_service::Auth,
+    version::Version
 };
 use sui::test_scenario::{Self as ts, Scenario};
-use securitize::test_helpers::TEST_VOLORO;
-use securitize::test_helpers::setup_with_treasury;
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
@@ -318,7 +315,7 @@ fun test_validate_rule_worldwide_exit_investor_allowed() {
     let rule = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         false, // force_full_transfer_us
-        true,  // force_full_transfer_worldwide
+        true, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
@@ -343,8 +340,8 @@ fun test_validate_rule_special_wallet_overrides_worldwide() {
 
     let rule = force_full_transfer::new<TEST_VOLORO>(
         &auth,
-        true,  // force_full_transfer_us
-        true,  // force_full_transfer_worldwide
+        true, // force_full_transfer_us
+        true, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
@@ -357,4 +354,3 @@ fun test_validate_rule_special_wallet_overrides_worldwide() {
     ts::return_shared(version);
     ts.end();
 }
-

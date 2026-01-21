@@ -1,19 +1,21 @@
 #[test_only]
 module securitize::accredited_only_tests;
 
-use securitize::accredited_only::{
-    Self,
-    new as new_accredited_only,
-    is_force_accredited,
-    is_force_us_accredited,
-    set_force_accredited,
-    set_force_us_accredited,
-    validate_rule
+use securitize::{
+    accredited_only::{
+        Self,
+        new as new_accredited_only,
+        is_force_accredited,
+        is_force_us_accredited,
+        set_force_accredited,
+        set_force_us_accredited,
+        validate_rule
+    },
+    rule_wrapper,
+    test_helpers::{setup_with_treasury, TEST_VOLORO},
+    trust_service::Auth,
+    version::Version
 };
-use securitize::rule_wrapper;
-use securitize::test_helpers::{setup_with_treasury, TEST_VOLORO};
-use securitize::trust_service::Auth;
-use securitize::version::Version;
 use sui::test_scenario::{Self as ts, Scenario};
 
 const ADMIN: address = @0x001;
