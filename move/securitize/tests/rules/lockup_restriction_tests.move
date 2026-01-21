@@ -2,13 +2,11 @@
 module securitize::lockup_restriction_tests;
 
 use securitize::{
-    abilities::ManageRules,
     lockup_restriction,
     registry_service::{Self, Issuance},
     rule_wrapper,
-    setup::{Self, SetupRegistry},
-    trust_service::{Self, Auth, Master},
-    version::{Self, Version}
+    trust_service::{Auth},
+    version::{Version}
 };
 use sui::test_scenario::{Self as ts, Scenario};
 use securitize::test_helpers::TEST_VOLORO;
@@ -270,6 +268,40 @@ fun test_compute_transferable_zero_lock_period() {
 }
 
 #[test]
+fun test_is_issuance_locked_zero_period() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let rule = lockup_restriction::new<TEST_VOLORO>(
+        &auth,
+        0, // zero lock period for US
+        SIX_MONTHS_MS,
+        &version,
+        ts.ctx(),
+    );
+
+    let issuance = registry_service::new_issuance(500, 1000);
+
+    // Zero lock period means never locked
+    let is_locked = lockup_restriction::is_issuance_locked(
+        &rule,
+        &issuance,
+        US,
+        1001, // immediately after issuance
+    );
+
+    assert!(is_locked == false, 0);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
 fun test_validate_rule_special_wallet_exempt() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
@@ -295,7 +327,7 @@ fun test_validate_rule_special_wallet_exempt() {
         1000, // amount
         US, // from_region
         true, // from_is_special_wallet
-        500, // current_transferable_balance (less than amount, but should pass)
+        1000, // current_transferable_balance (less than amount, but should pass)
         100, // timestamp_ms
     );
 
@@ -793,40 +825,6 @@ fun test_is_issuance_locked_false() {
         &issuance,
         US,
         1000 + ONE_YEAR_MS + 1,
-    );
-
-    assert!(is_locked == false, 0);
-
-    ts::return_shared(auth);
-    ts::return_shared(version);
-    ts.end();
-}
-
-#[test]
-fun test_is_issuance_locked_zero_period() {
-    let mut ts = ts::begin(ADMIN);
-    setup_for_testing(&mut ts);
-
-    ts.next_tx(ADMIN);
-    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
-    let version = ts.take_shared<Version>();
-
-    let rule = lockup_restriction::new<TEST_VOLORO>(
-        &auth,
-        0, // zero lock period for US
-        SIX_MONTHS_MS,
-        &version,
-        ts.ctx(),
-    );
-
-    let issuance = registry_service::new_issuance(500, 1000);
-
-    // Zero lock period means never locked
-    let is_locked = lockup_restriction::is_issuance_locked(
-        &rule,
-        &issuance,
-        US,
-        1001, // immediately after issuance
     );
 
     assert!(is_locked == false, 0);

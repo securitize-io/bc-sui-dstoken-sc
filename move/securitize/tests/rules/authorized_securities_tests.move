@@ -2,16 +2,13 @@
 module securitize::authorized_securities_tests;
 
 use securitize::{
-    abilities::ManageRules,
     authorized_securities,
     rule_wrapper,
-    setup::{Self, SetupRegistry},
-    trust_service::{Self, Auth, Master},
-    version::{Self, Version}
+    test_helpers::{TEST_VOLORO, setup_with_treasury},
+    trust_service::Auth,
+    version::Version
 };
 use sui::test_scenario::{Self as ts, Scenario};
-use securitize::test_helpers::TEST_VOLORO;
-use securitize::test_helpers::setup_with_treasury;
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
