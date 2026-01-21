@@ -1,14 +1,18 @@
-import { ADMIN_KEYPAIR, Rules, ComplianceRules } from '../src'
+import {
+    ADMIN_KEYPAIR,
+    Rules,
+    ComplianceRules,
+    AccreditedOnly,
+    FlowbackRestriction,
+    ForceFullTransfer,
+    HoldingLimits,
+    InvestorLimits,
+    AuthorizedSecurities,
+    BackdatingIssuance,
+    LockupRestriction,
+} from '../src'
 import { deploy } from '../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from './test_utils'
-import { AccreditedOnly } from '../src/sdk/rules/AccreditedOnly'
-import { FlowbackRestriction } from '../src/sdk/rules/FlowbackRestriction'
-import { ForceFullTransfer } from '../src/sdk/rules/ForceFullTransfer'
-import { HoldingLimits } from '../src/sdk/rules/HoldingLimits'
-import { InvestorLimits } from '../src/sdk/rules/InvestorLimits'
-import { AuthorizedSecurities } from '../src/sdk/rules/AuthorizedSecurities'
-import { BackdatingIssuance } from '../src/sdk/rules/BackdatingIssuance'
-import { LockupRestriction } from '../src/sdk/rules/LockupRestriction'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 

@@ -1,8 +1,6 @@
-import { ADMIN_KEYPAIR } from '../../src'
+import { ADMIN_KEYPAIR, Regions, HoldingLimits } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from '../test_utils'
-import { HoldingLimits } from '../../src/sdk/rules/HoldingLimits'
-import { Regions } from '../../src/sdk/domains/Region'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 

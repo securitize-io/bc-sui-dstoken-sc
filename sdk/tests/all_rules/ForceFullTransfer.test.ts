@@ -1,7 +1,7 @@
 import { ADMIN_KEYPAIR } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from '../test_utils'
-import { ForceFullTransfer } from '../../src/sdk/rules/ForceFullTransfer'
+import { ForceFullTransfer } from '../../src/sdk/all_rules/ForceFullTransfer'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
