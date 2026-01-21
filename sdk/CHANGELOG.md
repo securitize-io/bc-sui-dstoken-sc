@@ -1,5 +1,17 @@
 # @securitize/sui-sdk
 
+## 1.3.1
+
+### Patch Changes
+
+- Exposing latest avaiable version. commit: 2d3f39a19c763eb64ba70f506c4cc42c78ed5ca7
+
+## 1.3.1
+
+### Patch Changes
+
+- Exposing latest available version. commit: 2d3f39a19c763eb64ba70f506c4cc42c78ed5ca7
+
 ## 1.1.0
 
 ### Minor Changes

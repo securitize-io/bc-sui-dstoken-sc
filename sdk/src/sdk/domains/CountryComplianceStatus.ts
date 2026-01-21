@@ -5,4 +5,5 @@ export interface CountryComplianceStatus {
   countryName: string;
   /** The compliance status for this country */
   complianceStatus: ComplianceStatus;
+  comment?: string;
 }

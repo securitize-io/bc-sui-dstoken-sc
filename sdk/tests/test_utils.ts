@@ -27,44 +27,223 @@ export const testTokenRequest: DeploymentRequest = {
 export const complianceRules = {
     forceAccredited: false,
     forceAccreditedUS: false,
-    blockFlowbackEndTime: 1000000,
+    blockFlowbackEndTime: 0,
     worldWideForceFullTransfer: false,
     forceFullTransfer: false,
-    minUSTokens: '100000000',
-    minEUTokens: '100000000',
-    minimumHoldingsPerInvestor: '10000000',
-    maximumHoldingsPerInvestor: '10000000',
-    totalInvestorsLimit: 1000000000000000,
-    usInvestorsLimit: 1000000000000000,
-    euRetailInvestorsLimit: 1000000000000000,
-    jpInvestorsLimit: 1000000000000000,
-    usAccreditedInvestorsLimit: 1000000000,
-    nonAccreditedInvestorsLimit: 1000000000,
-    maxUSInvestorsPercentage: 1000000000,
-    minimumTotalInvestors: 1000000000,
-    nonUSLockPeriod: 1000000000,
-    usLockPeriod: 1000,
+    minUSTokens: '0',
+    minEUTokens: '0',
+    minimumHoldingsPerInvestor: '0',
+    maximumHoldingsPerInvestor: '0',
+    totalInvestorsLimit: 0,
+    usInvestorsLimit: 0,
+    euRetailInvestorsLimit: 0,
+    jpInvestorsLimit: 0,
+    usAccreditedInvestorsLimit: 0,
+    nonAccreditedInvestorsLimit: 0,
+    maxUSInvestorsPercentage: 0,
+    minimumTotalInvestors: 0,
+    nonUSLockPeriod: 0,
+    usLockPeriod: 0,
     disallowBackDating: false,
-    authorizedSecurities: '10000',
+    authorizedSecurities: '0',
 }
 
 export const countriesComplianceStatuses: CountryComplianceStatus[] = [
     {
-        countryName: 'GR',
-        complianceStatus: 'eu',
+        "countryName": "AT",
+        "complianceStatus": "eu",
+        "comment": ""
     },
     {
-        countryName: 'US',
-        complianceStatus: 'us',
+        "countryName": "BE",
+        "complianceStatus": "eu",
+        "comment": ""
     },
     {
-        countryName: 'JP',
-        complianceStatus: 'jp',
+        "countryName": "BG",
+        "complianceStatus": "eu",
+        "comment": ""
     },
     {
-        countryName: 'NK',
-        complianceStatus: 'forbidden',
+        "countryName": "HR",
+        "complianceStatus": "eu",
+        "comment": ""
     },
+    {
+        "countryName": "CY",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "CZ",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "DK",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "EE",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "FI",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "FR",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "DE",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "GR",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "HU",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "IE",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "IT",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "LV",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "LT",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "LU",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "MT",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "NL",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "PL",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "PT",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "RO",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "SK",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "SI",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "ES",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "SE",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "GB",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "IS",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "LI",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "NO",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "CH",
+        "complianceStatus": "eu",
+        "comment": ""
+    },
+    {
+        "countryName": "US",
+        "complianceStatus": "us",
+        "comment": ""
+    },
+    {
+        "countryName": "CN",
+        "complianceStatus": "forbidden",
+        "comment": ""
+    },
+    {
+        "countryName": "IR",
+        "complianceStatus": "forbidden",
+        "comment": ""
+    },
+    {
+        "countryName": "SY",
+        "complianceStatus": "forbidden",
+        "comment": ""
+    },
+    {
+        "countryName": "KP",
+        "complianceStatus": "forbidden",
+        "comment": ""
+    },
+    {
+        "countryName": "CU",
+        "complianceStatus": "forbidden",
+        "comment": ""
+    },
+    {
+        "countryName": "UA",
+        "complianceStatus": "forbidden",
+        "comment": ""
+    }
 ]
 
 export async function createTestToken(
