@@ -22,7 +22,7 @@ export class InvestorsBulk extends Bulk {
 
     private getBuildOperation() {
         return (investor: Investor, ptb: Transaction) => {
-            this.investors.registerInvestorPTB(investor.id, ptb);
+            this.investors.registerInvestorIfNotExistsPTB(investor.id, ptb);
             this.investors.addWalletPTB(investor.id, investor.wallet, ptb);
         };
     }

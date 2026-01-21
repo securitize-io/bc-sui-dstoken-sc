@@ -43,7 +43,22 @@ describe('CombinedIssuanceBulk', () => {
                     id: 'bulk_investor_1',
                     country: Country.US,
                     wallet: wallet1.toSuiAddress(),
-                    value: '1000',
+                    value: '500',
+                    reason: 'Bulk issuance 1',
+                    issuanceTime,
+                    attributes: [
+                        {
+                            name: AttributeType.KYC_APPROVED,
+                            status: AttributeStatus.APPROVED,
+                            expiry: new Date().getTime(),
+                        },
+                    ],
+                },
+                {
+                    id: 'bulk_investor_1',
+                    country: Country.US,
+                    wallet: wallet1.toSuiAddress(),
+                    value: '500',
                     reason: 'Bulk issuance 1',
                     issuanceTime,
                     attributes: [
