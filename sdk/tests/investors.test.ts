@@ -22,7 +22,7 @@ describe('Investors', () => {
         await expect(investors.isInvestor(testInvestor1, sender)).resolves.toBe(false)
         await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
 
-        await executeTxFunc(investors.registerInvestor(testInvestor1, sender))
+        await executeTxFunc(investors.registerInvestorIfNotExists(testInvestor1, sender))
         const details = await investors.getInvestorDetails(testInvestor1)
 
         expect(details.id).toBe(testInvestor1)
@@ -34,6 +34,12 @@ describe('Investors', () => {
         await expect(investors.isInvestor(testInvestor1, sender)).resolves.toBe(true)
         await expect(investors.getUsInvestorCount(sender)).resolves.toBe(0n)
         await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
+    })
+
+    it('registerInvestor the same investor', async () => {
+        await expect(executeTxFunc(investors.registerInvestor(testInvestor1, sender))).rejects.toThrow()
+        await executeTxFunc(investors.registerInvestorIfNotExists(testInvestor1, sender))
+        await expect(investors.isInvestor(testInvestor1, sender)).resolves.toBe(true)
     })
 
     it('updateInvestor', async () => {
