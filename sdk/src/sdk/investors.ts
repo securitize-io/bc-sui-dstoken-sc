@@ -204,9 +204,9 @@ export class Investors {
         return SuiClient.devInspectU64(ptb, sender)
     }
 
-    async getEuRetailInvestorCount(toCountry: string, sender: string) {
+    async getEuRetailInvestorCount(toCountry: string, sender: string): Promise<bigint | null> {
         const ptb = this.buildGetPTB('get_eu_retail_investor_count', [toCountry])
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectOptionU64(ptb, sender)
     }
 
     // ==== Setters ====

@@ -28,6 +28,8 @@ export class CombinedIssuance {
         this.dsToken.issueNoVaultPTB(
             investor.wallet,
             BigInt(investor.value),
+            investor.reasonCode,
+            investor.reasonString,
             lock?.value ? [BigInt(lock?.value)] : [],
             lock?.releaseTime ? [lock?.releaseTime] : [],
             investor.issuanceTime,

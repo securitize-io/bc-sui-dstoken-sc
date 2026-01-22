@@ -225,7 +225,6 @@ public(package) fun new<T: key>(
 }
 
 /// Makes the InvestorInfo a shared object for public access
-#[lint_allow(share_owned)]
 public(package) fun share<T>(investor_info: InvestorInfo<T>) {
     transfer::share_object(investor_info);
 }

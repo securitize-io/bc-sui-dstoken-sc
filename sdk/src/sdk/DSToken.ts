@@ -140,6 +140,8 @@ export class DSToken {
     issuePTB(
         to: string,
         value: bigint,
+        reasonCode: number,
+        reasonString: string,
         valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
@@ -152,10 +154,11 @@ export class DSToken {
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            this.tokenDetails.pasRule,
             pasVault,
             to,
             value,
+            reasonCode,
+            reasonString,
             Config.vars.VERSION,
             valuesLocked,
             releaseTimes,
@@ -168,9 +171,10 @@ export class DSToken {
             MoveType.object,
             MoveType.object,
             MoveType.object,
-            MoveType.object,
             MoveType.address,
             MoveType.u64,
+            MoveType.u64,
+            MoveType.string,
             MoveType.object,
             MoveType.vec_u64,
             MoveType.vec_u64,
@@ -184,17 +188,21 @@ export class DSToken {
         signer: string,
         to: string,
         value: bigint,
+        reasonCode: number,
+        reasonString: string,
         valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
     ) {
-        const ptb = this.issuePTB(to, value, valuesLocked, releaseTimes, issuanceTimeMS)
+        const ptb = this.issuePTB(to, value, reasonCode, reasonString, valuesLocked, releaseTimes, issuanceTimeMS)
         return this.buildSetBytes(ptb, signer)
     }
 
     issueNoVaultPTB(
         to: string,
         value: bigint,
+        reasonCode: number,
+        reasonString: string,
         valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
@@ -206,10 +214,11 @@ export class DSToken {
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            this.tokenDetails.pasRule,
             Config.vars.PAS_NAMESPACE,
             to,
             value,
+            reasonCode,
+            reasonString,
             Config.vars.VERSION,
             valuesLocked,
             releaseTimes,
@@ -222,9 +231,10 @@ export class DSToken {
             MoveType.object,
             MoveType.object,
             MoveType.object,
-            MoveType.object,
             MoveType.address,
             MoveType.u64,
+            MoveType.u64,
+            MoveType.string,
             MoveType.object,
             MoveType.vec_u64,
             MoveType.vec_u64,
@@ -238,11 +248,13 @@ export class DSToken {
         signer: string,
         to: string,
         value: bigint,
+        reasonCode: number,
+        reasonString: string,
         valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
     ) {
-        const ptb = this.issueNoVaultPTB(to, value, valuesLocked, releaseTimes, issuanceTimeMS)
+        const ptb = this.issueNoVaultPTB(to, value, reasonCode, reasonString, valuesLocked, releaseTimes, issuanceTimeMS)
         return this.buildSetBytes(ptb, signer)
     }
 
