@@ -2,7 +2,7 @@ module pas::transfer_funds_request;
 
 use sui::balance::{Self, Balance};
 
-/// A transfer request that is generated once a Permissioned Transfer is initiated.
+/// A transfer request that is generated once a Permissioned Funds Transfer is initiated.
 ///
 /// A hot potato that is issued when a transfer is initiated.
 /// It can only be resolved by presenting a witness `U` that is the witness of `Rule<T>`
@@ -54,12 +54,13 @@ public(package) fun new<T>(
         from_vault_id,
         to_vault_id,
         amount: balance.value(),
-        balance: balance,
+        balance,
     }
 }
 
 /// Internal function to resolve a transfer request.
-/// WARNING: This must only be called by `rule.move` after verifying the witness.
+/// WARNING: This must only be called by `rule.move` after verifying the witness,
+/// it should never become public.
 public(package) fun resolve<T>(request: TransferFundsRequest<T>) {
     let TransferFundsRequest { balance, to_vault_id, .. } = request;
     balance::send_funds(balance, to_vault_id.to_address());
