@@ -38,7 +38,7 @@ public fun create_ds_token(
         url,
         ctx,
     );
-
-    setup::setup(setup_registry, namespace, currency, treasury_cap, version, ctx)
+    let rule_permit = internal::permit<{SYMBOL}>();
+    setup::setup(setup_registry, namespace, currency, rule_permit, treasury_cap, version, ctx)
 }
 `
