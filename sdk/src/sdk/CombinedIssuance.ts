@@ -16,7 +16,7 @@ export class CombinedIssuance {
     registerPTB(investor: Investor, ptb?: Transaction) {
         ptb ??= new Transaction()
 
-        this.investors.registerInvestorPTB(investor.id, ptb)
+        this.investors.registerInvestorIfNotExistsPTB(investor.id, ptb)
         this.investors.updateInvestorPTB(
             investor.id,
             investor.country,
