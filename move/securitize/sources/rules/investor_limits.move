@@ -278,11 +278,13 @@ public fun validate_investor_limits_for_transfer<T>(
     registry: &InvestorInfo<T>,
     from_is_accredited: bool,
     from_is_exit_investor: bool,
+    from_is_qualified: bool,
     to_region: u64,
     to_country: String,
     to_is_accredited: bool,
     to_is_qualified: bool,
     to_is_new_investor: bool,
+    equal_region: bool,
     equal_country: bool,
 ) {
     let total_investors = registry.get_total_investors_count();
@@ -308,7 +310,7 @@ public fun validate_investor_limits_for_transfer<T>(
             from_is_accredited,
             to_is_new_investor,
             to_is_accredited,
-            equal_country,
+            equal_region,
         );
     } else if (to_region == JP) {
         let jp_count = registry.get_jp_investor_count();
@@ -316,7 +318,7 @@ public fun validate_investor_limits_for_transfer<T>(
             jp_count,
             from_is_exit_investor,
             to_is_new_investor,
-            equal_country,
+            equal_region,
         );
     } else if (to_region == EU && !to_is_qualified) {
         // TODO EU retail = EU region && not qualified (Retail)
@@ -325,6 +327,7 @@ public fun validate_investor_limits_for_transfer<T>(
             limits_rule.validate_transfer_eu_retail(
                 eu_retail_count.extract(),
                 from_is_exit_investor,
+                from_is_qualified,
                 to_is_new_investor,
                 equal_country,
             );
@@ -399,7 +402,7 @@ public fun validate_us_investor_limits<T>(
     from_is_accredited: bool,
     to_is_new_investor: bool,
     to_is_accredited: bool,
-    equal_country: bool,
+    equal_region: bool,
 ) {
     let us_count = registry.get_us_investor_count();
     let total_investors = registry.get_total_investors_count();
@@ -409,7 +412,7 @@ public fun validate_us_investor_limits<T>(
         total_investors,
         from_is_exit_investor,
         to_is_new_investor,
-        equal_country,
+        equal_region,
     );
 
     if (to_is_accredited) {
@@ -420,7 +423,7 @@ public fun validate_us_investor_limits<T>(
             to_is_new_investor,
             from_is_exit_investor,
             from_is_accredited,
-            equal_country,
+            equal_region,
         );
     };
 }
@@ -468,13 +471,13 @@ public fun validate_transfer_us_investors(
     total_count: u64,
     from_is_exit_investor: bool,
     to_is_new_us_investor: bool,
-    equal_country: bool,
+    equal_region: bool,
 ) {
     let limit = effective_us_limit(rule.us_investors_limit, rule.max_us_percentage, total_count);
 
     if (limit == 0) return;
 
-    if (to_is_new_us_investor && (!equal_country || !from_is_exit_investor)) {
+    if (to_is_new_us_investor && (!equal_region || !from_is_exit_investor)) {
         assert!(current_us_count < limit, EMaxUSInvestorsExceeded);
     }
 }
@@ -509,11 +512,11 @@ public fun validate_transfer_us_accredited(
     to_is_new_investor: bool,
     from_is_exit_investor: bool,
     from_is_accredited: bool,
-    equal_country: bool,
+    equal_region: bool,
 ) {
     if (rule.us_accredited_limit == 0) return;
 
-    if (to_is_new_investor && (!equal_country || !from_is_accredited || !from_is_exit_investor)) {
+    if (to_is_new_investor && (!equal_region || !from_is_accredited || !from_is_exit_investor)) {
         assert!(current_count < rule.us_accredited_limit, EMaxUSAccreditedExceeded);
     }
 }
@@ -576,12 +579,16 @@ public fun validate_transfer_eu_retail(
     rule: &InvestorLimits,
     current_count: u64,
     from_is_exit_investor: bool,
+    from_is_qualified: bool,
     to_is_new_eu_retail_investor: bool,
     equal_country: bool,
 ) {
     if (rule.eu_retail_limit == 0) return;
 
-    if (to_is_new_eu_retail_investor && (!equal_country || !from_is_exit_investor)) {
+    let from_is_exit_investor_retail_equal_country =
+        equal_country && from_is_exit_investor && !from_is_qualified;
+
+    if (to_is_new_eu_retail_investor && !from_is_exit_investor_retail_equal_country) {
         assert!(current_count < rule.eu_retail_limit, EMaxEURetailExceeded);
     }
 }
@@ -611,11 +618,11 @@ public fun validate_transfer_jp_investors(
     current_count: u64,
     from_is_exit_investor: bool,
     to_is_new_jp_investor: bool,
-    equal_country: bool,
+    equal_region: bool,
 ) {
     if (rule.jp_investors_limit == 0) return;
 
-    if (to_is_new_jp_investor && (!equal_country || !from_is_exit_investor)) {
+    if (to_is_new_jp_investor && (!equal_region || !from_is_exit_investor)) {
         assert!(current_count < rule.jp_investors_limit, EMaxJPInvestorsExceeded);
     }
 }

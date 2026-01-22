@@ -20,8 +20,12 @@ use securitize::{
         emit_seize_event,
         emit_transfer_event,
         emit_pause_event,
-        emit_unpause_event
+        emit_unpause_event,
+        emit_name_updated_event,
+        emit_description_updated_event,
+        emit_icon_uri_updated_event
     },
+    lock_manager,
     registry_service::InvestorInfo,
     trust_service::{Auth, Master, Issuer, TransferAgent},
     version::Version
@@ -142,6 +146,8 @@ public fun issue_tokens<T>(
     to: &Vault,
     to_address: address,
     value: u64,
+    reason_code: u64,
+    reason_string: String,
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
@@ -163,6 +169,8 @@ public fun issue_tokens<T>(
         to_address,
         value,
         total_supply,
+        reason_code,
+        reason_string,
         version,
         values_locked,
         release_times,
@@ -190,6 +198,8 @@ public fun issue_tokens_no_vault<T>(
     namespace: &Namespace,
     to: address,
     value: u64,
+    reason_code: u64,
+    reason_string: String,
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
@@ -210,6 +220,8 @@ public fun issue_tokens_no_vault<T>(
         to,
         value,
         total_supply,
+        reason_code,
+        reason_string,
         version,
         values_locked,
         release_times,
@@ -226,6 +238,8 @@ fun issue_tokens_internal<T>(
     to: address,
     value: u64,
     total_supply: u64,
+    reason_code: u64,
+    reason_string: String,
     version: &Version,
     values_locked: vector<u64>,
     release_times: vector<u64>,
@@ -245,19 +259,29 @@ fun issue_tokens_internal<T>(
         current_time_ms,
         version,
     );
+    let mut total_locked = 0;
     if (investors.is_wallet(to)) {
         let id = investors.get_investor_id_by_wallet(to);
         let total_balance = investors.investor_wallet_balance_total(id);
         let new_total_u256 = (total_balance as u256) + (value as u256);
         let new_total = try_from_u256_to_u64(new_total_u256);
         investors.update_investor_total_balance(id, new_total);
-    };
-    let mut total_locked = 0;
-    let mut i = 0;
-    while (i < values_locked.length()) {
-        total_locked = total_locked + values_locked[i];
-        // lock_manager::add_manual_lock_record();
-        i = i + 1;
+
+        let mut i = 0;
+        while (i < values_locked.length()) {
+            let value_locked = values_locked[i];
+            total_locked = total_locked + value_locked;
+            lock_manager::add_lock_internal<T>(
+                investors,
+                id,
+                value_locked,
+                reason_code, // reason_code
+                reason_string,
+                release_times[i],
+                current_time_ms,
+            );
+            i = i + 1;
+        };
     };
     assert!(total_locked <= value, EValueLockedLargerThanValue);
     emit_issue_event<T>(to, value, total_locked);
@@ -440,9 +464,21 @@ public fun set_metadata<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, MetadataUpdate>(ctx.sender()), ENotAuthorized);
     let metadata_cap = &treasury.metadata_cap;
-    name.do!(|n| { currency.set_name<T>(metadata_cap, n); });
-    description.do!(|d| { currency.set_description<T>(metadata_cap, d); });
-    icon_url.do!(|i| { currency.set_icon_url<T>(metadata_cap, i); });
+    name.do!(|n| {
+        let old_name = currency.name();
+        currency.set_name<T>(metadata_cap, n);
+        emit_name_updated_event<T>(old_name, n);
+    });
+    description.do!(|d| {
+        let old_description = currency.description();
+        currency.set_description<T>(metadata_cap, d);
+        emit_description_updated_event<T>(old_description, d);
+    });
+    icon_url.do!(|i| {
+        let old_icon_uri = currency.icon_url();
+        currency.set_icon_url<T>(metadata_cap, i);
+        emit_icon_uri_updated_event<T>(old_icon_uri, i);
+    });
 }
 
 /// Pauses the treasury, preventing token operations.

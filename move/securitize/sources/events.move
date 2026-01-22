@@ -62,6 +62,21 @@ public struct Unpause<phantom T> has copy, drop {
     pauser: address,
 }
 
+public struct NameUpdated<phantom T> has copy, drop {
+    old_name: String,
+    new_name: String,
+}
+
+public struct DescriptionUpdated<phantom T> has copy, drop {
+    old_description: String,
+    new_description: String,
+}
+
+public struct IconUriUpdated<phantom T> has copy, drop {
+    old_icon_uri: String,
+    new_icon_uri: String,
+}
+
 // ==== Trust Service Events ====
 
 public struct DSTrustServiceRoleAdded<phantom T> has copy, drop {
@@ -143,12 +158,6 @@ public struct DSComplianceBurnRecorded<phantom T> has copy, drop {
 public struct DSComplianceSeizeRecorded<phantom T> has copy, drop {
     from: address,
     amount: u64,
-}
-
-public struct DSCountryComplianceSet<phantom T> has copy, drop {
-    country: String,
-    previous_value: u64,
-    new_value: u64,
 }
 
 // ==== Lock Manager Events ====
@@ -319,6 +328,18 @@ public(package) fun emit_unpause_event<T>(pauser: address) {
     event::emit(Unpause<T> { pauser });
 }
 
+public(package) fun emit_name_updated_event<T>(old_name: String, new_name: String) {
+    event::emit(NameUpdated<T> { old_name, new_name });
+}
+
+public(package) fun emit_description_updated_event<T>(old_description: String, new_description: String) {
+    event::emit(DescriptionUpdated<T> { old_description, new_description });
+}
+
+public(package) fun emit_icon_uri_updated_event<T>(old_icon_uri: String, new_icon_uri: String) {
+    event::emit(IconUriUpdated<T> { old_icon_uri, new_icon_uri });
+}
+
 // ==== Trust Service Emit Functions ====
 
 public(package) fun emit_role_added_event<T>(
@@ -415,14 +436,6 @@ public(package) fun emit_compliance_burn_recorded_event<T>(from: address, amount
 
 public(package) fun emit_compliance_seize_recorded_event<T>(from: address, amount: u64) {
     event::emit(DSComplianceSeizeRecorded<T> { from, amount });
-}
-
-public(package) fun emit_country_compliance_set_event<T>(
-    country: String,
-    previous_value: u64,
-    new_value: u64,
-) {
-    event::emit(DSCountryComplianceSet<T> { country, previous_value, new_value });
 }
 
 // ==== Lock Manager Emit Functions ====

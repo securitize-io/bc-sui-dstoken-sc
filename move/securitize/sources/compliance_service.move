@@ -18,7 +18,6 @@ use securitize::{
         emit_compliance_issuance_recorded_event,
         emit_compliance_burn_recorded_event,
         emit_compliance_seize_recorded_event,
-        emit_country_compliance_set_event
     },
     flowback_restriction::FlowbackRestriction,
     force_full_transfer::ForceFullTransfer,
@@ -34,6 +33,7 @@ use securitize::{
 };
 use std::{string::String, type_name::{Self, TypeName}};
 use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object};
+use securitize::events::emit_string_to_uint_map_rule_set_event;
 
 // ==== Error Codes ====
 
@@ -78,6 +78,7 @@ public struct ComplianceConfig<phantom T> has key {
 public struct TransferInfo has copy, drop {
     amount: u64,
     equal_country: bool,
+    equal_region: bool,
     timestamp_ms: u64,
 }
 
@@ -164,6 +165,7 @@ public(package) fun validate_transfer<T>(
     let transfer = TransferInfo {
         amount,
         equal_country: &from_info.country == &to_info.country,
+        equal_region: from_info.region == to_info.region,
         timestamp_ms: current_time_ms,
     };
 
@@ -380,9 +382,16 @@ public fun return_rule<T, R: store + drop>(
     self.rules_bag.add(rule_type, rule);
 }
 
+/// Borrow an immutable reference to a rule configuration.
+/// Use this for read-only access to rule state.
+public fun borrow_rule<T, R: store + drop>(self: &ComplianceConfig<T>): &R {
+    let rule_type = type_name::with_defining_ids<R>();
+    self.rules_bag.borrow(rule_type)
+}
+
 /// Get immutable reference to the rules vector
-public fun rules_vector<T>(config: &ComplianceConfig<T>): &vector<TypeName> {
-    &config.rules
+public fun rules_vector<T>(self: &ComplianceConfig<T>): &vector<TypeName> {
+    &self.rules
 }
 
 // ==================== Country Compliance Configuration ====================
@@ -403,7 +412,7 @@ public fun set_country_compliance<T>(
     assert!(auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender()), ENotAuthorized);
     let previous_value = registry.get_country_compliance(country);
     registry.set_country_compliance(country, compliance_region);
-    emit_country_compliance_set_event<T>(country, previous_value, compliance_region);
+    emit_string_to_uint_map_rule_set_event<T>(b"countryCompliance".to_string(), country, previous_value, compliance_region);
 }
 
 /// Get compliance region for a country
@@ -655,11 +664,13 @@ fun validate_transfer_rule<T>(
             registry,
             from.is_accredited,
             from.is_exit_investor,
+            from.is_qualified,
             to.region,
             to.country,
             to.is_accredited,
             to.is_qualified,
             to.is_new_investor,
+            transfer.equal_region,
             transfer.equal_country,
         );
     } else if (rule == type_name::with_defining_ids<ForceFullTransfer>()) {
