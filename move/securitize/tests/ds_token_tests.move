@@ -8,7 +8,7 @@ use securitize::{
     lock_manager,
     registry_service::{Self, InvestorInfo},
     test_helpers::{Self, TEST_VOLORO},
-    trust_service::{Auth},
+    trust_service::Auth,
     version::Version
 };
 use sui::{clock, test_scenario::{Self as ts, Scenario}};
@@ -195,7 +195,6 @@ fun test_issue_tokens_to_us_investor() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -205,7 +204,6 @@ fun test_issue_tokens_to_us_investor() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -233,7 +231,6 @@ fun test_issue_tokens_to_us_investor() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -254,7 +251,6 @@ fun test_issue_tokens_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -264,7 +260,6 @@ fun test_issue_tokens_unauthorized() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -283,7 +278,6 @@ fun test_issue_tokens_unauthorized() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -303,7 +297,6 @@ fun test_issue_zero_tokens() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -314,7 +307,6 @@ fun test_issue_zero_tokens() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         0,
@@ -333,7 +325,6 @@ fun test_issue_zero_tokens() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -353,7 +344,6 @@ fun test_issue_tokens_vault_owner_mismatch() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -364,7 +354,6 @@ fun test_issue_tokens_vault_owner_mismatch() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR2, // Wrong address!
         500,
@@ -383,7 +372,6 @@ fun test_issue_tokens_vault_owner_mismatch() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -403,7 +391,6 @@ fun test_issue_tokens_mismatched_lock_arrays() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -414,7 +401,6 @@ fun test_issue_tokens_mismatched_lock_arrays() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -433,7 +419,6 @@ fun test_issue_tokens_mismatched_lock_arrays() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -453,7 +438,6 @@ fun test_issue_tokens_locked_exceeds_value() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -464,7 +448,6 @@ fun test_issue_tokens_locked_exceeds_value() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -483,7 +466,6 @@ fun test_issue_tokens_locked_exceeds_value() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -502,7 +484,6 @@ fun test_issue_tokens_with_partial_lock() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -513,7 +494,6 @@ fun test_issue_tokens_with_partial_lock() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -550,7 +530,6 @@ fun test_issue_tokens_with_partial_lock() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -569,7 +548,6 @@ fun test_issue_tokens_with_full_lock() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -580,7 +558,6 @@ fun test_issue_tokens_with_full_lock() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -617,7 +594,6 @@ fun test_issue_tokens_with_full_lock() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
     ts.end();
@@ -637,7 +613,6 @@ fun test_issue_tokens_multiple_investors() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault1 = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -647,7 +622,6 @@ fun test_issue_tokens_multiple_investors() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault1,
         INVESTOR1,
         500,
@@ -666,7 +640,6 @@ fun test_issue_tokens_multiple_investors() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault1);
 
@@ -679,7 +652,6 @@ fun test_issue_tokens_multiple_investors() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let vault2 = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -689,7 +661,6 @@ fun test_issue_tokens_multiple_investors() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault2,
         INVESTOR2,
         750,
@@ -720,7 +691,6 @@ fun test_issue_tokens_multiple_investors() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault2);
     ts.end();
@@ -752,7 +722,6 @@ fun test_burn_tokens() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -768,7 +737,10 @@ fun test_burn_tokens() {
 
     // Verify balance before burn
     let investor_id = b"INV001".to_string();
-    let balance_before = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    let balance_before = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        investor_id,
+    );
     assert!(balance_before == 500, 0);
 
     // Verify investor count before burn
@@ -790,7 +762,10 @@ fun test_burn_tokens() {
     );
 
     // Verify balance after burn (500 - 50 = 450)
-    let balance_after = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    let balance_after = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        investor_id,
+    );
     assert!(balance_after == 450, 2);
 
     // Verify investor count unchanged (partial burn, investor still has tokens)
@@ -833,7 +808,6 @@ fun test_burn_unauthorized() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -852,7 +826,6 @@ fun test_burn_unauthorized() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
 
@@ -861,7 +834,6 @@ fun test_burn_unauthorized() {
     let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let mut vault = ts.take_shared<Vault>();
 
@@ -911,7 +883,6 @@ fun test_burn_vault_owner_mismatch() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -966,7 +937,6 @@ fun test_seize_tokens() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let investor_vault = ts.take_shared<Vault>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -976,7 +946,6 @@ fun test_seize_tokens() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &investor_vault,
         INVESTOR1,
         500,
@@ -995,7 +964,6 @@ fun test_seize_tokens() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(investor_vault);
 
@@ -1015,7 +983,10 @@ fun test_seize_tokens() {
 
     // Verify balance before seize
     let investor_id = b"INV001".to_string();
-    let balance_before = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    let balance_before = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        investor_id,
+    );
     assert!(balance_before == 500, 0);
 
     // Verify investor count before seize
@@ -1038,7 +1009,10 @@ fun test_seize_tokens() {
     );
 
     // Verify balance after seize (500 - 50 = 450)
-    let balance_after = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    let balance_after = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        investor_id,
+    );
     assert!(balance_after == 450, 2);
 
     // Verify investor count unchanged (partial seize, investor still has tokens)
@@ -1079,7 +1053,6 @@ fun test_seize_unauthorized() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault,
         INVESTOR1,
         500,
@@ -1164,7 +1137,6 @@ fun test_seize_to_non_issuer_wallet() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &rule,
         &vault1,
         INVESTOR1,
         500,
