@@ -122,7 +122,8 @@ public fun set_liquidate_only<T>(
     emit_liquidate_only_set_event<T>(investor, enabled);
 }
 
-/// Adds a time-based lock record for a specific token amount.
+/// Adds a time-based lock record for a specific token amount (external).
+/// This is the public entry point that requires authorization.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If caller lacks AddLockRecord ability
@@ -143,8 +144,36 @@ public fun add_lock<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, AddLockRecord>(ctx.sender()), ENotAuthorized);
+
+    add_lock_internal<T>(
+        registry,
+        investor,
+        value,
+        reason_code,
+        reason_string,
+        release_time_ms,
+        clock.timestamp_ms(),
+    );
+}
+
+/// Internal function to add a lock record without authorization checks.
+/// Used by ds_token during issuance to create locks.
+///
+/// # Aborts
+/// * `EInvalidValue` - If the value is zero
+/// * `EInvalidTime` - If the release time is non-zero and in the past
+/// * `ETooManyLocks` - If the investor already has the maximum number of locks
+public(package) fun add_lock_internal<T>(
+    registry: &mut InvestorInfo<T>,
+    investor: String,
+    value: u64,
+    reason_code: u64,
+    reason_string: String,
+    release_time_ms: u64,
+    current_time_ms: u64,
+) {
     assert!(value > 0, EInvalidValue);
-    assert!(release_time_ms == 0 || release_time_ms > clock.timestamp_ms(), EInvalidTime);
+    assert!(release_time_ms == 0 || release_time_ms > current_time_ms, EInvalidTime);
 
     let lock_state = registry.get_investor_locks_mut(investor);
     let idx = lock_state.locks_length();
