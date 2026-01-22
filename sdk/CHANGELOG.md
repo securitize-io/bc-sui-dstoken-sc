@@ -1,5 +1,16 @@
 # @securitize/sui-sdk
 
+## 1.7.0
+
+### Minor Changes
+
+- Token deployment feature is added. Fix to call only investor instead of register investor in TokenIssuer and BulkRegisterInvestor
+
+### Patch Changes
+
+- Exposing latest avaiable version. commit: 2d3f39a19c763eb64ba70f506c4cc42c78ed5ca7
+- Fix - fix updated to deploy new smart contracts
+
 ## 1.6.0
 
 ### Minor Changes
