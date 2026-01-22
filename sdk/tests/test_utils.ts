@@ -77,6 +77,12 @@ export async function createTestToken(
     return res.id
 }
 
+export function assertToken(actual: string, req: DeploymentRequest = testTokenRequest) {
+    const tokenDescription = req.tokenDescription;
+    const regex = new RegExp(`^0x[0-9a-fA-F]+::${tokenDescription.name.toLowerCase()}::${tokenDescription.symbol}$`)
+    expect(actual).toMatch(regex)
+}
+
 export async function executeTxFunc(promise: Promise<string>, signer?: Keypair) {
     signer ??= ADMIN_KEYPAIR!
     const bytes = await promise

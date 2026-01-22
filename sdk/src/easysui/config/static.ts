@@ -1,4 +1,12 @@
-export const STATIC_CONFIGS: any = {
+export type Network = 'mainnet' | 'testnet' | 'devnet' | 'localnet'
+
+interface StaticConfig {
+    USDC_PACKAGE_ID?: string
+}
+
+export const STATIC_CONFIGS: Record<Network, StaticConfig> = {
+    localnet: {},
+    devnet: {},
     testnet: {
         USDC_PACKAGE_ID: '0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29',
     },

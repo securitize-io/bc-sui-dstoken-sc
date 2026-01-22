@@ -1,5 +1,5 @@
-import {ADMIN_KEYPAIR, SuiClient} from "../easysui"
-import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains"
+import {ADMIN_KEYPAIR, SuiClient} from "../easysui";
+import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains";
 import {
     AccreditedOnly,
     FlowbackRestriction,
@@ -10,7 +10,7 @@ import {
     BackdatingIssuance,
     LockupRestriction,
 } from "./all_rules"
-import {getTokenDetails} from "./token"
+import {getTokenDetails} from "./token";
 
 export class Rules {
     private readonly tokenAddress: string;

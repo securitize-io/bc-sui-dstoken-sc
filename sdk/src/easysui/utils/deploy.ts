@@ -1,19 +1,19 @@
-import {BaseConfigVars, Config} from '../config/config'
+import {ADMIN_KEYPAIR, BaseConfigVars, Config} from '../config/config'
 import {PublishSingleton} from './publish'
 
 export async function deploy<
     TConfig extends typeof Config = typeof Config,
     TConfigVars extends BaseConfigVars = BaseConfigVars
 >(
-    ConfigClass: TConfig = Config as TConfig
+    ConfigClass: TConfig = Config as TConfig,
+    packagePath?: string,
 ): Promise<string> {
     const vars = ConfigClass.vars as TConfigVars
-    await PublishSingleton.publish()
+    await PublishSingleton.publish(ADMIN_KEYPAIR!, packagePath)
 
     const newConfig = {
         ...vars,
         PACKAGE_ID: PublishSingleton.packageId,
-        PAS_PACKAGE_ID: PublishSingleton.packageId, // TODO: Remove this when PAS is deployed
         UPGRADE_CAP_ID: PublishSingleton.upgradeCapId,
     } as TConfigVars
 

@@ -1,17 +1,58 @@
-import {normalizeSuiAddress} from '@mysten/sui/utils'
 import {ADMIN_KEYPAIR, SuiClient} from '../easysui'
 import {Config} from "./utils/config";
-import {DeploymentRequest} from "./domains";
+import {DeploymentRequest, PTBDetails} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import {Rules} from "./rules";
 import {Roles} from "./roles";
-import {PTBDetails} from "./domains/PTBDetails";
 import {CountryCompliance} from "./CountryCompliance";
+import {TOKEN_TEMPLATE, MOVE_TOML} from "./templates";
+import {PublishSingleton} from "../easysui";
+import fs from 'fs';
+import path from 'path';
+import {COIN_REGISTRY} from "../easysui/config/config";
+
+async function deployToken(tokenSymbol: string): Promise<string[]> {
+    const module = tokenSymbol.toLowerCase()
+    const symbol = tokenSymbol.toUpperCase()
+
+    const contract = TOKEN_TEMPLATE
+        .replaceAll('{MODULE}', module)
+        .replaceAll('{SYMBOL}', symbol)
+
+    // Create a temporary directory for the token package
+    const tempDir = path.join(process.cwd(), Config.vars.TEMP_PATH, module)
+    const sourcesDir = path.join(tempDir, 'sources')
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    // Create directories
+    fs.mkdirSync(sourcesDir, { recursive: true })
+
+    // Write the Move.toml file
+    const securitizePackagePath = `../../${Config.vars.PACKAGE_PATH}`;
+    const moveToml = MOVE_TOML
+        .replaceAll('{MODULE}', module)
+        .replaceAll('{SECURITIZE_PACKAGE_PATH}', securitizePackagePath)
+        .replaceAll('{PAS_PACKAGE_PATH}', securitizePackagePath.replace('securitize', 'pas')) // TODO: Replace this with mvr package when PAS is ready
+    fs.writeFileSync(path.join(tempDir, 'Move.toml'), moveToml)
+
+    // Write the contract source file
+    fs.writeFileSync(path.join(sourcesDir, `${module}.move`), contract)
+
+    // Publish the package
+    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tempDir)
+
+    // Clean up temporary directory
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    // Extract and return the package ID
+    const packageId = PublishSingleton.findPublishedPackageId(publishResp)
+    const upgradeCap = PublishSingleton.findUpgradeCapId(publishResp)
+    return [packageId, upgradeCap]
+}
 
 export async function createDSToken(request: DeploymentRequest) {
     const tokenDescription = request.tokenDescription
     const tokenSymbol = tokenDescription.symbol
-    //TODO: deploy token contract first
 
     try {
         if (request.lockManagerType !== 'investor') {
@@ -22,8 +63,11 @@ export async function createDSToken(request: DeploymentRequest) {
             throw new Error(`not_implemented: compliance type ${request.complianceType}`)
         }
 
+        // Deploy the token contract
+        const [deployedPackageId, upgradeCapId] = await deployToken(tokenSymbol)
+
         let ptb = new Transaction()
-        const tokenPackage = `${Config.vars.PACKAGE_ID}::${tokenSymbol.toLowerCase()}`
+        const tokenPackage = `${deployedPackageId}::${tokenSymbol.toLowerCase()}`
         const tokenAddressId = `${tokenPackage}::${tokenSymbol.toUpperCase()}`
 
         const [
@@ -42,7 +86,7 @@ export async function createDSToken(request: DeploymentRequest) {
                 ptb.pure.u8(tokenDescription.decimals),
                 ptb.object(Config.vars.SETUP_REGISTRY),
                 ptb.object(Config.vars.PAS_NAMESPACE),
-                ptb.object(normalizeSuiAddress('0xc')),
+                ptb.object(COIN_REGISTRY),
                 ptb.object(Config.vars.VERSION),
             ],
         })
@@ -61,7 +105,7 @@ export async function createDSToken(request: DeploymentRequest) {
         if (request.owners) {
             roles.setServiceOwnerPTB(request.owners.tokenOwner, ptb)
             roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptb)
-            // TODO: Transfer upgrade cap to request.owners.tokenOwner
+            ptb.transferObjects([upgradeCapId], request.owners.tokenOwner)
         }
 
         request.roles.forEach((r) => {
