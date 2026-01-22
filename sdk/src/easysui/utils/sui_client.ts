@@ -258,11 +258,9 @@ export class SuiClient {
 
     public static async devInspectOptionU64(ptb: Transaction, sender: string): Promise<bigint | null> {
         const value = await this.devInspectRaw(ptb, sender)
-        if (!value || value.length === 0) {
-            return null
-        }
+        if (!value) return null
         const parsed = bcs.option(bcs.u64()).parse(new Uint8Array(value))
-        return parsed !== null ? BigInt(parsed) : null
+        return parsed === null ? null : BigInt(parsed)
     }
 
     public static async devInspectAddress(ptb: Transaction, sender: string) {
