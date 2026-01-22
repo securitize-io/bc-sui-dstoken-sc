@@ -18,7 +18,6 @@ use securitize::{
         emit_compliance_issuance_recorded_event,
         emit_compliance_burn_recorded_event,
         emit_compliance_seize_recorded_event,
-        emit_country_compliance_set_event
     },
     flowback_restriction::FlowbackRestriction,
     force_full_transfer::ForceFullTransfer,
@@ -34,6 +33,7 @@ use securitize::{
 };
 use std::{string::String, type_name::{Self, TypeName}};
 use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object};
+use securitize::events::emit_string_to_uint_map_rule_set_event;
 
 // ==== Error Codes ====
 
@@ -412,7 +412,7 @@ public fun set_country_compliance<T>(
     assert!(auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender()), ENotAuthorized);
     let previous_value = registry.get_country_compliance(country);
     registry.set_country_compliance(country, compliance_region);
-    emit_country_compliance_set_event<T>(country, previous_value, compliance_region);
+    emit_string_to_uint_map_rule_set_event<T>(b"countryCompliance".to_string(), country, previous_value, compliance_region);
 }
 
 /// Get compliance region for a country

@@ -20,7 +20,10 @@ use securitize::{
         emit_seize_event,
         emit_transfer_event,
         emit_pause_event,
-        emit_unpause_event
+        emit_unpause_event,
+        emit_name_updated_event,
+        emit_description_updated_event,
+        emit_icon_uri_updated_event
     },
     lock_manager,
     registry_service::InvestorInfo,
@@ -467,9 +470,21 @@ public fun set_metadata<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, MetadataUpdate>(ctx.sender()), ENotAuthorized);
     let metadata_cap = &treasury.metadata_cap;
-    name.do!(|n| { currency.set_name<T>(metadata_cap, n); });
-    description.do!(|d| { currency.set_description<T>(metadata_cap, d); });
-    icon_url.do!(|i| { currency.set_icon_url<T>(metadata_cap, i); });
+    name.do!(|n| {
+        let old_name = currency.name();
+        currency.set_name<T>(metadata_cap, n);
+        emit_name_updated_event<T>(old_name, n);
+    });
+    description.do!(|d| {
+        let old_description = currency.description();
+        currency.set_description<T>(metadata_cap, d);
+        emit_description_updated_event<T>(old_description, d);
+    });
+    icon_url.do!(|i| {
+        let old_icon_uri = currency.icon_url();
+        currency.set_icon_url<T>(metadata_cap, i);
+        emit_icon_uri_updated_event<T>(old_icon_uri, i);
+    });
 }
 
 /// Pauses the treasury, preventing token operations.
