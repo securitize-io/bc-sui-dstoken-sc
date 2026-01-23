@@ -27,19 +27,21 @@ const testInvestor1: Investor = {
 describe('Investors Bulk', () => {
     let tokenAddress: string
     let investorsBulk: InvestorsBulk
+    let investors: ReturnType<InvestorsBulk['getInvestorsInstance']>
 
     beforeAll(async () => {
         await deploy()
         tokenAddress = await createTestToken()
         investorsBulk = new InvestorsBulk(tokenAddress)
+        investors = investorsBulk.getInvestorsInstance()
     })
 
     it('register an investor', async () => {
-        await expect(investorsBulk.isInvestor(testInvestor1.id, sender)).resolves.toBe(false)
-        await expect(investorsBulk.getTotalInvestorsCount(sender)).resolves.toBe(0n)
+        await expect(investors.isInvestor(testInvestor1.id, sender)).resolves.toBe(false)
+        await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
 
         await executeTxFunc(investorsBulk.register([testInvestor1], sender))
-        const details = await investorsBulk.getInvestorDetails(testInvestor1.id)
+        const details = await investors.getInvestorDetails(testInvestor1.id)
 
         expect(details.id).toBe(testInvestor1.id)
         // expect(details.country).toBe(testInvestor1.country)      // TODO: fix register to persist investors data
@@ -47,11 +49,11 @@ describe('Investors Bulk', () => {
         expect(details.wallets).toEqual([testInvestor1.wallet])
         expect(details.attributes.length).toBe(1)
 
-        await expect(investorsBulk.getTotalInvestorsCount(sender)).resolves.toBe(0n)
+        await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
     })
 
     it('updates an already registered Investor', async () => {
-        await expect(investorsBulk.isInvestor(testInvestor1.id, sender)).resolves.toBe(true)
+        await expect(investors.isInvestor(testInvestor1.id, sender)).resolves.toBe(true)
 
         // registering an already registered investor should update it
         await executeTxFunc(
@@ -83,7 +85,7 @@ describe('Investors Bulk', () => {
             )
         )
 
-        const details = await investorsBulk.getInvestorDetails(testInvestor1.id)
+        const details = await investors.getInvestorDetails(testInvestor1.id)
 
         expect(details.id).toBe(testInvestor1.id)
         expect(details.country).toBe(Country.JP)
@@ -101,6 +103,6 @@ describe('Investors Bulk', () => {
             expiry: 222,
         })
 
-        await expect(investorsBulk.getTotalInvestorsCount(sender)).resolves.toBe(0n)
+        await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
     })
 })

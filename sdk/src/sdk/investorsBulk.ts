@@ -30,23 +30,10 @@ export class InvestorsBulk extends Bulk {
                 investor.attributes || [],
                 ptb
             )
-            // this.investors.addWalletPTB(investor.id, investor.wallet, ptb)
         }
     }
 
-    // ==== View Functions ====
-
-    // remove the view functions and use the investors class directly
-
-    async getTotalInvestorsCount(signer: string) {
-        return this.investors.getTotalInvestorsCount(signer)
-    }
-
-    async getInvestorDetails(investorId: string) {
-        return this.investors.getInvestorDetails(investorId)
-    }
-
-    async isInvestor(investorId: string, signer: string) {
-        return this.investors.isInvestor(investorId, signer)
+    getInvestorsInstance() {
+        return this.investors
     }
 }

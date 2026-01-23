@@ -270,11 +270,6 @@ export class Investors {
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
-    registerInvestorIfNotExistsPTB(investorId: string, ptb?: Transaction) {
-        ptb ??= new Transaction()
-        return this._buildSetPTB('register_investor_if_not_exists', [investorId], [], ptb)
-    }
-
     async registerInvestorIfNotExists(investorId: string, signer: string) {
         const ptb = this.registerInvestorIfNotExistsPTB(investorId)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
