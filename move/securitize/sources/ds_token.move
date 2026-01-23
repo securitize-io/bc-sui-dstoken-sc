@@ -125,7 +125,6 @@ public(package) fun new<T: key>(
 }
 
 /// Makes the Treasury a shared object for public access
-#[lint_allow(share_owned)]
 public(package) fun share<T>(treasury: Treasury<T>) {
     transfer::share_object(treasury);
 }
@@ -412,8 +411,8 @@ public fun transfer<T>(
     assert!(
         !(
             investors.is_wallet(from_address) && 
-        investors.is_wallet(to_address) &&
-        treasury.is_paused(),
+            investors.is_wallet(to_address) &&
+            treasury.is_paused(),
         ),
         ETreasuryPaused,
     );

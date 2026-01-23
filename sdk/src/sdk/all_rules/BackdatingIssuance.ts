@@ -8,14 +8,14 @@ export class BackdatingIssuance extends Rule {
     }
 
     registerPTB(
-        allow_backdating?: boolean,
+        disallow_backdating?: boolean,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.bool(!!allow_backdating)
+            ptb.pure.bool(!!disallow_backdating)
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -23,9 +23,9 @@ export class BackdatingIssuance extends Rule {
 
     async register(
         signer: string,
-        allow_backdating?: boolean,
+        disallow_backdating?: boolean,
     ) {
-        const ptb = this.registerPTB(allow_backdating)
+        const ptb = this.registerPTB(disallow_backdating)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 

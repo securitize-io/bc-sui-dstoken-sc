@@ -10,6 +10,7 @@ export type { DeploymentRequest } from './DeploymentRequest';
 export type { TokenIssue } from './TokenIssue';
 export type { Investor, InvestorLock } from './Investor';
 export type { InvestorDetails } from './InvestorDetails';
+export type { LockRecord, InvestorLockInfo } from './LockInfo';
 export type { PTBDetails } from './PTBDetails';
 export { newPTBDetails } from './PTBDetails';
 export type { TokenMetadata } from './TokenMetadata';

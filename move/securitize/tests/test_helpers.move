@@ -57,7 +57,13 @@ public(package) fun create_ds_token(
     registry: &mut CoinRegistry,
     version: &Version,
     ctx: &mut TxContext,
-): (Auth<TEST_VOLORO>, Treasury<TEST_VOLORO>, InvestorInfo<TEST_VOLORO>, ComplianceConfig<TEST_VOLORO>, SetupFinalize) {
+): (
+    Auth<TEST_VOLORO>,
+    Treasury<TEST_VOLORO>,
+    InvestorInfo<TEST_VOLORO>,
+    ComplianceConfig<TEST_VOLORO>,
+    SetupFinalize,
+) {
     let (currency, treasury_cap) = coin_registry::new_currency<TEST_VOLORO>(
         registry,
         decimals,
@@ -67,8 +73,8 @@ public(package) fun create_ds_token(
         url.to_string(),
         ctx,
     );
-
-    setup::setup(setup_registry, namespace, currency, treasury_cap, version, ctx)
+    let rule_permit = internal::permit<TEST_VOLORO>();
+    setup::setup(setup_registry, namespace, currency, rule_permit, treasury_cap, version, ctx)
 }
 
 /// Setup complete DS Token environment with Treasury.
@@ -147,7 +153,11 @@ public(package) fun register_investor_with_wallet(
 }
 
 /// Add a wallet to an existing investor
-public(package) fun add_investor_wallet(ts: &mut Scenario, investor_id: vector<u8>, wallet: address) {
+public(package) fun add_investor_wallet(
+    ts: &mut Scenario,
+    investor_id: vector<u8>,
+    wallet: address,
+) {
     ts.next_tx(ADMIN);
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
@@ -171,7 +181,11 @@ public(package) fun add_investor_wallet(ts: &mut Scenario, investor_id: vector<u
 }
 
 /// Set investor country
-public(package) fun set_investor_country(ts: &mut Scenario, investor_id: vector<u8>, country: vector<u8>) {
+public(package) fun set_investor_country(
+    ts: &mut Scenario,
+    investor_id: vector<u8>,
+    country: vector<u8>,
+) {
     ts.next_tx(ADMIN);
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();

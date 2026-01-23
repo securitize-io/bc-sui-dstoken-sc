@@ -13,7 +13,8 @@ export interface Investor {
   attributes?: Attribute[];
   wallet: string;
   value: string;
-  reason: string;
+  reasonCode: number;
+  reasonString: string;
   issuanceTime: number;
   lock?: InvestorLock;
 }

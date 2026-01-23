@@ -457,7 +457,6 @@ public fun remove_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx:
 }
 
 /// Makes the Auth a shared object for public access.
-#[lint_allow(share_owned)]
 public(package) fun share<T>(auth: Auth<T>) {
     transfer::share_object(auth);
 }
