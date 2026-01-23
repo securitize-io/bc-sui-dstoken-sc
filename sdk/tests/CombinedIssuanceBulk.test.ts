@@ -44,7 +44,8 @@ describe('CombinedIssuanceBulk', () => {
                     country: Country.US,
                     wallet: wallet1.toSuiAddress(),
                     value: '500',
-                    reason: 'Bulk issuance 1',
+                    reasonCode: 0,
+                    reasonString: 'Bulk issuance 1',
                     issuanceTime,
                     attributes: [
                         {
@@ -59,7 +60,8 @@ describe('CombinedIssuanceBulk', () => {
                     country: Country.US,
                     wallet: wallet1.toSuiAddress(),
                     value: '500',
-                    reason: 'Bulk issuance 1',
+                    reasonCode: 0,
+                    reasonString: 'Bulk issuance 1',
                     issuanceTime,
                     attributes: [
                         {
@@ -74,7 +76,8 @@ describe('CombinedIssuanceBulk', () => {
                     country: Country.EU,
                     wallet: wallet2.toSuiAddress(),
                     value: '2000',
-                    reason: 'Bulk issuance 2',
+                    reasonCode: 0,
+                    reasonString: 'Bulk issuance 2',
                     issuanceTime,
                     attributes: [
                         {
@@ -95,7 +98,8 @@ describe('CombinedIssuanceBulk', () => {
                     country: Country.JP,
                     wallet: wallet3.toSuiAddress(),
                     value: '500',
-                    reason: 'Bulk issuance 3',
+                    reasonCode: 0,
+                    reasonString: 'Bulk issuance 3',
                     issuanceTime,
                 },
             ]
@@ -131,7 +135,8 @@ describe('CombinedIssuanceBulk', () => {
                     country: i % 3 === 0 ? Country.US : i % 3 === 1 ? Country.EU : Country.JP,
                     wallet: createWallet().toSuiAddress(),
                     value: tokenPerInvestor.toString(),
-                    reason: `Larger bulk issuance ${i}`,
+                    reasonCode: 0,
+                    reasonString: `Larger bulk issuance ${i}`,
                     issuanceTime,
                 })
             }

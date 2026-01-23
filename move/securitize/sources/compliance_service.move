@@ -131,7 +131,6 @@ public(package) fun new<T>(
 }
 
 /// Makes the ComplianceConfig a shared object for public access
-#[lint_allow(share_owned)]
 public(package) fun share<T>(config: ComplianceConfig<T>) {
     transfer::share_object(config);
 }

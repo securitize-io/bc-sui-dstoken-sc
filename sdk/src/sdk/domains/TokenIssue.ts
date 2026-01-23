@@ -1,6 +1,8 @@
 export interface TokenIssue {
     to: string
     value: bigint
+    reasonCode: number
+    reasonString: string
 }
 
 export interface BulkTokenIssue {

@@ -24,7 +24,7 @@ export class DSTokenBulk extends Bulk {
     private getIssuePTBs(issuanceTimeMS?: number) {
         issuanceTimeMS ??= new Date().getTime()
         return (tokenIssue: TokenIssue, ptb: Transaction) => {
-            this.dsToken.issuePTB(tokenIssue.to, tokenIssue.value, [], [], issuanceTimeMS, ptb);
+            this.dsToken.issuePTB(tokenIssue.to, tokenIssue.value, tokenIssue.reasonCode, tokenIssue.reasonString, [], [], issuanceTimeMS, ptb);
         };
     }
 

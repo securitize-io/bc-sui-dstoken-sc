@@ -107,7 +107,7 @@ describe('DSToken', () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('0')
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, 0, '', [], [], issuanceTimeMS))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe('1000000')
@@ -118,7 +118,7 @@ describe('DSToken', () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('1000000')
 
-            await executeTxFunc(dsToken.issueNoVault(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
+            await executeTxFunc(dsToken.issueNoVault(sender, sender, 1_000_000n, 0, '', [], [], issuanceTimeMS))
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
             expect(totalIssuedAfter).toBe('2000000')
@@ -159,7 +159,7 @@ describe('DSToken', () => {
 
     describe('transfer', () => {
         it('should transfer tokens', async () => {
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, 0, '', [], [], issuanceTimeMS))
             await assertInvestorBalance(tokenAddress, 'testInvestor', '2500000')
             await assertInvestorBalance(tokenAddress, 'testInvestor2', '0')
 
@@ -176,9 +176,9 @@ describe('DSToken', () => {
         it('should seize tokens', async () => {
             const totalIssued = parseInt(await dsToken.getTotalIssued())
 
-            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, [], [], issuanceTimeMS))
+            await executeTxFunc(dsToken.issue(sender, sender, 1_000_000n, 0, '', [], [], issuanceTimeMS))
             await executeTxFunc(
-                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, [], [], issuanceTimeMS)
+                dsToken.issue(sender, investor2.toSuiAddress(), 500_000n, 0, '', [], [], issuanceTimeMS)
             )
 
             const wallets = new Wallets(tokenAddress)
