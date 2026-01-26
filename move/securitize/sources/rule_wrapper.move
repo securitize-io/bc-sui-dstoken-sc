@@ -1,34 +1,62 @@
 /// Module: rule_wrapper
 ///
-/// Generic hot potato wrapper for compliance rules.
+/// Generic hot potato wrappers for compliance rule flows.
 module securitize::rule_wrapper;
 
-/// A hot potato wrapper that holds a rule of type Τ.
-/// Since this struct has no abilities, it must be resolved (unwrapped)
-/// in the same transaction it was created - it cannot be stored or dropped.
-public struct RuleWrapper<T> {
+/// Hot potato wrapper used during *rule creation*.
+/// Must be resolved (unwrapped) in the same transaction.
+public struct RuleInitWrapper<T> {
     rule: T,
 }
 
-/// Create a new RuleWrapper containing the given rule.
-/// The caller must resolve this wrapper before the transaction ends.
-public(package) fun new<T>(rule: T): RuleWrapper<T> {
-    RuleWrapper { rule }
+/// Hot potato wrapper used during *rule updates*.
+/// Must be resolved (unwrapped) in the same transaction.
+public struct RuleUpdateWrapper<T> {
+    rule: T,
 }
 
-/// Borrow an immutable reference to the wrapped rule.
-public(package) fun borrow<T>(wrapper: &RuleWrapper<T>): &T {
+/// Creation flow
+
+/// Create a wrapper for rule initialization.
+public(package) fun new_init<T>(rule: T): RuleInitWrapper<T> {
+    RuleInitWrapper { rule }
+}
+
+/// Borrow an immutable reference to the rule being initialized.
+public(package) fun borrow_init<T>(wrapper: &RuleInitWrapper<T>): &T {
     &wrapper.rule
 }
 
-/// Borrow a mutable reference to the wrapped rule.
-public(package) fun borrow_mut<T>(wrapper: &mut RuleWrapper<T>): &mut T {
+/// Borrow a mutable reference to the rule being initialized.
+public(package) fun borrow_init_mut<T>(wrapper: &mut RuleInitWrapper<T>): &mut T {
     &mut wrapper.rule
 }
 
-/// Unwrap and return the inner rule, consuming the hot potato wrapper.
-/// This must be called to complete any operation that created a wrapper.
-public(package) fun unwrap<T>(wrapper: RuleWrapper<T>): T {
-    let RuleWrapper { rule } = wrapper;
+/// Consume the wrapper and return the initialized rule.
+public(package) fun unwrap_init<T>(wrapper: RuleInitWrapper<T>): T {
+    let RuleInitWrapper { rule } = wrapper;
+    rule
+}
+
+/// Update flow
+
+/// Create a wrapper for rule updates.
+public(package) fun new_update<T>(rule: T): RuleUpdateWrapper<T> {
+    RuleUpdateWrapper { rule }
+}
+
+/// Borrow an immutable reference to the rule being updated.
+public(package) fun borrow_update<T>(wrapper: &RuleUpdateWrapper<T>): &T {
+    &wrapper.rule
+}
+
+/// Borrow a mutable reference to the rule being updated.
+public(package) fun borrow_update_mut<T>(wrapper: &mut RuleUpdateWrapper<T>): &mut T {
+    &mut wrapper.rule
+}
+
+/// Consume the wrapper and return the updated rule.
+public(package) fun unwrap_update<T>(wrapper: RuleUpdateWrapper<T>): T {
+    let RuleUpdateWrapper { rule } = wrapper;
     rule
 }

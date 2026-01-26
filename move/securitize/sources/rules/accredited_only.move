@@ -5,9 +5,9 @@
 module securitize::accredited_only;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_accredited_only_rule_created_event, emit_bool_rule_set_event},
-    rule_wrapper::RuleWrapper,
+    abilities::{ManageRules, RegisterRule},
+    events::emit_bool_rule_set_event,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -40,21 +40,30 @@ public struct AccreditedOnly has drop, store {
 /// Create a new AccreditedOnly rule
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun new<T>(
     auth: &Auth<T>,
     force_accredited: bool,
     force_us_accredited: bool,
     version: &Version,
     ctx: &TxContext,
-): AccreditedOnly {
+): RuleInitWrapper<AccreditedOnly> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_accredited_only_rule_created_event<T>(force_accredited, force_us_accredited);
-    AccreditedOnly {
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
+    emit_bool_rule_set_event<T>(
+        b"force_accredited".to_string(),
+        false,
+        force_accredited,
+    );
+    emit_bool_rule_set_event<T>(
+        b"force_us_accredited".to_string(),
+        false,
+        force_us_accredited,
+    );
+    new_init(AccreditedOnly {
         force_accredited,
         force_us_accredited,
-    }
+    })
 }
 
 // ==================== Rule Management ====================
@@ -65,14 +74,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_accredited<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<AccreditedOnly>,
+    wrapper: &mut RuleUpdateWrapper<AccreditedOnly>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(b"force_accredited".to_string(), rule.force_accredited, force);
     rule.force_accredited = force;
 }
@@ -83,14 +92,14 @@ public fun set_force_accredited<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us_accredited<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<AccreditedOnly>,
+    wrapper: &mut RuleUpdateWrapper<AccreditedOnly>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
         b"force_us_accredited".to_string(),
         rule.force_us_accredited,
