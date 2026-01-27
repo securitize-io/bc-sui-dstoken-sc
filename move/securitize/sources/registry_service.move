@@ -700,6 +700,9 @@ public(package) fun set_country_compliance<T>(
         investor_info.countries_compliances.remove(country);
         return
     };
+    if (compliance_region == EU) {
+        investor_info.set_eu_retail_investors_country_if_not_exists(country);
+    };
     if (previous == NONE) {
         investor_info.countries_compliances.add(country, compliance_region);
     } else {
@@ -755,13 +758,13 @@ public(package) fun set_jp_investors_count<T>(investor_info: &mut InvestorInfo<T
     investor_info.jp_investors_count = count;
 }
 
-public(package) fun set_eu_retail_investors_count<T>(
+public(package) fun set_eu_retail_investors_country_if_not_exists<T>(
     investor_info: &mut InvestorInfo<T>,
     country: String,
-    count: u64,
 ) {
-    let count_ref = investor_info.eu_retail_investors_count.borrow_mut(country);
-    *count_ref = count;
+    if (!investor_info.eu_retail_investors_count.contains(country)) {
+        investor_info.eu_retail_investors_count.add(country, 0);
+    };
 }
 
 /// Returns a reference to the investor issuances for a given investor ID.
