@@ -5,9 +5,9 @@
 module securitize::flowback_restriction;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_flowback_restriction_rule_created_event, emit_uint_rule_set_event},
-    rule_wrapper::RuleWrapper,
+    abilities::{ManageRules, RegisterRule},
+    events::emit_uint_rule_set_event,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -38,19 +38,23 @@ public struct FlowbackRestriction has drop, store {
 /// Create a new FlowbackRestriction rule with an end time
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun new<T>(
     auth: &Auth<T>,
     block_flowback_end_time_ms: u64,
     version: &Version,
     ctx: &TxContext,
-): FlowbackRestriction {
+): RuleInitWrapper<FlowbackRestriction> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_flowback_restriction_rule_created_event<T>(block_flowback_end_time_ms);
-    FlowbackRestriction {
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
+    emit_uint_rule_set_event<T>(
+        b"block_flowback_end_time_ms".to_string(),
+        0,
         block_flowback_end_time_ms,
-    }
+    );
+    new_init(FlowbackRestriction {
+        block_flowback_end_time_ms,
+    })
 }
 
 // ==================== Rule Management ====================
@@ -61,14 +65,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_flowback_end_time<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<FlowbackRestriction>,
+    wrapper: &mut RuleUpdateWrapper<FlowbackRestriction>,
     end_time: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"block_flowback_end_time_ms".to_string(),
         rule.block_flowback_end_time_ms,

@@ -5,10 +5,10 @@
 module securitize::investor_limits;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_investor_limits_rule_created_event, emit_uint_rule_set_event},
+    abilities::{ManageRules, RegisterRule},
+    events::emit_uint_rule_set_event,
     registry_service::InvestorInfo,
-    rule_wrapper::RuleWrapper,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -66,7 +66,7 @@ public struct InvestorLimits has drop, store {
 /// Create a new InvestorLimits rule
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun new<T>(
     auth: &Auth<T>,
     total_investors_limit: u64,
@@ -79,10 +79,19 @@ public fun new<T>(
     max_us_percentage: u64,
     version: &Version,
     ctx: &TxContext,
-): InvestorLimits {
+): RuleInitWrapper<InvestorLimits> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_investor_limits_rule_created_event<T>(
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
+    emit_uint_rule_set_event<T>(b"total_investors_limit".to_string(), 0, total_investors_limit);
+    emit_uint_rule_set_event<T>(b"minimum_total_investors".to_string(), 0, minimum_total_investors);
+    emit_uint_rule_set_event<T>(b"us_investors_limit".to_string(), 0, us_investors_limit);
+    emit_uint_rule_set_event<T>(b"us_accredited_limit".to_string(), 0, us_accredited_limit);
+    emit_uint_rule_set_event<T>(b"non_accredited_limit".to_string(), 0, non_accredited_limit);
+    emit_uint_rule_set_event<T>(b"jp_investors_limit".to_string(), 0, jp_investors_limit);
+    emit_uint_rule_set_event<T>(b"eu_retail_limit".to_string(), 0, eu_retail_limit);
+    emit_uint_rule_set_event<T>(b"max_us_percentage".to_string(), 0, max_us_percentage);
+
+    new_init(InvestorLimits {
         total_investors_limit,
         minimum_total_investors,
         us_investors_limit,
@@ -91,17 +100,7 @@ public fun new<T>(
         jp_investors_limit,
         eu_retail_limit,
         max_us_percentage,
-    );
-    InvestorLimits {
-        total_investors_limit,
-        minimum_total_investors,
-        us_investors_limit,
-        us_accredited_limit,
-        non_accredited_limit,
-        jp_investors_limit,
-        eu_retail_limit,
-        max_us_percentage,
-    }
+    })
 }
 
 // ==================== Rule Management ====================
@@ -112,14 +111,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_total_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"total_investors_limit".to_string(),
         rule.total_investors_limit,
@@ -134,14 +133,14 @@ public fun set_total_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_minimum_total_investors<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     minimum: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"minimum_total_investors".to_string(),
         rule.minimum_total_investors,
@@ -156,14 +155,14 @@ public fun set_minimum_total_investors<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(b"us_investors_limit".to_string(), rule.us_investors_limit, limit);
     rule.us_investors_limit = limit;
 }
@@ -174,14 +173,14 @@ public fun set_us_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_accredited_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"us_accredited_limit".to_string(),
         rule.us_accredited_limit,
@@ -196,14 +195,14 @@ public fun set_us_accredited_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_non_accredited_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"non_accredited_limit".to_string(),
         rule.non_accredited_limit,
@@ -218,14 +217,14 @@ public fun set_non_accredited_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_jp_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(b"jp_investors_limit".to_string(), rule.jp_investors_limit, limit);
     rule.jp_investors_limit = limit;
 }
@@ -236,14 +235,14 @@ public fun set_jp_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_eu_retail_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(b"eu_retail_limit".to_string(), rule.eu_retail_limit, limit);
     rule.eu_retail_limit = limit;
 }
@@ -254,14 +253,14 @@ public fun set_eu_retail_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_us_percentage<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
     percentage: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"max_us_percentage".to_string(),
         rule.max_us_percentage,

@@ -3,7 +3,7 @@ module securitize::holding_limits_tests;
 
 use securitize::{
     holding_limits,
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
@@ -31,7 +31,7 @@ fun test_new_holding_limits_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100, // min_holdings_per_investor
         10000, // max_holdings_per_investor
@@ -40,6 +40,7 @@ fun test_new_holding_limits_rule() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(holding_limits::min_holdings(&rule) == 100, 0);
     assert!(holding_limits::max_holdings(&rule) == 10000, 1);
@@ -60,7 +61,7 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let _rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -69,6 +70,7 @@ fun test_new_unauthorized() {
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -84,7 +86,7 @@ fun test_set_min_holdings() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -93,9 +95,10 @@ fun test_set_min_holdings() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::set_min_holdings<TEST_VOLORO>(
         &auth,
@@ -106,7 +109,7 @@ fun test_set_min_holdings() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(holding_limits::min_holdings(&rule) == 500, 0);
 
     ts::return_shared(auth);
@@ -123,7 +126,7 @@ fun test_set_max_holdings() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -132,9 +135,10 @@ fun test_set_max_holdings() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::set_max_holdings<TEST_VOLORO>(
         &auth,
@@ -145,7 +149,7 @@ fun test_set_max_holdings() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(holding_limits::max_holdings(&rule) == 50000, 0);
 
     ts::return_shared(auth);
@@ -162,7 +166,7 @@ fun test_set_region_min_holdings() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -171,9 +175,10 @@ fun test_set_region_min_holdings() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::set_region_min_holdings<TEST_VOLORO>(
         &auth,
@@ -185,7 +190,7 @@ fun test_set_region_min_holdings() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(holding_limits::region_min_holdings(&rule, US) == 500, 0);
 
     ts::return_shared(auth);
@@ -202,7 +207,7 @@ fun test_remove_region_min_holdings() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -211,9 +216,10 @@ fun test_remove_region_min_holdings() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::remove_region_min_holdings<TEST_VOLORO>(
         &auth,
@@ -224,7 +230,7 @@ fun test_remove_region_min_holdings() {
     );
 
     // Unwrap - Should not have US region anymore
-    let _rule = rule_wrapper::unwrap(wrapper);
+    let _rule = unwrap_update(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -240,7 +246,7 @@ fun test_validate_min_holdings_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100, // global minimum
         10000,
@@ -249,6 +255,7 @@ fun test_validate_min_holdings_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Balance after meets both global and US minimum
     holding_limits::validate_min_holdings(&rule, 300, US);
@@ -270,7 +277,7 @@ fun test_validate_min_holdings_fails_global() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -279,6 +286,7 @@ fun test_validate_min_holdings_fails_global() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Balance after is below global minimum
     holding_limits::validate_min_holdings(&rule, 50, EU);
@@ -298,7 +306,7 @@ fun test_validate_min_holdings_fails_region() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -307,6 +315,7 @@ fun test_validate_min_holdings_fails_region() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Balance after meets global but not US region minimum
     holding_limits::validate_min_holdings(&rule, 150, US);
@@ -325,7 +334,7 @@ fun test_validate_max_holdings_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -334,6 +343,7 @@ fun test_validate_max_holdings_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Balance after is within max
     holding_limits::validate_max_holdings(&rule, 5000);
@@ -353,7 +363,7 @@ fun test_validate_max_holdings_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -362,6 +372,7 @@ fun test_validate_max_holdings_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Balance after exceeds max
     holding_limits::validate_max_holdings(&rule, 15000);
@@ -380,7 +391,7 @@ fun test_validate_holding_limits_for_transfer() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -389,6 +400,7 @@ fun test_validate_holding_limits_for_transfer() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Valid transfer: sender has 1000, sends 400, receiver has 200
     // After: sender has 600 (>100), receiver has 600 (<10000)
@@ -416,7 +428,7 @@ fun test_validate_holding_limits_special_wallet_sender() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -425,6 +437,7 @@ fun test_validate_holding_limits_special_wallet_sender() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Special wallet can go below minimum
     holding_limits::validate_holding_limits_for_transfer(
@@ -451,7 +464,7 @@ fun test_validate_holding_limits_for_issuance() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -460,6 +473,7 @@ fun test_validate_holding_limits_for_issuance() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Valid issuance: receiver will have 500 (within min/max)
     holding_limits::validate_holding_limits_for_issuance(
@@ -486,7 +500,7 @@ fun test_set_min_holdings_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -495,6 +509,7 @@ fun test_set_min_holdings_unauthorized() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -503,7 +518,7 @@ fun test_set_min_holdings_unauthorized() {
     ts.next_tx(UNAUTHORIZED);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::set_min_holdings<TEST_VOLORO>(
         &auth,
@@ -526,7 +541,7 @@ fun test_set_max_holdings_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -535,6 +550,7 @@ fun test_set_max_holdings_unauthorized() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -543,7 +559,7 @@ fun test_set_max_holdings_unauthorized() {
     ts.next_tx(UNAUTHORIZED);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::set_max_holdings<TEST_VOLORO>(
         &auth,
@@ -566,7 +582,7 @@ fun test_set_region_min_holdings_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -575,6 +591,7 @@ fun test_set_region_min_holdings_unauthorized() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -583,7 +600,7 @@ fun test_set_region_min_holdings_unauthorized() {
     ts.next_tx(UNAUTHORIZED);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::set_region_min_holdings<TEST_VOLORO>(
         &auth,
@@ -607,7 +624,7 @@ fun test_remove_region_min_holdings_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -616,6 +633,7 @@ fun test_remove_region_min_holdings_unauthorized() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -624,7 +642,7 @@ fun test_remove_region_min_holdings_unauthorized() {
     ts.next_tx(UNAUTHORIZED);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::remove_region_min_holdings<TEST_VOLORO>(
         &auth,
@@ -649,7 +667,7 @@ fun test_region_min_holdings_not_found() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -658,6 +676,7 @@ fun test_region_min_holdings_not_found() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Try to get region min for EU which is not configured
     let _min = holding_limits::region_min_holdings(&rule, EU);
@@ -676,7 +695,7 @@ fun test_remove_region_min_holdings_with_assertion() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let init_wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100,
         10000,
@@ -685,13 +704,14 @@ fun test_remove_region_min_holdings_with_assertion() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Verify US region exists before removal
     assert!(holding_limits::region_min_holdings(&rule, US) == 500, 0);
     assert!(holding_limits::region_min_holdings(&rule, EU) == 300, 1);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     holding_limits::remove_region_min_holdings<TEST_VOLORO>(
         &auth,
@@ -702,7 +722,7 @@ fun test_remove_region_min_holdings_with_assertion() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
 
     // EU should still exist
     assert!(holding_limits::region_min_holdings(&rule, EU) == 300, 2);
@@ -723,7 +743,7 @@ fun test_validate_sender_to_zero_balance() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100, // global minimum
         10000,
@@ -732,6 +752,7 @@ fun test_validate_sender_to_zero_balance() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Sender transfers ALL tokens (goes to zero) - this should pass
     // because zero balance is allowed (investor exits completely)
@@ -760,7 +781,7 @@ fun test_validate_sender_below_min_but_not_zero() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = holding_limits::new<TEST_VOLORO>(
+    let wrapper = holding_limits::new<TEST_VOLORO>(
         &auth,
         100, // global minimum
         10000,
@@ -769,6 +790,7 @@ fun test_validate_sender_below_min_but_not_zero() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Sender transfers tokens leaving balance BELOW minimum but NOT zero
     // This should fail because partial balance must meet minimum

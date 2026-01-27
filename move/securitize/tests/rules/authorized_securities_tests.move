@@ -3,7 +3,7 @@ module securitize::authorized_securities_tests;
 
 use securitize::{
     authorized_securities,
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
@@ -27,12 +27,13 @@ fun test_new_authorized_securities_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         1000000, // max_supply
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(authorized_securities::max_supply(&rule) == 1000000, 0);
     assert!(authorized_securities::is_enforced(&rule), 1);
@@ -51,12 +52,13 @@ fun test_new_unlimited_supply() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         0, // 0 = unlimited
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(authorized_securities::max_supply(&rule) == 0, 0);
     assert!(!authorized_securities::is_enforced(&rule), 1);
@@ -76,12 +78,13 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let _rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         1000000,
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -97,15 +100,16 @@ fun test_set_max_supply() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let init_wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         1000000,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     authorized_securities::set_max_supply<TEST_VOLORO>(
         &auth,
@@ -116,7 +120,7 @@ fun test_set_max_supply() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(authorized_securities::max_supply(&rule) == 2000000, 0);
 
     ts::return_shared(auth);
@@ -133,12 +137,13 @@ fun test_validate_rule_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         1000000, // max_supply
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Current supply + issuance amount within limit
     authorized_securities::validate_rule(&rule, 100000, 500000);
@@ -157,12 +162,13 @@ fun test_validate_rule_unlimited() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         0, // unlimited
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Any amount allowed when unlimited
     authorized_securities::validate_rule(&rule, 999999999, 999999999);
@@ -182,12 +188,13 @@ fun test_validate_rule_exceeds_max() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         1000000, // max_supply
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Current supply + issuance amount exceeds limit
     authorized_securities::validate_rule(&rule, 500000, 600000);
@@ -206,12 +213,13 @@ fun test_validate_rule_exact_max() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = authorized_securities::new<TEST_VOLORO>(
+    let wrapper = authorized_securities::new<TEST_VOLORO>(
         &auth,
         1000000, // max_supply
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Issuing exactly to the limit should pass
     authorized_securities::validate_rule(&rule, 500000, 500000);

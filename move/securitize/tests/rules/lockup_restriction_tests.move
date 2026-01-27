@@ -4,7 +4,7 @@ module securitize::lockup_restriction_tests;
 use securitize::{
     lockup_restriction,
     registry_service::{Self, Issuance},
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
@@ -36,13 +36,14 @@ fun test_new_lockup_restriction_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS, // us_lock_period_ms
         SIX_MONTHS_MS, // non_us_lock_period_ms
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(lockup_restriction::us_lock_period(&rule) == ONE_YEAR_MS, 0);
     assert!(lockup_restriction::non_us_lock_period(&rule) == SIX_MONTHS_MS, 1);
@@ -62,13 +63,14 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let _rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -86,13 +88,14 @@ fun test_new_lock_period_too_long() {
     let version = ts.take_shared<Version>();
 
     // 201 years exceeds the 200 year maximum
-    let _rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         6_339_936_000_000, // > 200 years
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -108,16 +111,17 @@ fun test_set_us_lock_period() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let init_wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     lockup_restriction::set_us_lock_period<TEST_VOLORO>(
         &auth,
@@ -128,7 +132,7 @@ fun test_set_us_lock_period() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(lockup_restriction::us_lock_period(&rule) == SIX_MONTHS_MS, 0);
 
     ts::return_shared(auth);
@@ -145,16 +149,17 @@ fun test_set_non_us_lock_period() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let init_wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     lockup_restriction::set_non_us_lock_period<TEST_VOLORO>(
         &auth,
@@ -165,7 +170,7 @@ fun test_set_non_us_lock_period() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(lockup_restriction::non_us_lock_period(&rule) == ONE_YEAR_MS, 0);
 
     ts::return_shared(auth);
@@ -182,13 +187,14 @@ fun test_get_lock_period_for_region() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(lockup_restriction::lock_period_for_region(&rule, US) == ONE_YEAR_MS, 0);
     assert!(lockup_restriction::lock_period_for_region(&rule, EU) == SIX_MONTHS_MS, 1);
@@ -207,13 +213,14 @@ fun test_compute_transferable_no_issuances() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let empty_issuances: vector<Issuance> = vector[];
     let transferable = lockup_restriction::compute_transferable_tokens(
@@ -241,13 +248,14 @@ fun test_compute_transferable_zero_lock_period() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         0, // zero lock period for US
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let empty_issuances: vector<Issuance> = vector[];
     let transferable = lockup_restriction::compute_transferable_tokens(
@@ -275,13 +283,14 @@ fun test_is_issuance_locked_zero_period() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         0, // zero lock period for US
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(500, 1000);
 
@@ -309,13 +318,14 @@ fun test_validate_rule_special_wallet_exempt() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let empty_issuances: vector<Issuance> = vector[];
 
@@ -344,13 +354,14 @@ fun test_validate_rule_passes_with_sufficient_transferable() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let empty_issuances: vector<Issuance> = vector[];
 
@@ -380,13 +391,14 @@ fun test_validate_rule_fails_insufficient_transferable() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Create an issuance that is still under lockup (issued at time 0, lock period is ONE_YEAR_MS)
     let issuance = registry_service::new_issuance(1000, 0); // 1000 tokens issued at time 0
@@ -419,13 +431,14 @@ fun test_compute_transferable_single_issuance_still_locked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Issuance of 500 tokens at time 0, still locked at time 100
     let issuance = registry_service::new_issuance(500, 0);
@@ -456,13 +469,14 @@ fun test_compute_transferable_single_issuance_unlocked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Issuance of 500 tokens at time 0, unlocked after ONE_YEAR_MS
     let issuance = registry_service::new_issuance(500, 0);
@@ -493,13 +507,14 @@ fun test_compute_transferable_multiple_issuances_partial_locked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // First issuance: 300 tokens at time 0 (will be unlocked at ONE_YEAR_MS)
     // Second issuance: 400 tokens at time ONE_YEAR_MS (will be unlocked at 2*ONE_YEAR_MS)
@@ -533,13 +548,14 @@ fun test_compute_transferable_multiple_issuances_all_locked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Both issuances at time 0, both still locked at time 100
     let issuance1 = registry_service::new_issuance(300, 0);
@@ -571,13 +587,14 @@ fun test_compute_transferable_multiple_issuances_all_unlocked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Both issuances at time 0, both unlocked after ONE_YEAR_MS
     let issuance1 = registry_service::new_issuance(300, 0);
@@ -609,13 +626,14 @@ fun test_compute_transferable_locked_exceeds_balance() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Issuance of 1500 tokens, but balance is only 1000 (some were transferred out)
     let issuance = registry_service::new_issuance(1500, 0);
@@ -646,13 +664,14 @@ fun test_compute_transferable_non_us_region() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS, // US lock
         SIX_MONTHS_MS, // non-US lock (shorter)
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(500, 0);
     let issuances: vector<Issuance> = vector[issuance];
@@ -683,13 +702,14 @@ fun test_compute_transferable_non_us_still_locked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(500, 0);
     let issuances: vector<Issuance> = vector[issuance];
@@ -720,13 +740,14 @@ fun test_compute_transferable_at_exact_unlock_time() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Issuance at time 1000
     let issuance = registry_service::new_issuance(500, 1000);
@@ -774,13 +795,14 @@ fun test_is_issuance_locked_true() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(500, 1000);
 
@@ -808,13 +830,14 @@ fun test_is_issuance_locked_false() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(500, 1000);
 
@@ -844,13 +867,14 @@ fun test_validate_rule_transfer_exact_transferable_amount() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // 500 locked from issuance, balance is 1000, so 500 transferable
     let issuance = registry_service::new_issuance(500, 0);
@@ -882,13 +906,14 @@ fun test_validate_rule_transfer_one_over_transferable() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS,
         SIX_MONTHS_MS,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // 500 locked from issuance, balance is 1000, so 500 transferable
     let issuance = registry_service::new_issuance(500, 0);
@@ -917,13 +942,14 @@ fun test_validate_rule_non_us_shorter_lockup() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS, // US: 1 year
         SIX_MONTHS_MS, // EU: 6 months
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(500, 0);
     let issuances: vector<Issuance> = vector[issuance];
@@ -954,13 +980,14 @@ fun test_validate_rule_us_still_locked_when_eu_unlocked() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = lockup_restriction::new<TEST_VOLORO>(
+    let wrapper = lockup_restriction::new<TEST_VOLORO>(
         &auth,
         ONE_YEAR_MS, // US: 1 year
         SIX_MONTHS_MS, // EU: 6 months
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     let issuance = registry_service::new_issuance(1000, 0);
     let issuances: vector<Issuance> = vector[issuance];

@@ -18,6 +18,7 @@ use securitize::{
         emit_compliance_issuance_recorded_event,
         emit_compliance_burn_recorded_event,
         emit_compliance_seize_recorded_event,
+        emit_string_to_uint_map_rule_set_event
     },
     flowback_restriction::FlowbackRestriction,
     force_full_transfer::ForceFullTransfer,
@@ -26,14 +27,13 @@ use securitize::{
     lock_manager,
     lockup_restriction::LockupRestriction,
     registry_service::{InvestorInfo, is_special_wallet, Issuance, new_issuance},
-    rule_wrapper::{Self, RuleWrapper},
+    rule_wrapper::{Self, RuleInitWrapper, unwrap_update, RuleUpdateWrapper},
     trust_service::{Auth, TransferAgent, Master},
     version::Version,
     wallet_manager::is_issuer_wallet
 };
 use std::{string::String, type_name::{Self, TypeName}};
 use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object};
-use securitize::events::emit_string_to_uint_map_rule_set_event;
 
 // ==== Error Codes ====
 
@@ -294,7 +294,7 @@ public(package) fun validate_seize<T>(
 public fun register_rule<T, R: store>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
-    rule: R,
+    wrapper: RuleInitWrapper<R>,
     version: &Version,
     ctx: &TxContext,
 ) {
@@ -304,7 +304,7 @@ public fun register_rule<T, R: store>(
     // Check if rule already exists
     assert!(!self.rules.contains(&rule_type), ERuleAlreadyExists);
     // Add the rule object to the bag
-    self.rules_bag.add(rule_type, rule);
+    self.rules_bag.add(rule_type, wrapper.unwrap_init());
     // Add the typename to the rules vector
     self.rules.push_back(rule_type);
     // Emit event
@@ -354,12 +354,12 @@ public fun get_rule<T, R: store + drop>(
     auth: &Auth<T>,
     version: &Version,
     ctx: &TxContext,
-): RuleWrapper<R> {
+): RuleUpdateWrapper<R> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
     let rule: R = self.rules_bag.remove(rule_type);
-    rule_wrapper::new(rule)
+    rule_wrapper::new_update(rule)
 }
 
 /// Return a rule back to the compliance config.
@@ -370,15 +370,14 @@ public fun get_rule<T, R: store + drop>(
 public fun return_rule<T, R: store + drop>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
-    wrapper: RuleWrapper<R>,
+    wrapper: RuleUpdateWrapper<R>,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
-    let rule = rule_wrapper::unwrap(wrapper);
-    self.rules_bag.add(rule_type, rule);
+    self.rules_bag.add(rule_type, wrapper.unwrap_update());
 }
 
 /// Borrow an immutable reference to a rule configuration.
@@ -411,7 +410,12 @@ public fun set_country_compliance<T>(
     assert!(auth.owner_has_ability<T, SetCountryCompliance>(ctx.sender()), ENotAuthorized);
     let previous_value = registry.get_country_compliance(country);
     registry.set_country_compliance(country, compliance_region);
-    emit_string_to_uint_map_rule_set_event<T>(b"countryCompliance".to_string(), country, previous_value, compliance_region);
+    emit_string_to_uint_map_rule_set_event<T>(
+        b"countryCompliance".to_string(),
+        country,
+        previous_value,
+        compliance_region,
+    );
 }
 
 /// Get compliance region for a country

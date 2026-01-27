@@ -3,7 +3,7 @@ module securitize::force_full_transfer_tests;
 
 use securitize::{
     force_full_transfer,
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
@@ -31,13 +31,14 @@ fun test_new_force_full_transfer_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true, // force_full_transfer_us
         false, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(force_full_transfer::is_force_us(&rule), 0);
     assert!(!force_full_transfer::is_force_worldwide(&rule), 1);
@@ -57,13 +58,14 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let _rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true,
         false,
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -79,18 +81,19 @@ fun test_set_force_us() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let init_wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         false,
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     assert!(!force_full_transfer::is_force_us(&rule), 0);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     force_full_transfer::set_force_us<TEST_VOLORO>(
         &auth,
@@ -101,7 +104,7 @@ fun test_set_force_us() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(force_full_transfer::is_force_us(&rule), 1);
 
     ts::return_shared(auth);
@@ -118,18 +121,19 @@ fun test_set_force_worldwide() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let init_wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         false,
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     assert!(!force_full_transfer::is_force_worldwide(&rule), 0);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     force_full_transfer::set_force_worldwide<TEST_VOLORO>(
         &auth,
@@ -140,7 +144,7 @@ fun test_set_force_worldwide() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(force_full_transfer::is_force_worldwide(&rule), 1);
 
     ts::return_shared(auth);
@@ -157,13 +161,14 @@ fun test_validate_rule_no_restrictions() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         false, // force_full_transfer_us = false
         false, // force_full_transfer_worldwide = false
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Partial transfers allowed when no restrictions
     force_full_transfer::validate_rule(&rule, US, false, false);
@@ -183,13 +188,14 @@ fun test_validate_rule_full_transfer_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true, // force_full_transfer_us
         true, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Exit investor passes (full transfer scenario)
     force_full_transfer::validate_rule(&rule, US, false, true);
@@ -210,13 +216,14 @@ fun test_validate_rule_us_partial_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true, // force_full_transfer_us
         false, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Non-exit US investor should fail when force_us is enabled
     force_full_transfer::validate_rule(&rule, US, false, false);
@@ -235,13 +242,14 @@ fun test_validate_rule_us_only_non_us_partial_allowed() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true, // force_full_transfer_us
         false, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Non-exit non-US investor should pass (only US restricted)
     force_full_transfer::validate_rule(&rule, EU, false, false);
@@ -261,13 +269,14 @@ fun test_validate_rule_worldwide_partial_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         false, // force_full_transfer_us
         true, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Non-exit investor from any region should fail with worldwide restriction
     force_full_transfer::validate_rule(&rule, EU, false, false);
@@ -286,13 +295,14 @@ fun test_validate_rule_special_wallet_exempt() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true,
         true,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Special wallet is exempt from force full transfer
     force_full_transfer::validate_rule(&rule, US, true, false);
@@ -312,13 +322,14 @@ fun test_validate_rule_worldwide_exit_investor_allowed() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         false, // force_full_transfer_us
         true, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Exit investor should always be allowed, regardless of region
     force_full_transfer::validate_rule(&rule, US, false, true);
@@ -338,13 +349,14 @@ fun test_validate_rule_special_wallet_overrides_worldwide() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = force_full_transfer::new<TEST_VOLORO>(
+    let wrapper = force_full_transfer::new<TEST_VOLORO>(
         &auth,
         true, // force_full_transfer_us
         true, // force_full_transfer_worldwide
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Special wallet should bypass even worldwide restriction
     force_full_transfer::validate_rule(&rule, US, true, false);

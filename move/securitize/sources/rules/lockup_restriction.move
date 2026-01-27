@@ -9,10 +9,10 @@
 module securitize::lockup_restriction;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_lockup_restriction_rule_created_event, emit_uint_rule_set_event},
+    abilities::{ManageRules, RegisterRule},
+    events::emit_uint_rule_set_event,
     registry_service::Issuance,
-    rule_wrapper::RuleWrapper,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -50,7 +50,7 @@ public struct LockupRestriction has drop, store {
 /// Create a new LockupRestriction rule with configurable lock periods.
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 /// * `ELockPeriodTooLong` - If either lock period exceeds maximum (200 years)
 public fun new<T>(
     auth: &Auth<T>,
@@ -58,16 +58,17 @@ public fun new<T>(
     non_us_lock_period_ms: u64,
     version: &Version,
     ctx: &TxContext,
-): LockupRestriction {
+): RuleInitWrapper<LockupRestriction> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
-    emit_lockup_restriction_rule_created_event<T>(us_lock_period_ms, non_us_lock_period_ms);
-    LockupRestriction {
+    emit_uint_rule_set_event<T>(b"us_lock_period_ms".to_string(), 0, us_lock_period_ms);
+    emit_uint_rule_set_event<T>(b"non_us_lock_period_ms".to_string(), 0, non_us_lock_period_ms);
+    new_init(LockupRestriction {
         us_lock_period_ms,
         non_us_lock_period_ms,
-    }
+    })
 }
 
 // ==================== Rule Management ====================
@@ -79,7 +80,7 @@ public fun new<T>(
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_us_lock_period<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<LockupRestriction>,
+    wrapper: &mut RuleUpdateWrapper<LockupRestriction>,
     period_ms: u64,
     version: &Version,
     ctx: &TxContext,
@@ -87,7 +88,7 @@ public fun set_us_lock_period<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"us_lock_period_ms".to_string(),
         rule.us_lock_period_ms,
@@ -103,7 +104,7 @@ public fun set_us_lock_period<T>(
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_non_us_lock_period<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<LockupRestriction>,
+    wrapper: &mut RuleUpdateWrapper<LockupRestriction>,
     period_ms: u64,
     version: &Version,
     ctx: &TxContext,
@@ -111,7 +112,7 @@ public fun set_non_us_lock_period<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"non_us_lock_period_ms".to_string(),
         rule.non_us_lock_period_ms,
