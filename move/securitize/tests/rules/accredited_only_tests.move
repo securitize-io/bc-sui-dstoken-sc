@@ -11,7 +11,7 @@ use securitize::{
         set_force_us_accredited,
         validate_rule
     },
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{setup_with_treasury, TEST_VOLORO},
     trust_service::Auth,
     version::Version
@@ -39,13 +39,14 @@ fun test_new_accredited_only_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         true, // force_accredited
         false, // force_us_accredited
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(is_force_accredited(&rule), 0);
     assert!(!is_force_us_accredited(&rule), 1);
@@ -65,14 +66,15 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    // Should fail - UNAUTHORIZED has no ManageRules ability
-    let _rule = new_accredited_only<TEST_VOLORO>(
+    // Should fail - UNAUTHORIZED has no RegisterRule ability
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         true,
         false,
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -88,18 +90,19 @@ fun test_set_force_accredited() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let init_wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         false,
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     assert!(!is_force_accredited(&rule), 0);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     set_force_accredited<TEST_VOLORO>(
         &auth,
@@ -110,7 +113,7 @@ fun test_set_force_accredited() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(is_force_accredited(&rule), 1);
 
     ts::return_shared(auth);
@@ -127,18 +130,19 @@ fun test_set_force_us_accredited() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let init_wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         false,
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     assert!(!is_force_us_accredited(&rule), 0);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     set_force_us_accredited<TEST_VOLORO>(
         &auth,
@@ -149,7 +153,7 @@ fun test_set_force_us_accredited() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(is_force_us_accredited(&rule), 1);
 
     ts::return_shared(auth);
@@ -166,13 +170,14 @@ fun test_validate_rule_no_restrictions() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         false, // force_accredited = false
         false, // force_us_accredited = false
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Should pass for non-accredited investor in any region
     validate_rule(&rule, US, false);
@@ -192,13 +197,14 @@ fun test_validate_rule_global_accredited_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         true, // force_accredited = true
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Should pass for accredited investor
     validate_rule(&rule, US, true);
@@ -219,13 +225,14 @@ fun test_validate_rule_global_accredited_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         true, // force_accredited = true
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Should fail for non-accredited investor
     validate_rule(&rule, EU, false);
@@ -244,13 +251,14 @@ fun test_validate_rule_us_accredited_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         false,
         true, // force_us_accredited = true
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Should pass for accredited US investor
     validate_rule(&rule, US, true);
@@ -272,13 +280,14 @@ fun test_validate_rule_us_accredited_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = new_accredited_only<TEST_VOLORO>(
+    let wrapper = new_accredited_only<TEST_VOLORO>(
         &auth,
         false,
         true, // force_us_accredited = true
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     // Should fail for non-accredited US investor
     validate_rule(&rule, US, false);

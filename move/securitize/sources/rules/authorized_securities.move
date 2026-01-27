@@ -8,9 +8,9 @@
 module securitize::authorized_securities;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_authorized_securities_rule_created_event, emit_uint_rule_set_event},
-    rule_wrapper::RuleWrapper,
+    abilities::{ManageRules, RegisterRule},
+    events::emit_uint_rule_set_event,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -42,13 +42,17 @@ public fun new<T>(
     max_supply: u64,
     version: &Version,
     ctx: &TxContext,
-): AuthorizedSecurities {
+): RuleInitWrapper<AuthorizedSecurities> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_authorized_securities_rule_created_event<T>(max_supply);
-    AuthorizedSecurities {
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
+    emit_uint_rule_set_event<T>(
+        b"max_supply".to_string(),
+        0,
         max_supply,
-    }
+    );
+    new_init(AuthorizedSecurities {
+        max_supply,
+    })
 }
 
 // ==================== Rule Management ====================
@@ -56,17 +60,17 @@ public fun new<T>(
 /// Set the maximum authorized securities (max supply)
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun set_max_supply<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<AuthorizedSecurities>,
+    wrapper: &mut RuleUpdateWrapper<AuthorizedSecurities>,
     max_supply: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(b"max_supply".to_string(), rule.max_supply, max_supply);
     rule.max_supply = max_supply;
 }

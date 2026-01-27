@@ -6,9 +6,9 @@
 module securitize::backdating_issuance;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_backdating_issuance_rule_created_event, emit_bool_rule_set_event},
-    rule_wrapper::RuleWrapper,
+    abilities::{ManageRules, RegisterRule},
+    events::emit_bool_rule_set_event,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -31,19 +31,23 @@ public struct BackdatingIssuance has drop, store {
 /// Create a new BackdatingIssuance rule
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun new<T>(
     auth: &Auth<T>,
     disallow_backdating: bool,
     version: &Version,
     ctx: &TxContext,
-): BackdatingIssuance {
+): RuleInitWrapper<BackdatingIssuance> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_backdating_issuance_rule_created_event<T>(disallow_backdating);
-    BackdatingIssuance {
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
+    emit_bool_rule_set_event<T>(
+        b"disallow_backdating".to_string(),
+        false,
         disallow_backdating,
-    }
+    );
+    new_init(BackdatingIssuance {
+        disallow_backdating,
+    })
 }
 
 // ==================== Rule Management ====================
@@ -54,14 +58,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_disallow_backdating<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<BackdatingIssuance>,
+    wrapper: &mut RuleUpdateWrapper<BackdatingIssuance>,
     disallow: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
         b"disallow_backdating".to_string(),
         rule.disallow_backdating,

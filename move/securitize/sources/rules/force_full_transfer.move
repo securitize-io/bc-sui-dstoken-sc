@@ -5,9 +5,9 @@
 module securitize::force_full_transfer;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{emit_force_full_transfer_rule_created_event, emit_bool_rule_set_event},
-    rule_wrapper::RuleWrapper,
+    abilities::{ManageRules, RegisterRule},
+    events::emit_bool_rule_set_event,
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -39,24 +39,30 @@ public struct ForceFullTransfer has drop, store {
 /// Create a new ForceFullTransfer rule
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun new<T>(
     auth: &Auth<T>,
     force_full_transfer_us: bool,
     force_full_transfer_worldwide: bool,
     version: &Version,
     ctx: &TxContext,
-): ForceFullTransfer {
+): RuleInitWrapper<ForceFullTransfer> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    emit_force_full_transfer_rule_created_event<T>(
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
+    emit_bool_rule_set_event<T>(
+        b"force_full_transfer_us".to_string(),
+        false,
         force_full_transfer_us,
+    );
+    emit_bool_rule_set_event<T>(
+        b"force_full_transfer_worldwide".to_string(),
+        false,
         force_full_transfer_worldwide,
     );
-    ForceFullTransfer {
+    new_init(ForceFullTransfer {
         force_full_transfer_us,
         force_full_transfer_worldwide,
-    }
+    })
 }
 
 // ==================== Rule Management ====================
@@ -67,14 +73,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<ForceFullTransfer>,
+    wrapper: &mut RuleUpdateWrapper<ForceFullTransfer>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
         b"force_full_transfer_us".to_string(),
         rule.force_full_transfer_us,
@@ -89,14 +95,14 @@ public fun set_force_us<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_worldwide<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<ForceFullTransfer>,
+    wrapper: &mut RuleUpdateWrapper<ForceFullTransfer>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
         b"force_full_transfer_worldwide".to_string(),
         rule.force_full_transfer_worldwide,

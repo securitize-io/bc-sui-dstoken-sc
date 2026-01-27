@@ -3,7 +3,7 @@ module securitize::backdating_issuance_tests;
 
 use securitize::{
     backdating_issuance,
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
@@ -27,12 +27,13 @@ fun test_new_backdating_issuance_allowed() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = backdating_issuance::new<TEST_VOLORO>(
+    let wrapper = backdating_issuance::new<TEST_VOLORO>(
         &auth,
         false, // disallow_backdating = false means backdating IS allowed
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(backdating_issuance::is_backdating_allowed(&rule), 0);
 
@@ -50,12 +51,13 @@ fun test_new_backdating_issuance_disallowed() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = backdating_issuance::new<TEST_VOLORO>(
+    let wrapper = backdating_issuance::new<TEST_VOLORO>(
         &auth,
         true, // disallow_backdating = true means backdating is NOT allowed
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(!backdating_issuance::is_backdating_allowed(&rule), 0);
 
@@ -74,12 +76,13 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let _rule = backdating_issuance::new<TEST_VOLORO>(
+    let wrapper = backdating_issuance::new<TEST_VOLORO>(
         &auth,
         true,
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -96,17 +99,18 @@ fun test_set_disallow_backdating_enable() {
     let version = ts.take_shared<Version>();
 
     // Start with backdating allowed (disallow_backdating=false)
-    let rule = backdating_issuance::new<TEST_VOLORO>(
+    let init_wrapper = backdating_issuance::new<TEST_VOLORO>(
         &auth,
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     assert!(backdating_issuance::is_backdating_allowed(&rule), 0);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     // Enable disallow_backdating (disallow=true means backdating NOT allowed)
     backdating_issuance::set_disallow_backdating<TEST_VOLORO>(
@@ -118,7 +122,7 @@ fun test_set_disallow_backdating_enable() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(!backdating_issuance::is_backdating_allowed(&rule), 1);
 
     ts::return_shared(auth);
@@ -136,17 +140,18 @@ fun test_set_disallow_backdating_disable() {
     let version = ts.take_shared<Version>();
 
     // Start with backdating disallowed (disallow_backdating=true)
-    let rule = backdating_issuance::new<TEST_VOLORO>(
+    let init_wrapper = backdating_issuance::new<TEST_VOLORO>(
         &auth,
         true,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     assert!(!backdating_issuance::is_backdating_allowed(&rule), 0);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     // Disable disallow_backdating (disallow=false means backdating IS allowed)
     backdating_issuance::set_disallow_backdating<TEST_VOLORO>(
@@ -158,7 +163,7 @@ fun test_set_disallow_backdating_disable() {
     );
 
     // Unwrap to verify changes
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(backdating_issuance::is_backdating_allowed(&rule), 1);
 
     ts::return_shared(auth);
@@ -176,15 +181,16 @@ fun test_set_disallow_backdating_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = backdating_issuance::new<TEST_VOLORO>(
+    let init_wrapper = backdating_issuance::new<TEST_VOLORO>(
         &auth,
         false,
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Wrap the rule for modification
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -203,7 +209,7 @@ fun test_set_disallow_backdating_unauthorized() {
     );
 
     // Unwrap (won't reach here due to expected failure)
-    let _rule = rule_wrapper::unwrap(wrapper);
+    let _rule = unwrap_update(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);

@@ -3,7 +3,7 @@ module securitize::investor_limits_tests;
 
 use securitize::{
     investor_limits,
-    rule_wrapper,
+    rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
@@ -26,7 +26,7 @@ fun test_new_investor_limits_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         1000, // total_investors_limit
         10, // minimum_total_investors
@@ -39,6 +39,7 @@ fun test_new_investor_limits_rule() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(wrapper);
 
     assert!(investor_limits::total_limit(&rule) == 1000, 0);
     assert!(investor_limits::minimum_total_investors(&rule) == 10, 1);
@@ -64,7 +65,7 @@ fun test_new_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let _rule = investor_limits::new<TEST_VOLORO>(
+    let wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         1000,
         10,
@@ -77,6 +78,7 @@ fun test_new_unauthorized() {
         &version,
         ts.ctx(),
     );
+    let _ = unwrap_init(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -92,7 +94,7 @@ fun test_set_total_limit() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         1000,
         0,
@@ -105,8 +107,9 @@ fun test_set_total_limit() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_total_limit<TEST_VOLORO>(
         &auth,
@@ -116,7 +119,7 @@ fun test_set_total_limit() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::total_limit(&rule) == 2000, 0);
 
     ts::return_shared(auth);
@@ -133,7 +136,7 @@ fun test_set_us_limit() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -146,8 +149,9 @@ fun test_set_us_limit() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_us_limit<TEST_VOLORO>(
         &auth,
@@ -157,7 +161,7 @@ fun test_set_us_limit() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::us_limit(&rule) == 1000, 0);
 
     ts::return_shared(auth);
@@ -174,7 +178,7 @@ fun test_validate_transfer_total_investors_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         100, // total_investors_limit
         0,
@@ -187,6 +191,7 @@ fun test_validate_transfer_total_investors_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Current count 50, adding new investor (not exit), should pass
     investor_limits::validate_transfer_total_investors(
@@ -211,7 +216,7 @@ fun test_validate_transfer_total_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         100, // total_investors_limit
         0,
@@ -224,6 +229,7 @@ fun test_validate_transfer_total_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Current count 100 (at limit), adding new investor should fail
     investor_limits::validate_transfer_total_investors(
@@ -247,7 +253,7 @@ fun test_validate_transfer_total_investors_exit_and_new() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         100, // total_investors_limit
         0,
@@ -260,6 +266,7 @@ fun test_validate_transfer_total_investors_exit_and_new() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // At limit but one exits and one enters - net zero change
     investor_limits::validate_transfer_total_investors(
@@ -283,7 +290,7 @@ fun test_validate_issuance_total_investors_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         100,
         0,
@@ -296,6 +303,7 @@ fun test_validate_issuance_total_investors_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_total_investors(
         &rule,
@@ -318,7 +326,7 @@ fun test_validate_issuance_total_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         100,
         0,
@@ -331,6 +339,7 @@ fun test_validate_issuance_total_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_total_investors(
         &rule,
@@ -352,7 +361,7 @@ fun test_validate_transfer_minimum_total_investors() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0, // total_investors_limit (no max)
         10, // minimum_total_investors
@@ -365,6 +374,7 @@ fun test_validate_transfer_minimum_total_investors() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // 20 investors, one exits but new one enters - stays above minimum
     investor_limits::validate_transfer_minimum_total_investors(
@@ -389,7 +399,7 @@ fun test_validate_transfer_minimum_total_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         10,
@@ -402,6 +412,7 @@ fun test_validate_transfer_minimum_total_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // 10 investors (at minimum), one exits, no new investor - would go below
     investor_limits::validate_transfer_minimum_total_investors(
@@ -460,7 +471,7 @@ fun test_set_minimum_total_investors() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         10,
@@ -473,8 +484,9 @@ fun test_set_minimum_total_investors() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_minimum_total_investors<TEST_VOLORO>(
         &auth,
@@ -484,7 +496,7 @@ fun test_set_minimum_total_investors() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::minimum_total_investors(&rule) == 20, 0);
 
     ts::return_shared(auth);
@@ -501,7 +513,7 @@ fun test_set_us_accredited_limit() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -514,8 +526,9 @@ fun test_set_us_accredited_limit() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_us_accredited_limit<TEST_VOLORO>(
         &auth,
@@ -525,7 +538,7 @@ fun test_set_us_accredited_limit() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::us_accredited_limit(&rule) == 200, 0);
 
     ts::return_shared(auth);
@@ -542,7 +555,7 @@ fun test_set_non_accredited_limit() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -555,8 +568,9 @@ fun test_set_non_accredited_limit() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_non_accredited_limit<TEST_VOLORO>(
         &auth,
@@ -566,7 +580,7 @@ fun test_set_non_accredited_limit() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::non_accredited_limit(&rule) == 100, 0);
 
     ts::return_shared(auth);
@@ -583,7 +597,7 @@ fun test_set_jp_limit() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -596,8 +610,9 @@ fun test_set_jp_limit() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_jp_limit<TEST_VOLORO>(
         &auth,
@@ -607,7 +622,7 @@ fun test_set_jp_limit() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::jp_limit(&rule) == 100, 0);
 
     ts::return_shared(auth);
@@ -624,7 +639,7 @@ fun test_set_eu_retail_limit() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -637,8 +652,9 @@ fun test_set_eu_retail_limit() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_eu_retail_limit<TEST_VOLORO>(
         &auth,
@@ -648,7 +664,7 @@ fun test_set_eu_retail_limit() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::eu_retail_limit(&rule) == 100, 0);
 
     ts::return_shared(auth);
@@ -665,7 +681,7 @@ fun test_set_max_us_percentage() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -678,8 +694,9 @@ fun test_set_max_us_percentage() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
-    let mut wrapper = rule_wrapper::new(rule);
+    let mut wrapper = new_update(rule);
 
     investor_limits::set_max_us_percentage<TEST_VOLORO>(
         &auth,
@@ -689,7 +706,7 @@ fun test_set_max_us_percentage() {
         ts.ctx(),
     );
 
-    let rule = rule_wrapper::unwrap(wrapper);
+    let rule = unwrap_update(wrapper);
     assert!(investor_limits::max_us_percentage(&rule) == 50, 0);
 
     ts::return_shared(auth);
@@ -706,7 +723,7 @@ fun test_validate_transfer_us_investors_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -719,6 +736,7 @@ fun test_validate_transfer_us_investors_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // Current 50 US, adding new US investor should pass
     investor_limits::validate_transfer_us_investors(
@@ -745,7 +763,7 @@ fun test_validate_transfer_us_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -758,6 +776,7 @@ fun test_validate_transfer_us_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // At limit, adding new US investor should fail
     investor_limits::validate_transfer_us_investors(
@@ -783,7 +802,7 @@ fun test_validate_transfer_us_accredited_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -796,6 +815,7 @@ fun test_validate_transfer_us_accredited_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_us_accredited(
         &rule,
@@ -821,7 +841,7 @@ fun test_validate_transfer_us_accredited_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -834,6 +854,7 @@ fun test_validate_transfer_us_accredited_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_us_accredited(
         &rule,
@@ -858,7 +879,7 @@ fun test_validate_transfer_non_accredited_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -871,6 +892,7 @@ fun test_validate_transfer_non_accredited_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_non_accredited(
         &rule,
@@ -895,7 +917,7 @@ fun test_validate_transfer_non_accredited_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -908,6 +930,7 @@ fun test_validate_transfer_non_accredited_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_non_accredited(
         &rule,
@@ -931,7 +954,7 @@ fun test_validate_transfer_jp_investors_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -944,6 +967,7 @@ fun test_validate_transfer_jp_investors_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_jp_investors(
         &rule,
@@ -968,7 +992,7 @@ fun test_validate_transfer_jp_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -981,6 +1005,7 @@ fun test_validate_transfer_jp_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_jp_investors(
         &rule,
@@ -1004,7 +1029,7 @@ fun test_validate_transfer_eu_retail_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1017,6 +1042,7 @@ fun test_validate_transfer_eu_retail_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_eu_retail(
         &rule,
@@ -1042,7 +1068,7 @@ fun test_validate_transfer_eu_retail_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1055,6 +1081,7 @@ fun test_validate_transfer_eu_retail_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_transfer_eu_retail(
         &rule,
@@ -1079,7 +1106,7 @@ fun test_validate_issuance_us_investors_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1092,6 +1119,7 @@ fun test_validate_issuance_us_investors_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_us_investors(
         &rule,
@@ -1115,7 +1143,7 @@ fun test_validate_issuance_us_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1128,6 +1156,7 @@ fun test_validate_issuance_us_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_us_investors(
         &rule,
@@ -1150,7 +1179,7 @@ fun test_validate_issuance_us_accredited_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1163,6 +1192,7 @@ fun test_validate_issuance_us_accredited_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_us_accredited(
         &rule,
@@ -1185,7 +1215,7 @@ fun test_validate_issuance_us_accredited_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1198,6 +1228,7 @@ fun test_validate_issuance_us_accredited_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_us_accredited(
         &rule,
@@ -1219,7 +1250,7 @@ fun test_validate_issuance_non_accredited_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1232,6 +1263,7 @@ fun test_validate_issuance_non_accredited_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_non_accredited(
         &rule,
@@ -1254,7 +1286,7 @@ fun test_validate_issuance_non_accredited_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1267,6 +1299,7 @@ fun test_validate_issuance_non_accredited_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_non_accredited(
         &rule,
@@ -1288,7 +1321,7 @@ fun test_validate_issuance_eu_retail_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1301,6 +1334,7 @@ fun test_validate_issuance_eu_retail_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_eu_retail(
         &rule,
@@ -1323,7 +1357,7 @@ fun test_validate_issuance_eu_retail_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1336,6 +1370,7 @@ fun test_validate_issuance_eu_retail_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_eu_retail(
         &rule,
@@ -1357,7 +1392,7 @@ fun test_validate_issuance_jp_investors_passes() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1370,6 +1405,7 @@ fun test_validate_issuance_jp_investors_passes() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_jp_investors(
         &rule,
@@ -1392,7 +1428,7 @@ fun test_validate_issuance_jp_investors_fails() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1405,6 +1441,7 @@ fun test_validate_issuance_jp_investors_fails() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     investor_limits::validate_issuance_jp_investors(
         &rule,
@@ -1427,7 +1464,7 @@ fun test_zero_limits_bypass_validation() {
     let version = ts.take_shared<Version>();
 
     // All limits set to 0 (unlimited)
-    let rule = investor_limits::new<TEST_VOLORO>(
+    let init_wrapper = investor_limits::new<TEST_VOLORO>(
         &auth,
         0,
         0,
@@ -1440,6 +1477,7 @@ fun test_zero_limits_bypass_validation() {
         &version,
         ts.ctx(),
     );
+    let rule = unwrap_init(init_wrapper);
 
     // All these should pass even with high counts
     investor_limits::validate_transfer_total_investors(&rule, 10000, false, true);

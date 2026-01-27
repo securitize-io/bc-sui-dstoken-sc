@@ -5,13 +5,9 @@
 module securitize::holding_limits;
 
 use securitize::{
-    abilities::ManageRules,
-    events::{
-        emit_holding_limits_rule_created_event,
-        emit_uint_rule_set_event,
-        emit_string_to_uint_map_rule_set_event
-    },
-    rule_wrapper::RuleWrapper,
+    abilities::{ManageRules, RegisterRule},
+    events::{emit_uint_rule_set_event, emit_string_to_uint_map_rule_set_event},
+    rule_wrapper::{RuleInitWrapper, RuleUpdateWrapper, new_init},
     trust_service::Auth,
     version::Version
 };
@@ -45,7 +41,7 @@ public struct HoldingLimits has drop, store {
 /// Create with region-specific minimums.
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If caller lacks ManageRules ability
+/// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun new<T>(
     auth: &Auth<T>,
     min_holdings_per_investor: u64,
@@ -54,27 +50,36 @@ public fun new<T>(
     region_mins: vector<u64>,
     version: &Version,
     ctx: &TxContext,
-): HoldingLimits {
+): RuleInitWrapper<HoldingLimits> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
+    assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     let mut region_min_tokens = vec_map::empty();
 
     regions.zip_do!(region_mins, |region, min| {
         region_min_tokens.insert(region, min);
+        emit_string_to_uint_map_rule_set_event<T>(
+            b"region_min_tokens".to_string(),
+            region.to_string(),
+            0,
+            min,
+        );
     });
 
-    emit_holding_limits_rule_created_event<T>(
+    emit_uint_rule_set_event<T>(
+        b"min_holdings_per_investor".to_string(),
+        0,
         min_holdings_per_investor,
-        max_holdings_per_investor,
-        regions,
-        region_mins,
     );
-
-    HoldingLimits {
+    emit_uint_rule_set_event<T>(
+        b"max_holdings_per_investor".to_string(),
+        0,
+        max_holdings_per_investor,
+    );
+    new_init(HoldingLimits {
         min_holdings_per_investor,
         max_holdings_per_investor,
         region_min_tokens,
-    }
+    })
 }
 
 // ==================== Rule Management ====================
@@ -85,14 +90,14 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_min_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
     min: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"min_holdings_per_investor".to_string(),
         rule.min_holdings_per_investor,
@@ -107,14 +112,14 @@ public fun set_min_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
     max: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
         b"max_holdings_per_investor".to_string(),
         rule.max_holdings_per_investor,
@@ -129,7 +134,7 @@ public fun set_max_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_region_min_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
     region: u64,
     min: u64,
     version: &Version,
@@ -137,7 +142,7 @@ public fun set_region_min_holdings<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
 
     let old_value = if (rule.region_min_tokens.contains(&region)) {
         let (_, old) = rule.region_min_tokens.remove(&region);
@@ -160,14 +165,14 @@ public fun set_region_min_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun remove_region_min_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
     region: u64,
     version: &Version,
     ctx: &TxContext,
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
-    let rule = wrapper.borrow_mut();
+    let rule = wrapper.borrow_update_mut();
     // Remove if exists
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);
