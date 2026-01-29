@@ -134,7 +134,7 @@ export class DSToken {
     getPASVault(address: string) {
         const key = 'VaultKey'
         const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
-        return deriveObjectId(Config.vars.PAS_NAMESPACE, 'vault', key, Config.vars.PAS_PACKAGE_ID, undefined, serializedBcs)
+        return deriveObjectId(Config.vars.PAS_NAMESPACE, 'keys', key, Config.vars.PAS_PACKAGE_ID, undefined, serializedBcs)
     }
 
     issuePTB(
@@ -392,7 +392,7 @@ export class DSToken {
             target: `${Config.vars.PAS_PACKAGE_ID}::vault::new_auth`,
         })
         const transferRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::vault::transfer`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::vault::transfer_funds`,
             typeArguments: [this.tokenAddress],
             arguments: [
                 ptb.object(fromRwaVault),
