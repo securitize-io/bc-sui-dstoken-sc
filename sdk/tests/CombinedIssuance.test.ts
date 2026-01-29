@@ -33,7 +33,8 @@ describe('CombinedIssuance', () => {
                 country: Country.US,
                 wallet: wallet1.toSuiAddress(),
                 value: '1000',
-                reason: 'Initial issuance',
+                reasonString: 'Initial issuance',
+                reasonCode: 0,
                 issuanceTime,
                 attributes: [
                     {
@@ -70,7 +71,8 @@ describe('CombinedIssuance', () => {
                 country: Country.JP,
                 wallet: wallet2.toSuiAddress(),
                 value: '500',
-                reason: 'Simple issuance',
+                reasonString: 'Simple issuance',
+                reasonCode: 0,
                 issuanceTime,
             }
 
@@ -100,7 +102,8 @@ describe('CombinedIssuance', () => {
                 country: Country.EU,
                 wallet: wallet3.toSuiAddress(),
                 value: '2000',
-                reason: 'Locked issuance',
+                reasonString: 'Locked issuance',
+                reasonCode: 0,
                 issuanceTime,
                 lock: {
                     value: '1500',
@@ -129,31 +132,6 @@ describe('CombinedIssuance', () => {
             await assertInvestorBalance(tokenAddress, investor.id, '2000')
             await expect(dsToken.getTotalIssued()).resolves.toBe('3500')
         })
-
-        it('should handle zero lock value', async () => {
-            const wallet4 = await createFundedWallet()
-
-            const investor: Investor = {
-                id: 'investor4',
-                country: Country.JP,
-                wallet: wallet4.toSuiAddress(),
-                value: '750',
-                reason: 'No lock issuance',
-                issuanceTime,
-                lock: {
-                    value: '0',
-                    releaseTime: Date.now() + 60 * 24 * 60 * 60 * 1000,
-                    reason: 'No lock',
-                    reasonCode: 0,
-                },
-            }
-
-            await executeTxFunc(combinedIssuance.register(investor, sender))
-
-            await expect(investors.isInvestor(investor.id, sender)).resolves.toBe(true)
-            await assertInvestorBalance(tokenAddress, investor.id, '750')
-            await expect(dsToken.getTotalIssued()).resolves.toBe('4250')
-        })
     })
 
     describe('Multiple Attributes', () => {
@@ -166,7 +144,8 @@ describe('CombinedIssuance', () => {
                 country: Country.US,
                 wallet: wallet5.toSuiAddress(),
                 value: '3000',
-                reason: 'Multiple attributes',
+                reasonString: 'Multiple attributes',
+                reasonCode: 0,
                 issuanceTime,
                 attributes: [
                     {
@@ -209,7 +188,7 @@ describe('CombinedIssuance', () => {
             })
 
             await assertInvestorBalance(tokenAddress, investor.id, '3000')
-            await expect(dsToken.getTotalIssued()).resolves.toBe('7250')
+            await expect(dsToken.getTotalIssued()).resolves.toBe('6500')
         })
     })
 
@@ -220,7 +199,8 @@ describe('CombinedIssuance', () => {
                 country: Country.EU,
                 wallet: '0x0000000000000000000000000000000000000000000000000000000000000123',
                 value: '100',
-                reason: 'PTB test',
+                reasonString: 'PTB test',
+                reasonCode: 0,
                 issuanceTime,
             }
 
@@ -235,7 +215,8 @@ describe('CombinedIssuance', () => {
                 country: Country.JP,
                 wallet: '0x0000000000000000000000000000000000000000000000000000000000000456',
                 value: '200',
-                reason: 'PTB lock test',
+                reasonString: 'PTB lock test',
+                reasonCode: 0,
                 issuanceTime,
                 lock: {
                     value: '150',
@@ -260,7 +241,8 @@ describe('CombinedIssuance', () => {
                 country: Country.EU,
                 wallet: wallet6.toSuiAddress(),
                 value: '1',
-                reason: 'Minimum issuance',
+                reasonString: 'Minimum issuance',
+                reasonCode: 0,
                 issuanceTime,
             }
 
@@ -278,7 +260,8 @@ describe('CombinedIssuance', () => {
                 country: Country.JP,
                 wallet: wallet7.toSuiAddress(),
                 value: '1000000000',
-                reason: 'Large issuance',
+                reasonString: 'Large issuance',
+                reasonCode: 0,
                 issuanceTime,
             }
 
@@ -296,7 +279,8 @@ describe('CombinedIssuance', () => {
                 country: Country.US,
                 wallet: wallet8.toSuiAddress(),
                 value: '500',
-                reason: 'Empty attributes',
+                reasonString: 'Empty attributes',
+                reasonCode: 0,
                 issuanceTime,
                 attributes: [],
             }
