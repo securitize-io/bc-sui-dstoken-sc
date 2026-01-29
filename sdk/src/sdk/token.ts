@@ -34,7 +34,7 @@ export function getTokenDetails(tokenAddress: string): TokenDetails {
     const investorInfo = getDerivedObjectId(parentId, "registry_service", "RegistryServiceKey", tokenAddress)
     const auth = getDerivedObjectId(parentId, "trust_service", "TrustServiceKey", tokenAddress)
     const complianceConfig = getDerivedObjectId(parentId, "compliance_service", "ComplianceServiceKey", tokenAddress)
-    const rwaRule = getDerivedObjectId(Config.vars.PAS_NAMESPACE, "rule", "RuleKey", tokenAddress, Config.vars.PAS_PACKAGE_ID)
+    const rwaRule = getDerivedObjectId(Config.vars.PAS_NAMESPACE, "keys", "RuleKey", tokenAddress, Config.vars.PAS_PACKAGE_ID)
     const treasury = getDerivedObjectId(parentId, "ds_token", "DsTokenKey", tokenAddress)
     const currency = getDerivedObjectId(COIN_REGISTRY, "coin_registry", "CurrencyKey", tokenAddress, SUI_FRAMEWORK_ADDRESS)
 
