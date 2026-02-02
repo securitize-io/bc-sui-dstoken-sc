@@ -15,6 +15,8 @@ public struct SeizeTokens() has drop;
 
 public struct MetadataUpdate() has drop;
 
+public struct SetActionCommand() has drop;
+
 public struct Pauser() has drop;
 
 // ==================== Trust Service Abilities ====================

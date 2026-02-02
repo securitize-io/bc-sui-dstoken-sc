@@ -6,13 +6,14 @@
 module securitize::ds_token;
 
 use pas::{
+    command::Command,
     namespace::Namespace,
     rule::{Self, Rule},
     transfer_funds_request::TransferFundsRequest,
     vault::Vault
 };
 use securitize::{
-    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser},
+    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser, SetActionCommand},
     compliance_service::{Self, ComplianceConfig},
     events::{
         emit_issue_event,
@@ -101,6 +102,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, SeizeTokens>(version, ctx);
     auth.add_role_ability<T, Master, MetadataUpdate>(version, ctx);
     auth.add_role_ability<T, Master, Pauser>(version, ctx);
+    auth.add_role_ability<T, Master, SetActionCommand>(version, ctx);
 
     auth.add_role_ability<T, Issuer, IssueTokens>(version, ctx);
     auth.add_role_ability<T, Issuer, BurnTokens>(version, ctx);
@@ -478,6 +480,23 @@ public fun set_metadata<T>(
         currency.set_icon_url<T>(metadata_cap, i);
         emit_icon_uri_updated_event<T>(old_icon_uri, i);
     });
+}
+
+/// Sets the PAS resolution command for a specific action type.
+/// The command defines how the PAS system should resolve requests of type `A`.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the SetActionCommand ability
+public fun set_action_command<T, A>(
+    auth: &Auth<T>,
+    rule: &mut Rule<T>,
+    command: Command,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetActionCommand>(ctx.sender()), ENotAuthorized);
+    rule.set_action_command<T, DsProtocol, A>(command, DsProtocol());
 }
 
 /// Pauses the treasury, preventing token operations.
