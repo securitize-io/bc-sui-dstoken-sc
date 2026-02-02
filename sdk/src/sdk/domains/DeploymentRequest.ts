@@ -7,6 +7,8 @@ import { CountryComplianceStatus } from './CountryComplianceStatus';
 import { SwapContract } from './SwapContract';
 
 export interface DeploymentRequest {
+  /** Internal deployment ID (ignored by SDK) */
+  deploymentId?: string;
   /** Deployment priority */
   priority?: 'high' | 'medium' | 'low';
   /** Transaction gas price */
@@ -29,4 +31,6 @@ export interface DeploymentRequest {
   countriesComplianceStatuses?: CountryComplianceStatus[];
   /** Swap contract configuration (can be null) */
   swapContract?: SwapContract | null;
+  /** Additional metadata (ignored by SDK) */
+  additionalData?: Record<string, unknown>;
 }

@@ -4,6 +4,7 @@ import {DeploymentRequest, PTBDetails} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import {Rules} from "./rules";
 import {Roles} from "./roles";
+import {Wallets} from "./wallets";
 import {CountryCompliance} from "./CountryCompliance";
 import {TOKEN_TEMPLATE, MOVE_TOML} from "./templates";
 import {PublishSingleton} from "../easysui";
@@ -106,6 +107,11 @@ export async function createDSToken(request: DeploymentRequest) {
             roles.setServiceOwnerPTB(request.owners.tokenOwner, ptb)
             roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptb)
             ptb.transferObjects([upgradeCapId], request.owners.tokenOwner)
+
+            if (request.owners.redemptionAddress) {
+                const wallets = new Wallets(tokenAddressId)
+                wallets.addPlatformWalletPTB(request.owners.redemptionAddress, ptb)
+            }
         }
 
         request.roles.forEach((r) => {

@@ -24,7 +24,7 @@ use securitize::{
         emit_wallet_added_event,
         emit_wallet_removed_event
     },
-    trust_service::{Auth, Master, Issuer, Exchange},
+    trust_service::{Auth, Master, Issuer, TransferAgent, Exchange},
     version::Version
 };
 use std::string::{Self, String};
@@ -205,6 +205,14 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Exchange, SetAttribute>(version, ctx);
     auth.add_role_ability<T, Exchange, AddWallet>(version, ctx);
     auth.add_role_ability<T, Exchange, RemoveWallet>(version, ctx);
+
+    auth.add_role_ability<T, TransferAgent, RegisterInvestor>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, RemoveInvestor>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, UpdateInvestor>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, SetCountry>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, SetAttribute>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, AddWallet>(version, ctx);
+    auth.add_role_ability<T, TransferAgent, RemoveWallet>(version, ctx);
 
     let investor_info = InvestorInfo<T> {
         id: derived_object::claim(uid, RegistryServiceKey<T>()),
