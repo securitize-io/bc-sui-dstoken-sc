@@ -1,5 +1,12 @@
 # @securitize/sui-sdk
 
+## 1.8.2
+
+### Patch Changes
+
+- Fixing issuance function
+- Implement latest version
+
 ## 1.8.1
 
 ### Patch Changes
