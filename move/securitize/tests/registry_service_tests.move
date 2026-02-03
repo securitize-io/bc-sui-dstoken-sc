@@ -1,14 +1,14 @@
 #[test_only]
 module securitize::registry_service_tests;
 
+use pas::namespace::{Namespace, init_for_testing};
 use securitize::{
     registry_service::{Self, InvestorInfo},
-    trust_service::{Auth},
-    version::{Version}
+    test_helpers::{TEST_VOLORO, setup_with_treasury},
+    trust_service::Auth,
+    version::Version
 };
 use sui::test_scenario::{Self as ts, Scenario};
-use securitize::test_helpers::TEST_VOLORO;
-use securitize::test_helpers::setup_with_treasury;
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
@@ -137,6 +137,96 @@ fun test_register_investor_empty_id() {
 }
 
 #[test]
+fun test_register_investor_if_not_exists() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    registry_service::register_investor_if_not_exists<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        b"INV001".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    assert!(registry_service::is_investor(&registry, b"INV001".to_string()), 1);
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_register_investor_if_not_exists_when_exists() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Register an investor
+    registry_service::register_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        b"INV001".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    // Try to register again using register_investor_if_not_exists
+    registry_service::register_investor_if_not_exists<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        b"INV001".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    assert!(registry_service::is_investor(&registry, b"INV001".to_string()), 1);
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = registry_service::ENotAuthorized)]
+fun test_register_investor_if_not_exists_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(UNAUTHORIZED);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Should fail - UNAUTHORIZED has no RegisterInvestor ability
+    registry_service::register_investor_if_not_exists<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        b"INV001".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
 fun test_remove_investor() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
@@ -175,6 +265,99 @@ fun test_remove_investor() {
 }
 
 #[test]
+#[expected_failure(abort_code = registry_service::ENotAuthorized)]
+fun test_remove_investor_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Register an investor
+    registry_service::register_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        b"INV001".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    assert!(registry_service::is_investor(&registry, b"INV001".to_string()), 0);
+
+    ts.next_tx(UNAUTHORIZED);
+    // Remove the investor
+    registry_service::remove_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        b"INV001".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    assert!(!registry_service::is_investor(&registry, b"INV001".to_string()), 1);
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = registry_service::EInvestorHasWallets)]
+fun test_remove_investor_who_has_a_wallet() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let investor_id = b"INV001".to_string();
+    let wallet_addr = @0x1234;
+
+    // Register an investor
+    registry_service::register_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        investor_id,
+        &version,
+        ts.ctx(),
+    );
+
+    let mut namespace = ts.take_shared<Namespace>();
+
+    // Add a wallet for the investor
+    registry_service::add_wallet(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        wallet_addr,
+        &version,
+        ts.ctx(),
+    );
+
+    // Remove the investor while he has a wallet should fail
+    registry_service::remove_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        investor_id,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+#[test]
 #[expected_failure(abort_code = registry_service::EInvestorNotFound)]
 fun test_remove_investor_not_found() {
     let mut ts = ts::begin(ADMIN);
@@ -199,6 +382,278 @@ fun test_remove_investor_not_found() {
     ts::return_shared(version);
     ts.end();
 }
+
+#[test]
+fun test_update_investor() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<Namespace>();
+
+    let investor_id = b"INV001".to_string();
+    let wallet_addr = @0x1234;
+
+    registry_service::update_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        b"Greece".to_string(),
+        vector[wallet_addr],
+        vector[1],
+        vector[1],
+        vector[1],
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+#[test]
+fun test_update_investor_when_already_registered() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<Namespace>();
+
+    let investor_id = b"INV001".to_string();
+    let wallet_addr = @0x1234;
+
+    // Register an investor
+    registry_service::register_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        investor_id,
+        &version,
+        ts.ctx(),
+    );
+
+    registry_service::add_wallet(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        wallet_addr,
+        &version,
+        ts.ctx(),
+    );
+
+    registry_service::update_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        b"Greece".to_string(),
+        vector[wallet_addr],
+        vector[1],
+        vector[1],
+        vector[1],
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = registry_service::ENotAuthorized)]
+fun test_update_investor_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<Namespace>();
+
+    let investor_id = b"INV001".to_string();
+    let wallet_addr = @0x1234;
+
+    ts.next_tx(UNAUTHORIZED);
+
+    registry_service::update_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        b"Greece".to_string(),
+        vector[wallet_addr],
+        vector[1],
+        vector[1],
+        vector[1],
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = registry_service::EWrongVectorLength)]
+fun test_update_investor_attribute_values_length_mismatch() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<Namespace>();
+
+    let investor_id = b"INV001".to_string();
+    let wallet_addr = @0x1234;
+
+    registry_service::update_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        b"Greece".to_string(),
+        vector[wallet_addr],
+        vector[1],
+        vector[1, 2],
+        vector[1],
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = registry_service::EWrongVectorLength)]
+fun test_update_investor_attribute_expirations_length_mismatch() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<Namespace>();
+
+    let investor_id = b"INV001".to_string();
+    let wallet_addr = @0x1234;
+
+    registry_service::update_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor_id,
+        b"Greece".to_string(),
+        vector[wallet_addr],
+        vector[1],
+        vector[1],
+        vector[1, 2],
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = registry_service::EWrongInvestor)]
+fun test_update_investor_fails_when_investor_wallet_mismatch() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    init_for_testing(ts.ctx()); // init namespace
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<Namespace>();
+
+    let investor1_id = b"INV001".to_string();
+    let investor2_id = b"INV002".to_string();
+    let wallet_addr = @0x1234;
+
+    // Register an investor
+    registry_service::register_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        investor1_id,
+        &version,
+        ts.ctx(),
+    );
+    registry_service::register_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        investor2_id,
+        &version,
+        ts.ctx(),
+    );
+
+    registry_service::add_wallet(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor1_id,
+        wallet_addr,
+        &version,
+        ts.ctx(),
+    );
+
+    // try to update investor2 with a wallet of investor1 - should fail
+    registry_service::update_investor<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        &mut namespace,
+        investor2_id,
+        b"Greece".to_string(),
+        vector[wallet_addr],
+        vector[1],
+        vector[1],
+        vector[1],
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts.end();
+}
+
+// test add_wallet
+// test remove_wallet
 
 #[test]
 fun test_set_country() {
