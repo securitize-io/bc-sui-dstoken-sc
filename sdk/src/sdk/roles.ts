@@ -1,7 +1,7 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
-import {RoleTypes} from "./domains/Role";
+import {AbilityType, RoleTypes} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 
 export class Roles {
@@ -148,6 +148,71 @@ export class Roles {
     setExchangePTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('set_exchange', [owner], ptb)
     async setExchange(owner: string, signer: string) {
         const ptb = this.setExchangePTB(owner);
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    // ==== Ability Management Functions ====
+
+    private getRoleTypePath(role: RoleTypes): string {
+        const ROLE_TYPE_MAP: Record<RoleTypes, string> = {
+            none: `${Config.vars.PACKAGE_ID}::trust_service::None`,
+            master: `${Config.vars.PACKAGE_ID}::trust_service::Master`,
+            issuer: `${Config.vars.PACKAGE_ID}::trust_service::Issuer`,
+            exchange: `${Config.vars.PACKAGE_ID}::trust_service::Exchange`,
+            transfer_agent: `${Config.vars.PACKAGE_ID}::trust_service::TransferAgent`,
+        }
+        return ROLE_TYPE_MAP[role]
+    }
+
+    private getAbilityTypePath(ability: AbilityType): string {
+        return `${Config.vars.PACKAGE_ID}::abilities::${ability}`
+    }
+
+    /**
+     * Add an ability to a role. Only Master can call this.
+     */
+    addRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptb?: Transaction): Transaction {
+        ptb ??= new Transaction()
+        const roleType = this.getRoleTypePath(role)
+        const abilityType = this.getAbilityTypePath(ability)
+
+        ptb.moveCall({
+            target: this.getTarget('add_role_ability'),
+            typeArguments: [this.tokenAddress, roleType, abilityType],
+            arguments: [
+                ptb.object(this.tokenDetails.auth),
+                ptb.object(Config.vars.VERSION),
+            ],
+        })
+        return ptb
+    }
+
+    async addRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
+        const ptb = this.addRoleAbilityPTB(role, ability)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    /**
+     * Remove an ability from a role. Only Master can call this.
+     */
+    removeRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptb?: Transaction): Transaction {
+        ptb ??= new Transaction()
+        const roleType = this.getRoleTypePath(role)
+        const abilityType = this.getAbilityTypePath(ability)
+
+        ptb.moveCall({
+            target: this.getTarget('remove_role_ability'),
+            typeArguments: [this.tokenAddress, roleType, abilityType],
+            arguments: [
+                ptb.object(this.tokenDetails.auth),
+                ptb.object(Config.vars.VERSION),
+            ],
+        })
+        return ptb
+    }
+
+    async removeRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
+        const ptb = this.removeRoleAbilityPTB(role, ability)
         return this.buildSetBytes(ptb, signer)
     }
 }

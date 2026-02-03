@@ -5,4 +5,6 @@ export interface Role {
   address: string;
   /** The role to assign */
   role: RoleTypes;
+  /** Ownership type (optional) */
+  ownership?: string;
 }

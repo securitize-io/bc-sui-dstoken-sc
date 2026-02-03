@@ -245,6 +245,79 @@ describe('Roles', () => {
                 'No direct role-to-role change'
             )
         })
+    })
+
+    describe('Ability Management', () => {
+        it('should add ability to issuer role', async () => {
+            // Add SeizeTokens ability to issuer role (issuer doesn't have it by default)
+            await executeTxFunc(roles.addRoleAbility('issuer', 'SeizeTokens', sender))
+        })
+
+        it('should remove ability from issuer role', async () => {
+            // Remove SeizeTokens ability from issuer role
+            await executeTxFunc(roles.removeRoleAbility('issuer', 'SeizeTokens', sender))
+        })
+
+        it('should fail when adding ability that already exists', async () => {
+            // IssueTokens is already assigned to issuer role by default
+            await expect(
+                executeTxFunc(roles.addRoleAbility('issuer', 'IssueTokens', sender))
+            ).rejects.toThrow()
+        })
+
+        it('should fail when removing ability that does not exist', async () => {
+            // Pauser was never added to issuer role
+            await expect(
+                executeTxFunc(roles.removeRoleAbility('issuer', 'Pauser', sender))
+            ).rejects.toThrow()
+        })
+
+        it('should fail when non-master tries to add ability', async () => {
+            const nonMaster = createWallet().toSuiAddress()
+
+            // Assign issuer role to nonMaster
+            await executeTxFunc(roles.setIssuer(nonMaster, sender))
+
+            // Issuer tries to add ability - should fail (only Master has SetAbilities)
+            await expect(
+                executeTxFunc(roles.addRoleAbility('exchange', 'SeizeTokens', nonMaster))
+            ).rejects.toThrow()
+
+            // Clean up
+            await executeTxFunc(roles.removeIssuer(nonMaster, sender))
+        })
+
+        it('should fail when non-master tries to remove ability', async () => {
+            const nonMaster = createWallet().toSuiAddress()
+
+            // Assign issuer role to nonMaster
+            await executeTxFunc(roles.setIssuer(nonMaster, sender))
+
+            // Issuer tries to remove ability - should fail
+            await expect(
+                executeTxFunc(roles.removeRoleAbility('issuer', 'IssueTokens', nonMaster))
+            ).rejects.toThrow()
+
+            // Clean up
+            await executeTxFunc(roles.removeIssuer(nonMaster, sender))
+        })
+
+        it('should not allow removing SetAbilities from master role', async () => {
+            // Try to remove SetAbilities from Master - should fail (protected ability)
+            await expect(
+                executeTxFunc(roles.removeRoleAbility('master', 'SetAbilities', sender))
+            ).rejects.toThrow()
+        })
+
+        it('should add and remove multiple abilities', async () => {
+            // Add multiple abilities to transfer_agent (IssueTokens and MetadataUpdate don't exist by default on transfer_agent)
+            await executeTxFunc(roles.addRoleAbility('transfer_agent', 'IssueTokens', sender))
+            await executeTxFunc(roles.addRoleAbility('transfer_agent', 'MetadataUpdate', sender))
+
+            // Remove them
+            await executeTxFunc(roles.removeRoleAbility('transfer_agent', 'IssueTokens', sender))
+            await executeTxFunc(roles.removeRoleAbility('transfer_agent', 'MetadataUpdate', sender))
+        })
 
         it('should handle multiple role updates sequentially', async () => {
             const testWallet = createWallet().toSuiAddress()

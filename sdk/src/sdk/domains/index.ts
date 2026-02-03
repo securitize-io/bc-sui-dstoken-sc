@@ -1,9 +1,10 @@
+export type { AbilityType } from './AbilityType';
 export * from './Attributes';
 export type { ComplianceRules } from './ComplianceRules';
 export type { CountryComplianceStatus, ComplianceStatus } from './CountryComplianceStatus';
 export type { TokenDescription } from './TokenDescription';
 export type { Owners } from './Owners';
-export type { Role } from './Role';
+export type { Role, RoleTypes } from './Role';
 export type { Multisig } from './Multisig';
 export type { SwapContract } from './SwapContract';
 export type { DeploymentRequest } from './DeploymentRequest';

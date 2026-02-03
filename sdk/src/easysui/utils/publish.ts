@@ -117,7 +117,14 @@ export class PublishSingleton {
         signer ??= ADMIN_KEYPAIR!.toSuiAddress()
         const _packagePath = this.getPackagePath(packagePath)
         const cmd = this.getPublishCmd(_packagePath, signer, true)
-        return execSync(cmd, { encoding: 'utf-8' }).trim()
+        try {
+            return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
+        } catch (e: any) {
+            const stderr = e.stderr?.toString().trim() || ''
+            const stdout = e.stdout?.toString().trim() || ''
+            const output = [stderr, stdout].filter(Boolean).join('\n') || e.message
+            throw new Error(`Publish bytes command failed:\n${output}`)
+        }
     }
 
     static async publishPackage(
@@ -125,7 +132,15 @@ export class PublishSingleton {
         packagePath: string
     ): Promise<SuiTransactionBlockResponse> {
         const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress())
-        const res = execSync(cmd, { encoding: 'utf-8' })
+        let res: string
+        try {
+            res = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
+        } catch (e: any) {
+            const stderr = e.stderr?.toString().trim() || ''
+            const stdout = e.stdout?.toString().trim() || ''
+            const output = [stderr, stdout].filter(Boolean).join('\n') || e.message
+            throw new Error(`Publish command failed:\n${output}`)
+        }
         const match = res.match(/\{[\s\S]*\}/);
         if (!match) {
             throw new Error(`No JSON found in the publish command output: ${res}`);
