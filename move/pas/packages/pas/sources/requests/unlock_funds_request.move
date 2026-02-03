@@ -15,18 +15,18 @@ const ECannotResolveManagedAssets: vector<u8> =
 /// 2. If the asset is not permissioned, it can be resolved by any address by calling `unlock_funds_request::resolve_unrestricted`
 public struct UnlockFundsRequest<phantom T> {
     /// `from` is the wallet OR object address, NOT the vault address
-    from: address,
+    owner: address,
     /// The ID of the vault the funds are coming from
-    from_vault_id: ID,
+    vault_id: ID,
     /// The amount being transferred (initial amount)
     amount: u64,
     /// The actual balance being transferred
     balance: Balance<T>,
 }
 
-public fun from<T>(request: &UnlockFundsRequest<T>): address { request.from }
+public fun owner<T>(request: &UnlockFundsRequest<T>): address { request.owner }
 
-public fun from_vault_id<T>(request: &UnlockFundsRequest<T>): ID { request.from_vault_id }
+public fun vault_id<T>(request: &UnlockFundsRequest<T>): ID { request.vault_id }
 
 public fun amount<T>(request: &UnlockFundsRequest<T>): u64 { request.amount }
 
@@ -44,13 +44,13 @@ public fun resolve_unrestricted<T>(
 }
 
 public(package) fun new<T>(
-    from: address,
-    from_vault_id: ID,
+    owner: address,
+    vault_id: ID,
     balance: Balance<T>,
 ): UnlockFundsRequest<T> {
     UnlockFundsRequest {
-        from,
-        from_vault_id,
+        owner,
+        vault_id,
         amount: balance.value(),
         balance,
     }

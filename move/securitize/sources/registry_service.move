@@ -59,6 +59,8 @@ const EUnknownAttribute: vector<u8> = b"Unknown attribute ID provided";
 const EWrongInvestor: vector<u8> = b"Wallet belongs to a different investor";
 #[error(code = 12)]
 const EComplianceUnchanged: vector<u8> = b"Compliance region is already set to this value";
+#[error(code = 13)]
+const EWalletNotEmpty: vector<u8> = b"Cannot add or remove wallet with non-zero balance";
 
 // ==== Attribute Constants ====
 
@@ -163,6 +165,8 @@ public struct Wallet has drop, store {
     owner: String,
     /// Address that linked this wallet to the investor
     creator: address,
+    /// Wallet token balance
+    wallet_balance: u64,
 }
 
 /// Represents a compliance attribute with value and expiration.
@@ -402,13 +406,19 @@ public fun add_wallet<T>(
     assert!(!investor_info.is_special_wallet(wallet_addr), ESpecialWallet);
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     assert!(!investor_info.is_wallet(wallet_addr), EWalletAlreadyExists);
-    // TODO assert balance == 0
     if (!namespace.vault_exists(wallet_addr)) {
         vault::create_and_share(namespace, wallet_addr);
     };
+
+    // assert!(
+    //     settled_funds_value<T>(root, namespace.vault_address(wallet_addr)) == 0,
+    //     EWalletNotEmpty,
+    // );
+
     let wallet = Wallet {
         owner: investor_id,
         creator: ctx.sender(),
+        wallet_balance: 0,
     };
     investor_info.investor_wallets.add(wallet_addr, wallet);
     investor_info.investors.borrow_mut(investor_id).wallets.push_back(wallet_addr);
@@ -433,11 +443,9 @@ public fun remove_wallet<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RemoveWallet>(ctx.sender()), ENotAuthorized);
     assert!(investor_info.is_wallet(wallet_addr), EWalletNotFound);
-    assert!(
-        investor_info.investor_wallets.borrow(wallet_addr).owner == investor_id,
-        EWalletDoesNotBelongToInvestor,
-    );
-    // TODO assert balance == 0
+    let wallet = investor_info.investor_wallets.borrow(wallet_addr);
+    assert!(wallet.owner == investor_id, EWalletDoesNotBelongToInvestor);
+    assert!(wallet.wallet_balance == 0, EWalletNotEmpty);
     investor_info.investor_wallets.remove(wallet_addr);
     let wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);
@@ -559,6 +567,16 @@ public fun investor_wallet_balance_total<T>(
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     let investor = investor_info.investors.borrow(investor_id);
     investor.total_balance
+}
+
+/// Returns the total token balance across all wallets for an investor.
+///
+/// # Aborts
+/// * `EInvestorNotFound` - If the investor does not exist
+public fun investor_wallet_balance<T>(investor_info: &InvestorInfo<T>, wallet_addr: address): u64 {
+    assert!(investor_info.is_wallet(wallet_addr), EWalletNotFound);
+    let wallet = investor_info.investor_wallets.borrow(wallet_addr);
+    wallet.wallet_balance
 }
 
 /// Returns whether an investor has accredited status.
@@ -691,6 +709,16 @@ public(package) fun update_investor_total_balance<T>(
 ) {
     let investor = investor_info.investors.borrow_mut(investor_id);
     investor.total_balance = new_total_balance;
+}
+
+/// Sets the total token balance for an investor.
+public(package) fun update_wallet_balance<T>(
+    investor_info: &mut InvestorInfo<T>,
+    wallet_addr: address,
+    new_wallet_balance: u64,
+) {
+    let wallet = investor_info.investor_wallets.borrow_mut(wallet_addr);
+    wallet.wallet_balance = new_wallet_balance;
 }
 
 /// Sets the compliance region for a given country code.

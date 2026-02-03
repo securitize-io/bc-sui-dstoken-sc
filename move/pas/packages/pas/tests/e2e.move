@@ -106,10 +106,10 @@ fun test_address_and_derivation_matches() {
             scenario.ctx(),
         );
 
-        assert_eq!(transfer_request.from(), @0x1);
-        assert_eq!(transfer_request.to(), @0x2);
-        assert_eq!(transfer_request.from_vault_id(), user_one_vault_id);
-        assert_eq!(transfer_request.to_vault_id(), user_two_vault_id);
+        assert_eq!(transfer_request.sender(), @0x1);
+        assert_eq!(transfer_request.recipient(), @0x2);
+        assert_eq!(transfer_request.sender_vault_id(), user_one_vault_id);
+        assert_eq!(transfer_request.recipient_vault_id(), user_two_vault_id);
         assert_eq!(transfer_request.amount(), 50);
 
         // Both scenarios must calculate the from/to equivalent.
@@ -119,10 +119,10 @@ fun test_address_and_derivation_matches() {
             50,
             scenario.ctx(),
         );
-        assert_eq!(safe_request.from(), @0x1);
-        assert_eq!(safe_request.to(), @0x2);
-        assert_eq!(safe_request.from_vault_id(), user_one_vault_id);
-        assert_eq!(safe_request.to_vault_id(), user_two_vault_id);
+        assert_eq!(safe_request.sender(), @0x1);
+        assert_eq!(safe_request.recipient(), @0x2);
+        assert_eq!(safe_request.sender_vault_id(), user_one_vault_id);
+        assert_eq!(safe_request.recipient_vault_id(), user_two_vault_id);
         assert_eq!(safe_request.amount(), 50);
 
         destroy(transfer_request);
@@ -227,7 +227,8 @@ fun try_to_disable_clawbacks_for_managed_assets() {
         scenario.next_tx(@0x1);
 
         // Try to disable clawbacks.
-        managed_rule.enable_funds_management(AWitness(), false);
+        let mut cap = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
+        managed_rule.enable_funds_management(&mut cap, false);
 
         abort
     });
@@ -357,10 +358,13 @@ fun authenticate_with_uid() {
             scenario.ctx(),
         );
 
-        assert_eq!(transfer_request.from(), uid_address);
-        assert_eq!(transfer_request.to(), @0x2);
-        assert_eq!(transfer_request.from_vault_id(), namespace.vault_address(uid_address).to_id());
-        assert_eq!(transfer_request.to_vault_id(), namespace.vault_address(@0x2).to_id());
+        assert_eq!(transfer_request.sender(), uid_address);
+        assert_eq!(transfer_request.recipient(), @0x2);
+        assert_eq!(
+            transfer_request.sender_vault_id(),
+            namespace.vault_address(uid_address).to_id(),
+        );
+        assert_eq!(transfer_request.recipient_vault_id(), namespace.vault_address(@0x2).to_id());
         assert_eq!(transfer_request.amount(), 50);
 
         destroy(transfer_request);
@@ -381,8 +385,8 @@ fun test_unlock_request_getters() {
 
         let unlock_request = vault.unlock_funds<A>(&auth, 50, scenario.ctx());
 
-        assert_eq!(unlock_request.from(), @0x1);
-        assert_eq!(unlock_request.from_vault_id(), namespace.vault_address(@0x1).to_id());
+        assert_eq!(unlock_request.owner(), @0x1);
+        assert_eq!(unlock_request.vault_id(), namespace.vault_address(@0x1).to_id());
         assert_eq!(unlock_request.amount(), 50);
 
         destroy(unlock_request);
@@ -419,11 +423,16 @@ public macro fun test_tx(
     let mut namespace = scenario.take_shared<pas::namespace::Namespace>();
 
     let mut rule_a = pas::rule::new(&mut namespace, internal::permit<A>(), AWitness());
-    rule_a.enable_funds_management(AWitness(), true);
+
+    let mut cap_a = sui::coin::create_treasury_cap_for_testing<A>(scenario.ctx());
+    rule_a.enable_funds_management(&mut cap_a, true);
+    std::unit_test::destroy(cap_a);
     rule_a.share();
 
     let mut rule_b = pas::rule::new(&mut namespace, internal::permit<B>(), BWitness());
-    rule_b.enable_funds_management(BWitness(), false);
+    let mut cap_b = sui::coin::create_treasury_cap_for_testing<B>(scenario.ctx());
+    rule_b.enable_funds_management(&mut cap_b, false);
+    std::unit_test::destroy(cap_b);
     rule_b.share();
 
     scenario.next_tx($admin);

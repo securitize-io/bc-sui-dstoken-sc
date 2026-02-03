@@ -17,42 +17,44 @@ use sui::balance::{Self, Balance};
 ///   - Handle dividends/distributions
 ///   - Implement any jurisdiction-specific rules
 public struct TransferFundsRequest<phantom T> {
-    /// `from` is the wallet OR object address, NOT the vault address
-    from: address,
-    /// `to` is the wallet OR object address, NOT the vault address
-    to: address,
+    /// `sender` is the wallet OR object address, NOT the vault address
+    sender: address,
+    /// `recipient` is the wallet OR object address, NOT the vault address
+    recipient: address,
     /// The ID of the vault the funds are coming from
-    from_vault_id: ID,
+    sender_vault_id: ID,
     /// The ID of the vault the funds are going to
-    to_vault_id: ID,
+    recipient_vault_id: ID,
     /// The amount being transferred (original)
     amount: u64,
     /// The actual balance being transferred
     balance: Balance<T>,
 }
 
-public fun from<T>(request: &TransferFundsRequest<T>): address { request.from }
+public fun sender<T>(request: &TransferFundsRequest<T>): address { request.sender }
 
-public fun to<T>(request: &TransferFundsRequest<T>): address { request.to }
+public fun recipient<T>(request: &TransferFundsRequest<T>): address { request.recipient }
 
-public fun from_vault_id<T>(request: &TransferFundsRequest<T>): ID { request.from_vault_id }
+public fun sender_vault_id<T>(request: &TransferFundsRequest<T>): ID { request.sender_vault_id }
 
-public fun to_vault_id<T>(request: &TransferFundsRequest<T>): ID { request.to_vault_id }
+public fun recipient_vault_id<T>(request: &TransferFundsRequest<T>): ID {
+    request.recipient_vault_id
+}
 
 public fun amount<T>(request: &TransferFundsRequest<T>): u64 { request.amount }
 
 public(package) fun new<T>(
-    from: address,
-    to: address,
-    from_vault_id: ID,
-    to_vault_id: ID,
+    sender: address,
+    recipient: address,
+    sender_vault_id: ID,
+    recipient_vault_id: ID,
     balance: Balance<T>,
 ): TransferFundsRequest<T> {
     TransferFundsRequest {
-        from,
-        to,
-        from_vault_id,
-        to_vault_id,
+        sender,
+        recipient,
+        sender_vault_id,
+        recipient_vault_id,
         amount: balance.value(),
         balance,
     }
@@ -62,6 +64,6 @@ public(package) fun new<T>(
 /// WARNING: This must only be called by `rule.move` after verifying the witness,
 /// it should never become public.
 public(package) fun resolve<T>(request: TransferFundsRequest<T>) {
-    let TransferFundsRequest { balance, to_vault_id, .. } = request;
-    balance::send_funds(balance, to_vault_id.to_address());
+    let TransferFundsRequest { balance, recipient_vault_id, .. } = request;
+    balance::send_funds(balance, recipient_vault_id.to_address());
 }

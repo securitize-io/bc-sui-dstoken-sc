@@ -33,7 +33,7 @@ async function deployToken(tokenSymbol: string): Promise<string[]> {
     const moveToml = MOVE_TOML
         .replaceAll('{MODULE}', module)
         .replaceAll('{SECURITIZE_PACKAGE_PATH}', securitizePackagePath)
-        .replaceAll('{PAS_PACKAGE_PATH}', securitizePackagePath.replace('securitize', 'pas')) // TODO: Replace this with mvr package when PAS is ready
+        .replaceAll('{PAS_PACKAGE_PATH}', securitizePackagePath.replace('securitize', 'pas/packages/pas')) // TODO: Replace this with mvr package when PAS is ready
     fs.writeFileSync(path.join(tempDir, 'Move.toml'), moveToml)
 
     // Write the contract source file

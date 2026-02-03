@@ -4,4 +4,4 @@ edition = "2024"
 
 [dependencies]
 securitize = { local = "../securitize" }
-pas = { local = "../pas" }
+pas = { local = "../pas/packages/pas" }

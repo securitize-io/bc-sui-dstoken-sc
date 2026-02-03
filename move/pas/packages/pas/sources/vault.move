@@ -65,7 +65,7 @@ public fun unlock_funds<T>(
     amount: u64,
     _ctx: &mut TxContext,
 ): UnlockFundsRequest<T> {
-    auth.assert_is_valid_for_vault(vault);
+    auth.assert_is_valid_for_vault!(vault);
     unlock_funds_request::new(vault.owner, vault.id.to_inner(), vault.withdraw(amount))
 }
 
@@ -77,7 +77,7 @@ public fun transfer_funds<T>(
     amount: u64,
     _ctx: &mut TxContext,
 ): TransferFundsRequest<T> {
-    auth.assert_is_valid_for_vault(from);
+    auth.assert_is_valid_for_vault!(from);
     from.internal_transfer_funds<T>(to.owner, amount)
 }
 
@@ -93,7 +93,7 @@ public fun unsafe_transfer_funds<T>(
     amount: u64,
     _ctx: &mut TxContext,
 ): TransferFundsRequest<T> {
-    auth.assert_is_valid_for_vault(from);
+    auth.assert_is_valid_for_vault!(from);
     from.internal_transfer_funds<T>(recipient_address, amount)
 }
 
@@ -120,7 +120,9 @@ public(package) fun withdraw<T>(vault: &mut Vault, amount: u64): Balance<T> {
 }
 
 /// Verify that the ownership proof matches the vaults owner.
-public(package) fun assert_is_valid_for_vault(proof: &Auth, vault: &Vault) {
+macro fun assert_is_valid_for_vault($proof: &Auth, $vault: &Vault) {
+    let proof = $proof;
+    let vault = $vault;
     assert!(&proof.0 == &vault.owner, ENotOwner);
 }
 

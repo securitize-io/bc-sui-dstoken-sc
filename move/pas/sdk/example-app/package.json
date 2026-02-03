@@ -1,0 +1,19 @@
+{
+	"name": "pas-example-app",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Example application demonstrating the PAS SDK usage",
+	"scripts": {
+		"extension": "tsx src/extension-example.ts"
+	},
+	"peerDependencies": {
+		"@mysten/sui": "workspace:^"
+	},
+	"devDependencies": {
+		"@mysten/sui": "^2.0.1",
+		"@types/node": "^25.0.8",
+		"tsx": "^4.19.2",
+		"typescript": "^5.9.3"
+	}
+}
