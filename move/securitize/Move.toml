@@ -3,4 +3,4 @@ name = "securitize"
 edition = "2024" # edition = "legacy" to use legacy (pre-2024) Move
 
 [dependencies]
-pas = { git = "git@github.com:MystenLabs/pas.git", subdir = "packages/pas", rev = "main" }
+pas = { local = "../pas/packages/pas" }

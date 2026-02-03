@@ -1,0 +1,6 @@
+[package]
+name = "pas"
+edition = "2024.beta"
+
+[dependencies]
+ptb = { local = "../ptb" }

@@ -435,14 +435,9 @@ public fun remove_wallet<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RemoveWallet>(ctx.sender()), ENotAuthorized);
     assert!(investor_info.is_wallet(wallet_addr), EWalletNotFound);
-    assert!(
-        investor_info.investor_wallets.borrow(wallet_addr).owner == investor_id,
-        EWalletDoesNotBelongToInvestor,
-    );
-    assert!(
-        investor_info.investor_wallets.borrow(wallet_addr).wallet_balance == 0,
-        EWalletNotEmpty,
-    );
+    let wallet = investor_info.investor_wallets.borrow(wallet_addr);
+    assert!(wallet.owner == investor_id, EWalletDoesNotBelongToInvestor);
+    assert!(wallet.wallet_balance == 0, EWalletNotEmpty);
     investor_info.investor_wallets.remove(wallet_addr);
     let wallets = investor_info.investors.borrow_mut(investor_id).wallets;
     let idx = wallets.find_index!(|k| k == wallet_addr).destroy_or!(abort EWalletNotFound);

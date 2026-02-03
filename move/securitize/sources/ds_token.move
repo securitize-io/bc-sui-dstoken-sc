@@ -397,7 +397,7 @@ public fun seize<T>(
 
         let wallet_balance = investors.investor_wallet_balance(from_address);
         assert!(wallet_balance >= value, ENotEnoughBalance);
-        investors.update_wallet_balance(to_address, wallet_balance - value);
+        investors.update_wallet_balance(from_address, wallet_balance - value);
     };
     emit_seize_event<T>(from_address, to_address, value, reason);
     emit_transfer_event<T>(from_address, to_address, value);
@@ -462,7 +462,7 @@ public fun transfer<T>(
 
         let wallet_balance = investors.investor_wallet_balance(from_address);
         assert!(wallet_balance >= value, ENotEnoughBalance);
-        investors.update_wallet_balance(to_address, wallet_balance - value);
+        investors.update_wallet_balance(from_address, wallet_balance - value);
     };
     // Resolve the request
     rule.resolve_transfer_funds(request, DsProtocol());
