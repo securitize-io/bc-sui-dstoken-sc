@@ -3,6 +3,7 @@ module securitize::investor_limits_tests;
 
 use securitize::{
     investor_limits,
+    registry_service::InvestorInfo,
     rule_wrapper::{unwrap_init, new_update, unwrap_update},
     test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
@@ -79,6 +80,358 @@ fun test_new_unauthorized() {
         ts.ctx(),
     );
     let _ = unwrap_init(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_new_total_limit_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_total_limit<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        2000,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_minimum_total_investors_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_minimum_total_investors<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        20,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_us_limit_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_us_limit<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        1000,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_us_accredited_limit_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_us_accredited_limit<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        300,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_non_accredited_limit_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_non_accredited_limit<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        150,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_jp_limit_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_jp_limit<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        100,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_eu_retail_limit_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_eu_retail_limit<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        150,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = investor_limits::ENotAuthorized)]
+fun test_set_max_us_percentage_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let _rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000,
+        10,
+        500,
+        200,
+        100,
+        50,
+        75,
+        25,
+        &version,
+        ts.ctx(),
+    );
+
+    ts.next_tx(UNAUTHORIZED);
+
+    let rule = _rule.unwrap_init();
+    let mut wrapper = new_update(rule);
+
+    investor_limits::set_max_us_percentage<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        50,
+        &version,
+        ts.ctx(),
+    );
+
+    unwrap_update(wrapper);
 
     ts::return_shared(auth);
     ts::return_shared(version);
@@ -710,6 +1063,499 @@ fun test_set_max_us_percentage() {
     assert!(investor_limits::max_us_percentage(&rule) == 50, 0);
 
     ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+// tests for validations
+
+#[test]
+fun test_validate_investor_limits_for_transfer_to_us_passes() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+    // init_coin_registry(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    // let mut registry = ts.take_shared<CoinRegistry>();
+    let version = ts.take_shared<Version>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_transfer<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        true,
+        true,
+        true,
+        1, // US country
+        b"California".to_string(),
+        true,
+        true,
+        true,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_transfer_to_eu_passes() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    let country = b"Greece".to_string();
+    let investor_id = b"investor_123".to_string();
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    investor_info.register_investor(&auth, investor_id, &version, ts.ctx());
+    investor_info.set_attribute(&auth, investor_id, 2, 2, 500, &version, ts.ctx());
+    investor_info.set_country_compliance<TEST_VOLORO>(country, 2); // EU country
+    assert!(investor_info.get_country_compliance(country) == 2, 0);
+
+    investor_info.set_country<TEST_VOLORO>(&auth, investor_id, country, &version, ts.ctx());
+    investor_info.update_investor_total_balance(investor_id, 1000);
+    investor_info.adjust_investors_counts_by_country(
+        investor_id,
+        country,
+        true,
+    );
+
+    assert!(investor_info.get_eu_retail_investor_count(country).is_some() == true, 1);
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        100, // also tests validate_issuance_eu_retail flow
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_transfer<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        true,
+        true,
+        true,
+        2, // EU country
+        country,
+        true,
+        false,
+        true,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_transfer_to_jp_passes() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let version = ts.take_shared<Version>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_transfer<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        true,
+        true,
+        true,
+        8, // JP country
+        b"Tokyo".to_string(),
+        true,
+        true,
+        true,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_transfer_to_eu__not_accredited_passes() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    let country = b"Greece".to_string();
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_transfer<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        true,
+        true,
+        true,
+        2, // EU country
+        country,
+        false,
+        true,
+        true,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_issuance_returns_when_non_new_investor() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_issuance<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        1, // US region
+        b"California".to_string(),
+        true,
+        true,
+        false,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_issuance_passes_when_total_investors_under_limit() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_issuance<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        1, // US region
+        b"California".to_string(),
+        false,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_issuance_returns_when_is_accredited() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_issuance<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        1, // US region
+        b"California".to_string(),
+        true,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_issuance_returns_when_is_not_accredited() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_issuance<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        1, // US region
+        b"California".to_string(),
+        false,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_issuance_passes_to_eu_region() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        0,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    let region = 2; // EU region
+    let country = b"Germany".to_string();
+
+    investor_info.set_eu_retail_investors_country_if_not_exists<TEST_VOLORO>(country); // EU country
+
+    assert!(investor_info.get_eu_retail_investor_count(country).is_some() == true, 1);
+
+    investor_limits::validate_investor_limits_for_issuance<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        region, // EU region
+        country,
+        true,
+        false,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_investor_limits_for_issuance_passes_to_jp_region() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        10,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_investor_limits_for_issuance<TEST_VOLORO>(
+        &(rule.unwrap_init()),
+        &investor_info,
+        8, // JP region
+        b"Kyoto".to_string(),
+        false,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_validate_us_investor_limits_passes_when_to_is_accredited() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    let rule = investor_limits::new<TEST_VOLORO>(
+        &auth,
+        1000, // total_investors_limit
+        0,
+        500, // us_investors_limit
+        200, // us_accredited_limit
+        100, // non_accredited_limit
+        10,
+        0,
+        50, // max_us_percentage
+        &version,
+        ts.ctx(),
+    );
+
+    investor_limits::validate_us_investor_limits(
+        &(rule.unwrap_init()),
+        &investor_info,
+        true,
+        true,
+        false,
+        true,
+        true,
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
     ts::return_shared(version);
     ts.end();
 }
