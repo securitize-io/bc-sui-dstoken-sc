@@ -90,7 +90,7 @@ public(package) fun new<T: key>(
     auth: &mut Auth<T>,
     namespace: &mut Namespace,
     rule_permit: internal::Permit<T>,
-    treasury_cap: TreasuryCap<T>,
+    mut treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
     ctx: &TxContext,
@@ -117,7 +117,7 @@ public(package) fun new<T: key>(
     // Register PAS rule
     let clawback = true;
     let mut rule = rule::new(namespace, rule_permit, DsProtocol());
-    rule.enable_funds_management(DsProtocol(), clawback);
+    rule.enable_funds_management(&mut treasury_cap, clawback);
     rule.share();
 
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
@@ -266,6 +266,11 @@ fun issue_tokens_internal<T>(
         let new_total = try_from_u256_to_u64(new_total_u256);
         investors.update_investor_total_balance(id, new_total);
 
+        let wallet_balance = investors.investor_wallet_balance(to);
+        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
+        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
+        investors.update_wallet_balance(to, new_balance);
+
         let mut i = 0;
         while (i < values_locked.length()) {
             let value_locked = values_locked[i];
@@ -309,8 +314,6 @@ public fun burn<T>(
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     assert!(from.owner() == from_address, EVaultOwnerMismatch);
 
-    // TODO: Bring back once we have object balance reads.
-    // assert!(from.balance<T>() >= value, ENotEnoughBalance);
     compliance_service::validate_burn(investors, from_address, value);
     let balance = rule.clawback_funds(
         from,
@@ -329,6 +332,12 @@ public fun burn<T>(
         investors.update_investor_total_balance(
             id,
             ((total_balance as u128) - (value as u128)) as u64,
+        );
+        let wallet_balance = investors.investor_wallet_balance(from_address);
+        assert!(wallet_balance >= value, ENotEnoughBalance);
+        investors.update_wallet_balance(
+            from_address,
+            ((wallet_balance as u128) - (value as u128)) as u64,
         );
     };
     emit_burn_event<T>(from_address, value, reason);
@@ -359,8 +368,6 @@ public fun seize<T>(
     assert!(from.owner() == from_address, EVaultOwnerMismatch);
     assert!(to.owner() == to_address, EVaultOwnerMismatch);
 
-    // TODO: Bring back once we have object balance reads.
-    // assert!(from.balance<T>() >= value, ENotEnoughBalance);
     compliance_service::validate_seize(investors, from_address, to_address, value);
     // Withdraw from the investor's vault and deposit to the treasury's vault
     let balance = rule.clawback_funds(
@@ -376,12 +383,21 @@ public fun seize<T>(
         let new_total_u256 = (total_balance as u256) + (value as u256);
         let new_total = try_from_u256_to_u64(new_total_u256);
         investors.update_investor_total_balance(id, new_total);
+
+        let wallet_balance = investors.investor_wallet_balance(to_address);
+        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
+        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
+        investors.update_wallet_balance(to_address, new_balance);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
         let total_balance = investors.investor_wallet_balance_total(id);
         assert!(total_balance >= value, ENotEnoughBalance);
         investors.update_investor_total_balance(id, (total_balance - value));
+
+        let wallet_balance = investors.investor_wallet_balance(from_address);
+        assert!(wallet_balance >= value, ENotEnoughBalance);
+        investors.update_wallet_balance(to_address, wallet_balance - value);
     };
     emit_seize_event<T>(from_address, to_address, value, reason);
     emit_transfer_event<T>(from_address, to_address, value);
@@ -403,8 +419,8 @@ public fun transfer<T>(
     clock: &Clock,
 ) {
     version.check_is_valid();
-    let from_address = request.from();
-    let to_address = request.to();
+    let from_address = request.sender();
+    let to_address = request.recipient();
     let value = request.amount();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
@@ -429,6 +445,11 @@ public fun transfer<T>(
         let new_total_u256 = (total_balance as u256) + (value as u256);
         let new_total = try_from_u256_to_u64(new_total_u256);
         investors.update_investor_total_balance(id, new_total);
+
+        let wallet_balance = investors.investor_wallet_balance(to_address);
+        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
+        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
+        investors.update_wallet_balance(to_address, new_balance);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
@@ -436,8 +457,12 @@ public fun transfer<T>(
         assert!(total_balance >= value, ENotEnoughBalance);
         investors.update_investor_total_balance(
             id,
-            ((total_balance as u128) - (value as u128)) as u64,
+            total_balance - value,
         );
+
+        let wallet_balance = investors.investor_wallet_balance(from_address);
+        assert!(wallet_balance >= value, ENotEnoughBalance);
+        investors.update_wallet_balance(to_address, wallet_balance - value);
     };
     // Resolve the request
     rule.resolve_transfer_funds(request, DsProtocol());

@@ -147,8 +147,8 @@ public(package) fun validate_transfer<T>(
 ) {
     version.check_is_valid();
 
-    let from_address = request.from();
-    let to_address = request.to();
+    let from_address = request.sender();
+    let to_address = request.recipient();
     let amount = request.amount();
 
     assert!(
