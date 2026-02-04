@@ -85,16 +85,16 @@ export class Roles {
         }
 
         const REMOVE_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
-            issuer: this.removeIssuerPTB.bind(this),
-            exchange: this.removeExchangePTB.bind(this),
-            transfer_agent: this.removeTransferAgentPTB.bind(this),
+            issuer: this.removeIssuerPTB,
+            exchange: this.removeExchangePTB,
+            transfer_agent: this.removeTransferAgentPTB,
         }
 
         const ADD_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
-            master: this.setServiceOwnerPTB.bind(this),
-            issuer: this.setIssuerPTB.bind(this),
-            exchange: this.setExchangePTB.bind(this),
-            transfer_agent: this.setTransferAgentPTB.bind(this),
+            master: this.setServiceOwnerPTB,
+            issuer: this.setIssuerPTB,
+            exchange: this.setExchangePTB,
+            transfer_agent: this.setTransferAgentPTB,
         }
 
         if (currentRole in REMOVE_MAPPING) {

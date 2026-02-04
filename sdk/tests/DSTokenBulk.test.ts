@@ -8,15 +8,14 @@ import {
     TokenIssue,
     Investor,
 } from '../src'
-import {deploy} from '../src/sdk/utils/deploy'
+import { deploy } from '../src/sdk/utils/deploy'
 import {
     assertInvestorBalance,
     createTestToken,
     executeTxFunc,
     registerInvestor,
 } from './test_utils'
-import {Keypair} from '@mysten/sui/cryptography'
-import {BulkTokenBurn} from "../src/sdk/domains/TokenIssue";
+import { Keypair } from '@mysten/sui/cryptography'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -50,7 +49,7 @@ describe('DSTokenBulk', () => {
         await registerInvestor(tokenAddress, 'investor2', [investor2.toSuiAddress()])
         await registerInvestor(tokenAddress, 'investor3', [investor3.toSuiAddress()])
 
-        investors = Array.from({length: numberOfInvestors}).map(
+        investors = Array.from({ length: numberOfInvestors }).map(
             (_, i) =>
                 ({
                     id: `bulk_investor_${i}`,
@@ -66,9 +65,14 @@ describe('DSTokenBulk', () => {
             expect(totalIssuedBefore).toBe('0')
 
             bulkTokenIssue.wallets = [
-                {to: investor1.toSuiAddress(), value: 1_000_000n, reasonCode: 0, reasonString: ''},
-                {to: investor2.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: ''},
-                {to: investor3.toSuiAddress(), value: 250_000n, reasonCode: 0, reasonString: ''},
+                {
+                    to: investor1.toSuiAddress(),
+                    value: 1_000_000n,
+                    reasonCode: 0,
+                    reasonString: '',
+                },
+                { to: investor2.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: '' },
+                { to: investor3.toSuiAddress(), value: 250_000n, reasonCode: 0, reasonString: '' },
             ]
             await executeTxFunc(dsTokenBulk.issueBulk(bulkTokenIssue))
 
@@ -83,9 +87,9 @@ describe('DSTokenBulk', () => {
         it('should burn tokens from multiple investors in a single transaction', async () => {
             // Before: investor1=1,000,000, investor2=500,000, investor3=250,000, total=1,750,000
             bulkTokenIssue.wallets = [
-                {to: investor1.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: ''},
-                {to: investor2.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: ''},
-                {to: investor3.toSuiAddress(), value: 200_000n, reasonCode: 0, reasonString: ''},
+                { to: investor1.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: '' },
+                { to: investor2.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: '' },
+                { to: investor3.toSuiAddress(), value: 200_000n, reasonCode: 0, reasonString: '' },
             ]
             // Total burned: 500k + 500k + 200k = 1,200,000
             await executeTxFunc(dsTokenBulk.burnBulk(bulkTokenIssue))
@@ -100,9 +104,9 @@ describe('DSTokenBulk', () => {
 
             // Re-issue tokens to restore balances for subsequent tests
             bulkTokenIssue.wallets = [
-                {to: investor1.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: ''},
-                {to: investor2.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: ''},
-                {to: investor3.toSuiAddress(), value: 200_000n, reasonCode: 0, reasonString: ''},
+                { to: investor1.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: '' },
+                { to: investor2.toSuiAddress(), value: 500_000n, reasonCode: 0, reasonString: '' },
+                { to: investor3.toSuiAddress(), value: 200_000n, reasonCode: 0, reasonString: '' },
             ]
             await executeTxFunc(dsTokenBulk.issueBulk(bulkTokenIssue))
             // After re-issue: investor1=1,000,000, investor2=500,000, investor3=250,000, total=1,750,000
@@ -111,7 +115,9 @@ describe('DSTokenBulk', () => {
         it('should issue tokens to a single investor', async () => {
             const totalIssuedBefore = await dsToken.getTotalIssued()
 
-            bulkTokenIssue.wallets = [{to: investor1.toSuiAddress(), value: 300_000n, reasonCode: 0, reasonString: ''}]
+            bulkTokenIssue.wallets = [
+                { to: investor1.toSuiAddress(), value: 300_000n, reasonCode: 0, reasonString: '' },
+            ]
 
             await executeTxFunc(dsTokenBulk.issueBulk(bulkTokenIssue))
 
@@ -125,9 +131,9 @@ describe('DSTokenBulk', () => {
             const totalIssuedBefore = await dsToken.getTotalIssued()
 
             bulkTokenIssue.wallets = [
-                {to: investor2.toSuiAddress(), value: 100_000n, reasonCode: 0, reasonString: ''},
-                {to: investor2.toSuiAddress(), value: 200_000n, reasonCode: 0, reasonString: ''},
-                {to: investor2.toSuiAddress(), value: 150_000n, reasonCode: 0, reasonString: ''},
+                { to: investor2.toSuiAddress(), value: 100_000n, reasonCode: 0, reasonString: '' },
+                { to: investor2.toSuiAddress(), value: 200_000n, reasonCode: 0, reasonString: '' },
+                { to: investor2.toSuiAddress(), value: 150_000n, reasonCode: 0, reasonString: '' },
             ]
 
             await executeTxFunc(dsTokenBulk.issueBulk(bulkTokenIssue))
@@ -153,9 +159,24 @@ describe('DSTokenBulk', () => {
             const totalIssuedBefore = await dsToken.getTotalIssued()
 
             bulkTokenIssue.wallets = [
-                {to: investor1.toSuiAddress(), value: 10_000_000n, reasonCode: 0, reasonString: ''},
-                {to: investor2.toSuiAddress(), value: 20_000_000n, reasonCode: 0, reasonString: ''},
-                {to: investor3.toSuiAddress(), value: 30_000_000n, reasonCode: 0, reasonString: ''},
+                {
+                    to: investor1.toSuiAddress(),
+                    value: 10_000_000n,
+                    reasonCode: 0,
+                    reasonString: '',
+                },
+                {
+                    to: investor2.toSuiAddress(),
+                    value: 20_000_000n,
+                    reasonCode: 0,
+                    reasonString: '',
+                },
+                {
+                    to: investor3.toSuiAddress(),
+                    value: 30_000_000n,
+                    reasonCode: 0,
+                    reasonString: '',
+                },
             ]
 
             await executeTxFunc(dsTokenBulk.issueBulk(bulkTokenIssue))
@@ -211,7 +232,7 @@ describe('DSTokenBulk', () => {
             )
             const bulkTokenBurn = {
                 identity: sender,
-                wallets: tokenBurns
+                wallets: tokenBurns,
             }
             await dsTokenBulk.burnExecution(bulkTokenBurn, ADMIN_KEYPAIR!)
 

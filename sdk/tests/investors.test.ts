@@ -37,7 +37,9 @@ describe('Investors', () => {
     })
 
     it('registerInvestor the same investor', async () => {
-        await expect(executeTxFunc(investors.registerInvestor(testInvestor1, sender))).rejects.toThrow()
+        await expect(
+            executeTxFunc(investors.registerInvestor(testInvestor1, sender))
+        ).rejects.toThrow()
         await executeTxFunc(investors.registerInvestorIfNotExists(testInvestor1, sender))
         await expect(investors.isInvestor(testInvestor1, sender)).resolves.toBe(true)
     })

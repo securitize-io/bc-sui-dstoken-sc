@@ -36,24 +36,13 @@ export class Wallets {
     private buildWalletPTB(func: string, wallet: string, ptbDetails?: PTBDetails) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
-        ptb.moveCall({
-            target: this.getTarget(func),
-            typeArguments: [this.tokenAddress],
-            arguments: [
-                ptbDetails.tokenDetails?.investorInfo || ptb.object(this.tokenDetails.investorInfo),
-                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
-                ptb.object(Config.vars.PAS_NAMESPACE),
-                ptb.pure.address(wallet),
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-        return ptb
+        return this.buildWalletPTBSimple(func, wallet, ptbDetails, [ptb.object(Config.vars.PAS_NAMESPACE)])
     }
 
     /**
      * Helper function to build wallet PTB calls without PAS_NAMESPACE
      */
-    private buildWalletPTBSimple(func: string, wallet: string, ptbDetails?: PTBDetails) {
+    private buildWalletPTBSimple(func: string, wallet: string, ptbDetails?: PTBDetails, args: any[] = []) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
         ptb.moveCall({
@@ -62,6 +51,7 @@ export class Wallets {
             arguments: [
                 ptbDetails.tokenDetails?.investorInfo || ptb.object(this.tokenDetails.investorInfo),
                 ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
+                ...args,
                 ptb.pure.address(wallet),
                 ptb.object(Config.vars.VERSION),
             ],

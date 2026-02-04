@@ -145,14 +145,18 @@ describe('CombinedIssuanceBulk', () => {
             await combinedIssuanceBulk.registerExecution(investorList, ADMIN_KEYPAIR!)
 
             for (let i = 0; i < numberOfInvestors; i++) {
-                await expect(
-                    investors.isInvestor(`b_investor_${i}`, sender)
-                ).resolves.toBe(true)
-                await assertInvestorBalance(tokenAddress, `b_investor_${i}`, tokenPerInvestor.toString())
+                await expect(investors.isInvestor(`b_investor_${i}`, sender)).resolves.toBe(true)
+                await assertInvestorBalance(
+                    tokenAddress,
+                    `b_investor_${i}`,
+                    tokenPerInvestor.toString()
+                )
             }
 
             const totalIssuedAfter = await dsToken.getTotalIssued()
-            expect(totalIssuedAfter).toBe((parseInt(totalIssuedBefore) + numberOfInvestors * tokenPerInvestor).toString())
+            expect(totalIssuedAfter).toBe(
+                (parseInt(totalIssuedBefore) + numberOfInvestors * tokenPerInvestor).toString()
+            )
         }, 300000)
     })
 })
