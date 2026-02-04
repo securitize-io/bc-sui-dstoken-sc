@@ -1,5 +1,15 @@
 # @securitize/sui-sdk
 
+## 1.8.5
+
+### Patch Changes
+
+- Fixing issuance function
+- Include console.log errors
+- Implement latest version
+- Include console.log on autodeployment feature
+- fixing roles
+
 ## 1.8.4
 
 ### Patch Changes
