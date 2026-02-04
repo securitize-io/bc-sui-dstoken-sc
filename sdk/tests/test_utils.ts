@@ -3,8 +3,10 @@ import {
     ComplianceRules,
     CountryComplianceStatus,
     createDSToken,
+    createWallet,
     DeploymentRequest,
     Investors,
+    Owners,
     SuiClient,
 } from '../src'
 import { Keypair } from '@mysten/sui/cryptography'
@@ -67,19 +69,31 @@ export const countriesComplianceStatuses: CountryComplianceStatus[] = [
     },
 ]
 
+export const owners: Owners = {
+    tokenOwner: ADMIN_KEYPAIR!.toSuiAddress(),
+    walletRegistrarOwner: createWallet().toSuiAddress(),
+    walletRegistrarOwnerType: createWallet().toSuiAddress(),
+    redemptionAddress: createWallet().toSuiAddress(),
+    omnibusTBEAddress: createWallet().toSuiAddress(),
+}
+
 export async function createTestToken(
     complianceRules?: ComplianceRules,
-    countriesComplianceStatuses?: CountryComplianceStatus[]
+    countriesComplianceStatuses?: CountryComplianceStatus[],
+    owners?: Owners
 ) {
     testTokenRequest.complianceRules = complianceRules
     testTokenRequest.countriesComplianceStatuses = countriesComplianceStatuses
+    testTokenRequest.owners = owners
     const res = await createDSToken(testTokenRequest)
     return res.id
 }
 
 export function assertToken(actual: string, req: DeploymentRequest = testTokenRequest) {
-    const tokenDescription = req.tokenDescription;
-    const regex = new RegExp(`^0x[0-9a-fA-F]+::${tokenDescription.name.toLowerCase()}::${tokenDescription.symbol}$`)
+    const tokenDescription = req.tokenDescription
+    const regex = new RegExp(
+        `^0x[0-9a-fA-F]+::${tokenDescription.name.toLowerCase()}::${tokenDescription.symbol}$`
+    )
     expect(actual).toMatch(regex)
 }
 

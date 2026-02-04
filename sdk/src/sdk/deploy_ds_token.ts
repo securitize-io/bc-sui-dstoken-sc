@@ -103,19 +103,18 @@ export async function createDSToken(request: DeploymentRequest) {
 
         const roles = new Roles(tokenAddressId)
 
+        // Set roles BEFORE transferring service ownership (signer needs Master role)
         if (request.owners) {
-            roles.setServiceOwnerPTB(request.owners.tokenOwner, ptb)
-            roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptb)
-            ptb.transferObjects([upgradeCapId], request.owners.tokenOwner)
+            roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptbDetails)
 
             if (request.owners.redemptionAddress) {
                 const wallets = new Wallets(tokenAddressId)
-                wallets.addPlatformWalletPTB(request.owners.redemptionAddress, ptb)
+                wallets.addPlatformWalletPTB(request.owners.redemptionAddress, ptbDetails)
             }
         }
 
         request.roles.forEach((r) => {
-            roles.updateRolePTB(r.address, r.role, ptb)
+            roles.updateRolePTB(r.address, r.role, ptbDetails)
         })
 
         if (request.complianceRules) {
@@ -127,6 +126,17 @@ export async function createDSToken(request: DeploymentRequest) {
             request.countriesComplianceStatuses.forEach((c) => {
                 countryCompliance.setCountryCompliancePTB(c.countryName, c.complianceStatus, ptbDetails)
             })
+        }
+
+        // Transfer service ownership LAST (after all other role operations)
+        // This must be last because it transfers Master role away from signer
+        if (request.owners && request.owners.tokenOwner !== ADMIN_KEYPAIR!.toSuiAddress()) {
+            roles.setServiceOwnerPTB(request.owners.tokenOwner, ptbDetails)
+        }
+
+        // Transfer upgrade cap to token owner
+        if (request.owners) {
+            ptb.transferObjects([ptb.object(upgradeCapId)], request.owners.tokenOwner)
         }
 
         ptb.moveCall({

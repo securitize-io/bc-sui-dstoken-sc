@@ -1,6 +1,7 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
+import {newPTBDetails, PTBDetails} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 
 export class Wallets {
@@ -24,36 +25,47 @@ export class Wallets {
         )
     }
 
-    private buildSetPTB(func: string, args: any[], ptb?: Transaction) {
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            [
-                this.tokenDetails.investorInfo,
-                this.tokenDetails.auth,
-                ...args,
-                Config.vars.VERSION
-            ],
-            [],
-            undefined,
-            false,
-            ptb
-        )
-    }
-
     private buildSetBytes(ptb: Transaction, signer: string) {
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
+    /**
+     * Helper function to build wallet PTB calls with PAS_NAMESPACE
+     * Handles both deployment (using ptbDetails.tokenDetails) and post-deployment (using derived IDs)
+     */
+    private buildWalletPTB(func: string, wallet: string, ptbDetails?: PTBDetails) {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        return this.buildWalletPTBSimple(func, wallet, ptbDetails, [ptb.object(Config.vars.PAS_NAMESPACE)])
+    }
+
+    /**
+     * Helper function to build wallet PTB calls without PAS_NAMESPACE
+     */
+    private buildWalletPTBSimple(func: string, wallet: string, ptbDetails?: PTBDetails, args: any[] = []) {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        ptb.moveCall({
+            target: this.getTarget(func),
+            typeArguments: [this.tokenAddress],
+            arguments: [
+                ptbDetails.tokenDetails?.investorInfo || ptb.object(this.tokenDetails.investorInfo),
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
+                ...args,
+                ptb.pure.address(wallet),
+                ptb.object(Config.vars.VERSION),
+            ],
+        })
+        return ptb
+    }
+
     // ==== View Functions ====
 
-    /// Returns whether the given wallet is a platform wallet
     async isPlatformWallet(wallet: string, sender: string) {
         const ptb = this.buildGetPTB('is_platform_wallet', [wallet])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
-    /// Returns whether the given wallet is an issuer wallet
     async isIssuerWallet(wallet: string, sender: string) {
         const ptb = this.buildGetPTB('is_issuer_wallet', [wallet])
         return SuiClient.devInspectBool(ptb, sender)
@@ -61,30 +73,24 @@ export class Wallets {
 
     // ==== Setter Functions ====
 
-    /// Adds a wallet address as an issuer wallet (PTB version)
-    addIssuerWalletPTB = (wallet: string, ptb?: Transaction) => this.buildSetPTB('add_issuer_wallet', [Config.vars.PAS_NAMESPACE, wallet], ptb)
+    addIssuerWalletPTB = (wallet: string, ptbDetails?: PTBDetails) =>
+        this.buildWalletPTB('add_issuer_wallet', wallet, ptbDetails)
 
-    /// Adds a wallet address as an issuer wallet
     async addIssuerWallet(wallet: string, signer: string) {
-        const ptb = this.addIssuerWalletPTB(wallet)
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.addIssuerWalletPTB(wallet), signer)
     }
 
-    /// Adds a wallet address as a platform wallet (PTB version)
-    addPlatformWalletPTB = (wallet: string, ptb?: Transaction) => this.buildSetPTB('add_platform_wallet', [Config.vars.PAS_NAMESPACE, wallet], ptb)
+    addPlatformWalletPTB = (wallet: string, ptbDetails?: PTBDetails) =>
+        this.buildWalletPTB('add_platform_wallet', wallet, ptbDetails)
 
-    /// Adds a wallet address as a platform wallet
     async addPlatformWallet(wallet: string, signer: string) {
-        const ptb = this.addPlatformWalletPTB(wallet)
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.addPlatformWalletPTB(wallet), signer)
     }
 
-    /// Removes a special wallet from the registry (PTB version)
-    removeSpecialWalletPTB = (wallet: string, ptb?: Transaction) => this.buildSetPTB('remove_special_wallet', [wallet], ptb)
+    removeSpecialWalletPTB = (wallet: string, ptbDetails?: PTBDetails) =>
+        this.buildWalletPTBSimple('remove_special_wallet', wallet, ptbDetails)
 
-    /// Removes a special wallet from the registry
     async removeSpecialWallet(wallet: string, signer: string) {
-        const ptb = this.removeSpecialWalletPTB(wallet)
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.removeSpecialWalletPTB(wallet), signer)
     }
 }

@@ -229,9 +229,7 @@ describe('LockService', () => {
             // We have 2 locks, remove the first one (index 0)
             await expect(lockService.lockCountForInvestor(testInvestor3, sender)).resolves.toBe(2n)
 
-            await executeTxFunc(
-                lockService.removeLockRecordForInvestor(testInvestor3, 0n, sender)
-            )
+            await executeTxFunc(lockService.removeLockRecordForInvestor(testInvestor3, 0n, sender))
 
             await expect(lockService.lockCountForInvestor(testInvestor3, sender)).resolves.toBe(1n)
 
@@ -246,9 +244,7 @@ describe('LockService', () => {
             await expect(lockService.lockCountForInvestor(testInvestor3, sender)).resolves.toBe(1n)
 
             await expect(
-                executeTxFunc(
-                    lockService.removeLockRecordForInvestor(testInvestor3, 1n, sender)
-                )
+                executeTxFunc(lockService.removeLockRecordForInvestor(testInvestor3, 1n, sender))
             ).rejects.toThrow()
 
             // Lock count should remain the same
@@ -258,9 +254,7 @@ describe('LockService', () => {
         it('should remove the last remaining lock', async () => {
             await expect(lockService.lockCountForInvestor(testInvestor3, sender)).resolves.toBe(1n)
 
-            await executeTxFunc(
-                lockService.removeLockRecordForInvestor(testInvestor3, 0n, sender)
-            )
+            await executeTxFunc(lockService.removeLockRecordForInvestor(testInvestor3, 0n, sender))
 
             await expect(lockService.lockCountForInvestor(testInvestor3, sender)).resolves.toBe(0n)
 
@@ -508,9 +502,15 @@ describe('LockService', () => {
             })
 
             // Clean up
-            await executeTxFunc(lockService.removeLockRecordForInvestor(infoTestInvestor, 0n, sender))
-            await executeTxFunc(lockService.removeLockRecordForInvestor(infoTestInvestor, 0n, sender))
-            await executeTxFunc(lockService.removeLockRecordForInvestor(infoTestInvestor, 0n, sender))
+            await executeTxFunc(
+                lockService.removeLockRecordForInvestor(infoTestInvestor, 0n, sender)
+            )
+            await executeTxFunc(
+                lockService.removeLockRecordForInvestor(infoTestInvestor, 0n, sender)
+            )
+            await executeTxFunc(
+                lockService.removeLockRecordForInvestor(infoTestInvestor, 0n, sender)
+            )
         })
     })
 
@@ -559,7 +559,9 @@ describe('LockService', () => {
             expect(transferableAfterUnlock).toBe(5000n)
 
             // Clean up
-            await executeTxFunc(lockService.removeLockRecordForInvestor(combinedTestInvestor, 0n, sender))
+            await executeTxFunc(
+                lockService.removeLockRecordForInvestor(combinedTestInvestor, 0n, sender)
+            )
         })
 
         it('should handle investor with liquidate-only and lock records', async () => {
@@ -585,7 +587,9 @@ describe('LockService', () => {
 
             // Clean up
             await executeTxFunc(lockService.setLiquidateOnly(combinedTestInvestor, false, sender))
-            await executeTxFunc(lockService.removeLockRecordForInvestor(combinedTestInvestor, 0n, sender))
+            await executeTxFunc(
+                lockService.removeLockRecordForInvestor(combinedTestInvestor, 0n, sender)
+            )
         })
     })
 
@@ -607,7 +611,9 @@ describe('LockService', () => {
                 )
             }
 
-            await expect(lockService.lockCountForInvestor(multiLockInvestor, sender)).resolves.toBe(5n)
+            await expect(lockService.lockCountForInvestor(multiLockInvestor, sender)).resolves.toBe(
+                5n
+            )
 
             const lockInfo = await lockService.lockInfoForInvestor(multiLockInvestor)
             expect(lockInfo.locks.length).toBe(5)
@@ -638,7 +644,9 @@ describe('LockService', () => {
                 lockService.removeLockRecordForInvestor(multiLockInvestor, 1n, sender)
             )
 
-            await expect(lockService.lockCountForInvestor(multiLockInvestor, sender)).resolves.toBe(4n)
+            await expect(lockService.lockCountForInvestor(multiLockInvestor, sender)).resolves.toBe(
+                4n
+            )
 
             // The last element (Lock 5) should now be at index 1 due to swap-remove
             const lockInfo = await lockService.lockInfoForInvestor(multiLockInvestor)
@@ -655,7 +663,9 @@ describe('LockService', () => {
                 )
             }
 
-            await expect(lockService.lockCountForInvestor(multiLockInvestor, sender)).resolves.toBe(0n)
+            await expect(lockService.lockCountForInvestor(multiLockInvestor, sender)).resolves.toBe(
+                0n
+            )
         })
     })
 })

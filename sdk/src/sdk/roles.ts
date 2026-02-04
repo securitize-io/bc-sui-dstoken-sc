@@ -1,7 +1,7 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
-import {AbilityType, RoleTypes} from "./domains";
+import {AbilityType, newPTBDetails, PTBDetails, RoleTypes} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 
 export class Roles {
@@ -25,24 +25,27 @@ export class Roles {
         )
     }
 
-    private buildSetPTB(func: string, args: any[], ptb?: Transaction) {
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            [
-                this.tokenDetails.auth,
-                ...args,
-                Config.vars.VERSION
-            ],
-            [],
-            undefined,
-            false,
-            ptb
-        )
-    }
-
     private buildSetBytes(ptb: Transaction, signer: string) {
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+
+    /**
+     * Helper function to build role PTB calls
+     * Handles both deployment (using ptbDetails.tokenDetails) and post-deployment (using derived IDs)
+     */
+    private buildRolePTB(func: string, owner: string, ptbDetails?: PTBDetails) {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        ptb.moveCall({
+            target: this.getTarget(func),
+            typeArguments: [this.tokenAddress],
+            arguments: [
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
+                ptb.pure.address(owner),
+                ptb.object(Config.vars.VERSION),
+            ],
+        })
+        return ptb
     }
 
     // ==== View Functions ====
@@ -69,86 +72,97 @@ export class Roles {
 
     async updateRole(owner: string, role: RoleTypes, signer: string) {
         const currentRole = await this.getRole(owner)
-        let ptb = this.updateRolePTB(owner, role, undefined, currentRole)
-        return this.buildSetBytes(ptb, signer)
+        const ptbDetails = this.updateRolePTB(owner, role, undefined, currentRole)
+        return this.buildSetBytes(ptbDetails.ptb, signer)
     }
 
-    updateRolePTB(owner: string, role: RoleTypes, ptb?: Transaction, currentRole: RoleTypes = 'none') {
+    updateRolePTB(owner: string, role: RoleTypes, ptbDetails?: PTBDetails, currentRole: RoleTypes = 'none') {
+        ptbDetails ??= newPTBDetails()
         const errorMessage = "No direct role-to-role change"
 
         if (currentRole === role || currentRole === "master") {
             throw new Error(errorMessage)
         }
 
-        const REMOVE_MAPPING: Record<string, (owner: string, ptb?: Transaction) => Transaction> = {
+        const REMOVE_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
             issuer: this.removeIssuerPTB,
             exchange: this.removeExchangePTB,
             transfer_agent: this.removeTransferAgentPTB,
         }
 
-        const ADD_MAPPING: Record<string, (owner: string, ptb?: Transaction) => Transaction> = {
+        const ADD_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
             master: this.setServiceOwnerPTB,
             issuer: this.setIssuerPTB,
             exchange: this.setExchangePTB,
             transfer_agent: this.setTransferAgentPTB,
         }
 
-        ptb ??= new Transaction()
-
         if (currentRole in REMOVE_MAPPING) {
-            ptb = REMOVE_MAPPING[currentRole](owner, ptb)
+            REMOVE_MAPPING[currentRole](owner, ptbDetails)
         }
 
         if (role in ADD_MAPPING) {
-            ptb = ADD_MAPPING[role](owner, ptb)
+            ADD_MAPPING[role](owner, ptbDetails)
         }
 
-        if (!ptb) {
-            throw new Error(errorMessage)
-        }
-        return ptb;
+        return ptbDetails
     }
 
-    setTransferAgentPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('set_transfer_agent', [owner], ptb)
+    // ==== Transfer Agent ====
+
+    setTransferAgentPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('set_transfer_agent', owner, ptbDetails)
+
     async setTransferAgent(owner: string, signer: string) {
-        const ptb = this.setTransferAgentPTB(owner);
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.setTransferAgentPTB(owner), signer)
     }
 
-    removeTransferAgentPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('remove_transfer_agent', [owner], ptb)
+    removeTransferAgentPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('remove_transfer_agent', owner, ptbDetails)
+
     async removeTransferAgent(owner: string, signer: string) {
-        const ptb = this.removeTransferAgentPTB(owner);
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.removeTransferAgentPTB(owner), signer)
     }
 
-    setIssuerPTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('set_issuer', [owner], ptb)
+    // ==== Issuer ====
+
+    setIssuerPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('set_issuer', owner, ptbDetails)
+
     async setIssuer(owner: string, signer: string) {
-        const ptb = this.setIssuerPTB(owner);
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.setIssuerPTB(owner), signer)
     }
 
-    removeIssuerPTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('remove_issuer', [owner], ptb)
+    removeIssuerPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('remove_issuer', owner, ptbDetails)
+
     async removeIssuer(owner: string, signer: string) {
-        const ptb = this.removeIssuerPTB(owner);
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.removeIssuerPTB(owner), signer)
     }
 
-    setServiceOwnerPTB = (owner: string, ptb?: Transaction)  => this.buildSetPTB('set_service_owner', [owner], ptb)
+    // ==== Service Owner (Master) ====
+
+    setServiceOwnerPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('set_service_owner', owner, ptbDetails)
+
     async setServiceOwner(owner: string, signer: string) {
-        const ptb = this.setServiceOwnerPTB(owner);
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.setServiceOwnerPTB(owner), signer)
     }
 
-    removeExchangePTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('remove_exchange', [owner], ptb)
-    async removeExchange(owner: string, signer: string) {
-        const ptb = this.removeExchangePTB(owner);
-        return this.buildSetBytes(ptb, signer)
-    }
+    // ==== Exchange ====
 
-    setExchangePTB = (owner: string, ptb?: Transaction) => this.buildSetPTB('set_exchange', [owner], ptb)
+    setExchangePTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('set_exchange', owner, ptbDetails)
+
     async setExchange(owner: string, signer: string) {
-        const ptb = this.setExchangePTB(owner);
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.setExchangePTB(owner), signer)
+    }
+
+    removeExchangePTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('remove_exchange', owner, ptbDetails)
+
+    async removeExchange(owner: string, signer: string) {
+        return this.buildSetBytes(this.removeExchangePTB(owner), signer)
     }
 
     // ==== Ability Management Functions ====
@@ -171,8 +185,9 @@ export class Roles {
     /**
      * Add an ability to a role. Only Master can call this.
      */
-    addRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptb?: Transaction): Transaction {
-        ptb ??= new Transaction()
+    addRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptbDetails?: PTBDetails): Transaction {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
         const roleType = this.getRoleTypePath(role)
         const abilityType = this.getAbilityTypePath(ability)
 
@@ -180,7 +195,7 @@ export class Roles {
             target: this.getTarget('add_role_ability'),
             typeArguments: [this.tokenAddress, roleType, abilityType],
             arguments: [
-                ptb.object(this.tokenDetails.auth),
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
                 ptb.object(Config.vars.VERSION),
             ],
         })
@@ -188,15 +203,15 @@ export class Roles {
     }
 
     async addRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
-        const ptb = this.addRoleAbilityPTB(role, ability)
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.addRoleAbilityPTB(role, ability), signer)
     }
 
     /**
      * Remove an ability from a role. Only Master can call this.
      */
-    removeRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptb?: Transaction): Transaction {
-        ptb ??= new Transaction()
+    removeRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptbDetails?: PTBDetails): Transaction {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
         const roleType = this.getRoleTypePath(role)
         const abilityType = this.getAbilityTypePath(ability)
 
@@ -204,7 +219,7 @@ export class Roles {
             target: this.getTarget('remove_role_ability'),
             typeArguments: [this.tokenAddress, roleType, abilityType],
             arguments: [
-                ptb.object(this.tokenDetails.auth),
+                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
                 ptb.object(Config.vars.VERSION),
             ],
         })
@@ -212,7 +227,6 @@ export class Roles {
     }
 
     async removeRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
-        const ptb = this.removeRoleAbilityPTB(role, ability)
-        return this.buildSetBytes(ptb, signer)
+        return this.buildSetBytes(this.removeRoleAbilityPTB(role, ability), signer)
     }
 }
