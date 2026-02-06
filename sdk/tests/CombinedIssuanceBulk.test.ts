@@ -36,7 +36,7 @@ describe('CombinedIssuanceBulk', () => {
             const wallet1 = await createFundedWallet()
             const wallet2 = await createFundedWallet()
             const wallet3 = await createFundedWallet()
-            const releaseTime = new Date().getTime()
+            const releaseTime = new Date().getTime() + 60 * 60 * 1000 // + 1 hour
 
             const investorsList: Investor[] = [
                 {
