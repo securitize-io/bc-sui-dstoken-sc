@@ -567,7 +567,7 @@ public fun investor_wallet_balance_total<T>(
     investor.total_balance
 }
 
-/// Returns the total token balance across all wallets for an investor.
+/// Returns the total token balance of an investor's wallet.
 ///
 /// # Aborts
 /// * `EInvestorNotFound` - If the investor does not exist
