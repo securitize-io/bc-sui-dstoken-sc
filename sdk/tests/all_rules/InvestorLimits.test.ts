@@ -1,6 +1,6 @@
 import { ADMIN_KEYPAIR, InvestorLimits } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
-import { createTestToken, executeTxFunc } from '../test_utils'
+import { createTestToken, executeTxFunc, getRandomKeypair } from '../test_utils'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -21,14 +21,14 @@ describe('InvestorLimits Rule', () => {
             await executeTxFunc(
                 investorLimits.register(
                     sender,
-                    2000,  // total_investors_limit
-                    100,   // minimum_total_investors
-                    500,   // us_investors_limit
-                    300,   // us_accredited_limit
-                    150,   // non_accredited_limit
-                    100,   // jp_investors_limit
-                    200,   // eu_retail_limit
-                    25     // max_us_percentage
+                    2000, // total_investors_limit
+                    100, // minimum_total_investors
+                    500, // us_investors_limit
+                    300, // us_accredited_limit
+                    150, // non_accredited_limit
+                    100, // jp_investors_limit
+                    200, // eu_retail_limit
+                    25 // max_us_percentage
                 )
             )
 
@@ -48,9 +48,9 @@ describe('InvestorLimits Rule', () => {
             await executeTxFunc(
                 investorLimits.register(
                     sender,
-                    5000,  // total_investors_limit
+                    5000, // total_investors_limit
                     undefined, // minimum_total_investors
-                    1000,  // us_investors_limit
+                    1000 // us_investors_limit
                 )
             )
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
@@ -59,8 +59,26 @@ describe('InvestorLimits Rule', () => {
 
         it('should register InvestorLimits with different limit values', async () => {
             const configs = [
-                { total: 10000, min: 500, us: 2000, usAcc: 1500, nonAcc: 500, jp: 300, euRetail: 400, usPercent: 20 },
-                { total: 1000, min: 50, us: 200, usAcc: 150, nonAcc: 50, jp: 50, euRetail: 100, usPercent: 20 },
+                {
+                    total: 10000,
+                    min: 500,
+                    us: 2000,
+                    usAcc: 1500,
+                    nonAcc: 500,
+                    jp: 300,
+                    euRetail: 400,
+                    usPercent: 20,
+                },
+                {
+                    total: 1000,
+                    min: 50,
+                    us: 200,
+                    usAcc: 150,
+                    nonAcc: 50,
+                    jp: 50,
+                    euRetail: 100,
+                    usPercent: 20,
+                },
             ]
 
             for (const config of configs) {
@@ -108,7 +126,9 @@ describe('InvestorLimits Rule', () => {
 
     describe('Rule Updates', () => {
         it('should be able to set the values', async () => {
-            await executeTxFunc(investorLimits.register(sender, 1000, 100, 500, 300, 150, 100, 200, 25))
+            await executeTxFunc(
+                investorLimits.register(sender, 1000, 100, 500, 300, 150, 100, 200, 25)
+            )
 
             await executeTxFunc(investorLimits.setTotalLimit(2000, sender))
             await executeTxFunc(investorLimits.setMinimumTotalInvestors(200, sender))
@@ -126,9 +146,7 @@ describe('InvestorLimits Rule', () => {
 
     describe('Edge Cases', () => {
         it('should handle InvestorLimits with all zeros (no limits)', async () => {
-            await executeTxFunc(
-                investorLimits.register(sender, 0, 0, 0, 0, 0, 0, 0, 0)
-            )
+            await executeTxFunc(investorLimits.register(sender, 0, 0, 0, 0, 0, 0, 0, 0))
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
             await executeTxFunc(investorLimits.unregister(sender))
         })
@@ -137,14 +155,14 @@ describe('InvestorLimits Rule', () => {
             await executeTxFunc(
                 investorLimits.register(
                     sender,
-                    1000000,  // very large total
+                    1000000, // very large total
                     0,
-                    500000,   // very large US limit
+                    500000, // very large US limit
                     400000,
                     100000,
                     50000,
                     200000,
-                    100       // 100% max US percentage
+                    100 // 100% max US percentage
                 )
             )
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
@@ -155,7 +173,7 @@ describe('InvestorLimits Rule', () => {
             await executeTxFunc(
                 investorLimits.register(
                     sender,
-                    5000,  // only total limit
+                    5000, // only total limit
                     undefined,
                     undefined,
                     undefined,
@@ -175,12 +193,12 @@ describe('InvestorLimits Rule', () => {
                     sender,
                     undefined,
                     undefined,
-                    1000,  // us_investors_limit
-                    800,   // us_accredited_limit
-                    200,   // non_accredited_limit
+                    1000, // us_investors_limit
+                    800, // us_accredited_limit
+                    200, // non_accredited_limit
                     undefined,
                     undefined,
-                    50     // max_us_percentage
+                    50 // max_us_percentage
                 )
             )
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
@@ -196,8 +214,8 @@ describe('InvestorLimits Rule', () => {
                     undefined,
                     undefined,
                     undefined,
-                    500,   // jp_investors_limit
-                    300,   // eu_retail_limit
+                    500, // jp_investors_limit
+                    300, // eu_retail_limit
                     undefined
                 )
             )
@@ -210,7 +228,7 @@ describe('InvestorLimits Rule', () => {
                 investorLimits.register(
                     sender,
                     undefined,
-                    100,   // minimum_total_investors only
+                    100, // minimum_total_investors only
                     undefined,
                     undefined,
                     undefined,
@@ -234,11 +252,31 @@ describe('InvestorLimits Rule', () => {
                     undefined,
                     undefined,
                     undefined,
-                    0      // 0% max US percentage
+                    0 // 0% max US percentage
                 )
             )
             await expect(investorLimits.exists(sender)).resolves.toBe(true)
             await executeTxFunc(investorLimits.unregister(sender))
+        })
+
+        it('throws Not Authorized when non-admin tries to register the rule', async () => {
+            const { keypair: nonAdminKeypair } = getRandomKeypair()
+            await expect(
+                executeTxFunc(
+                    investorLimits.register(
+                        nonAdminKeypair.toSuiAddress(),
+                        2000,
+                        100,
+                        500,
+                        300,
+                        150,
+                        100,
+                        200,
+                        25
+                    ),
+                    nonAdminKeypair
+                )
+            ).rejects.toThrow('Not Authorized')
         })
     })
 })
