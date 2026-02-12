@@ -18,6 +18,7 @@ const UNAUTHORIZED: address = @0x002;
 const INVESTOR1: address = @0x101;
 const INVESTOR2: address = @0x102;
 const ISSUER_WALLET: address = @0x201;
+const PLATFORM_WALLET: address = @0x301;
 
 // ==================== Setup Helpers ====================
 
@@ -1218,4 +1219,354 @@ fun test_new_issuance_record() {
     let issuance = registry_service::new_issuance(1000, 1640000000000);
     assert!(registry_service::issuance_amount(&issuance) == 1000, 0);
     assert!(registry_service::issuance_time_ms(&issuance) == 1640000000000, 1);
+}
+
+// ==================== Special Wallet Balance Tests ====================
+
+#[test]
+fun test_issue_tokens_to_platform_wallet_updates_balance() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Add platform wallet (vault is created automatically)
+    test_helpers::add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let vault = ts.take_shared<Vault>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    // Verify initial balance is 0
+    assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 0, 0);
+
+    // Issue tokens to platform wallet
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &vault,
+        PLATFORM_WALLET,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Verify platform wallet balance is updated
+    assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 500, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(vault);
+    ts.end();
+}
+
+#[test]
+fun test_issue_tokens_to_issuer_wallet_updates_balance() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Add issuer wallet (vault is created automatically)
+    test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
+
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let vault = ts.take_shared<Vault>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    // Verify initial balance is 0
+    assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 0, 0);
+
+    // Issue tokens to issuer wallet
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &vault,
+        ISSUER_WALLET,
+        1000,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Verify issuer wallet balance is updated
+    assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 1000, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(vault);
+    ts.end();
+}
+
+#[test]
+fun test_burn_from_platform_wallet_updates_balance() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Add platform wallet (vault is created automatically)
+    test_helpers::add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    // Issue tokens to platform wallet first
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let mut vault = ts.take_shared<Vault>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &vault,
+        PLATFORM_WALLET,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Verify balance after issuance
+    assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 500, 0);
+
+    // Burn some tokens from platform wallet
+    ds_token::burn(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &rule,
+        &mut vault,
+        PLATFORM_WALLET,
+        200,
+        b"burn from platform".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify platform wallet balance is reduced
+    assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 300, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(rule);
+    ts::return_shared(version);
+    ts::return_shared(vault);
+    ts.end();
+}
+
+#[test]
+fun test_seize_to_issuer_wallet_updates_balance() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register investor and issue tokens
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_vault = ts.take_shared<Vault>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &investor_vault,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(investor_vault);
+
+    // Add issuer wallet
+    test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
+
+    // Seize tokens from investor to issuer wallet
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let issuer_vault = ts.take_shared<Vault>();
+    let mut investor_vault = ts.take_shared<Vault>();
+
+    // Verify issuer wallet balance is 0 initially
+    assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 0, 0);
+
+    ds_token::seize(
+        &auth,
+        &mut investor_info,
+        &rule,
+        &mut investor_vault,
+        INVESTOR1,
+        &issuer_vault,
+        ISSUER_WALLET,
+        150,
+        b"seize to issuer".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify issuer wallet balance is updated
+    assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 150, 1);
+
+    // Verify investor balance is reduced
+    let investor_id = b"INV001".to_string();
+    let investor_balance = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    assert!(investor_balance == 350, 2);
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(rule);
+    ts::return_shared(version);
+    ts::return_shared(investor_vault);
+    ts::return_shared(issuer_vault);
+    ts.end();
+}
+
+#[test]
+fun test_seize_from_platform_wallet_updates_balance() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Add platform wallet and issue tokens to it
+    test_helpers::add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let platform_vault = ts.take_shared<Vault>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &platform_vault,
+        PLATFORM_WALLET,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Verify platform wallet balance after issuance
+    assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 500, 0);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(platform_vault);
+
+    // Add issuer wallet
+    test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
+
+    // Seize tokens from platform wallet to issuer wallet
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let issuer_vault = ts.take_shared<Vault>();
+    let mut platform_vault = ts.take_shared<Vault>();
+
+    ds_token::seize(
+        &auth,
+        &mut investor_info,
+        &rule,
+        &mut platform_vault,
+        PLATFORM_WALLET,
+        &issuer_vault,
+        ISSUER_WALLET,
+        200,
+        b"seize from platform".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify platform wallet balance is reduced
+    assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 300, 1);
+
+    // Verify issuer wallet balance is increased
+    assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 200, 2);
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(rule);
+    ts::return_shared(version);
+    ts::return_shared(platform_vault);
+    ts::return_shared(issuer_vault);
+    ts.end();
 }
