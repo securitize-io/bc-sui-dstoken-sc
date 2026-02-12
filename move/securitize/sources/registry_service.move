@@ -413,8 +413,6 @@ public fun add_wallet<T>(
         vault::create_and_share(namespace, wallet_addr);
     };
 
-    // We assume tha
-
     let wallet = Wallet {
         owner: investor_id,
         creator: ctx.sender(),
