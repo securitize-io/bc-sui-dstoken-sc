@@ -31,6 +31,10 @@ const EDirectWalletChange: vector<u8> = b"Direct wallet type change is not allow
 const ENotSpecialWallet: vector<u8> = b"Wallet is not a special wallet";
 #[error(code = 3)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 4)]
+const EWalletNotEmpty: vector<u8> = b"Wallet must be empty to perform this action";
+
+// ==== Initialization ====
 
 /// Initializes the Wallet Manager abilities for the given token type T.
 /// Called by the setup module during token deployment.
@@ -101,6 +105,7 @@ public fun remove_special_wallet<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RemoveSpecialWallet>(ctx.sender()), ENotAuthorized);
     assert!(investor_info.is_special_wallet(wallet), ENotSpecialWallet);
+    assert!(investor_info.special_wallet_balance(wallet) == 0, EWalletNotEmpty);
     let old_type = investor_info.remove_special_wallet(wallet);
     emit_special_wallet_removed_event<T>(wallet, old_type, ctx.sender());
 }

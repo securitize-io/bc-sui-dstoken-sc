@@ -102,6 +102,8 @@ public struct InvestorInfo<phantom T> has key {
     investor_wallets: Table<address, Wallet>,
     /// Mapping of special wallet addresses (e.g., treasury, reserve)
     special_wallets: Table<address, u64>,
+    /// Mapping of special wallet addresses to balances
+    special_wallets_balance: Table<address, u64>,
     /// Total number of registered investors
     total_investors_count: u64,
     /// Count of accredited investors across all regions
@@ -223,6 +225,7 @@ public(package) fun new<T: key>(
         investors: table::new(ctx),
         investor_wallets: table::new(ctx),
         special_wallets: table::new(ctx),
+        special_wallets_balance: table::new(ctx),
         total_investors_count: 0,
         accredited_investors_count: 0,
         us_accredited_investors_count: 0,
@@ -410,11 +413,6 @@ public fun add_wallet<T>(
         vault::create_and_share(namespace, wallet_addr);
     };
 
-    // assert!(
-    //     settled_funds_value<T>(root, namespace.vault_address(wallet_addr)) == 0,
-    //     EWalletNotEmpty,
-    // );
-
     let wallet = Wallet {
         owner: investor_id,
         creator: ctx.sender(),
@@ -569,7 +567,7 @@ public fun investor_wallet_balance_total<T>(
     investor.total_balance
 }
 
-/// Returns the total token balance across all wallets for an investor.
+/// Returns the total token balance of an investor's wallet.
 ///
 /// # Aborts
 /// * `EInvestorNotFound` - If the investor does not exist
@@ -711,6 +709,23 @@ public(package) fun update_investor_total_balance<T>(
     investor.total_balance = new_total_balance;
 }
 
+public(package) fun special_wallet_balance<T>(
+    investor_info: &InvestorInfo<T>,
+    wallet: address,
+): u64 {
+    *investor_info.special_wallets_balance.borrow(wallet)
+}
+
+/// Sets the total token balance for a special wallet.
+public(package) fun update_special_wallet_total_balance<T>(
+    investor_info: &mut InvestorInfo<T>,
+    wallet: address,
+    new_total_balance: u64,
+) {
+    let special_wallet_balance = investor_info.special_wallets_balance.borrow_mut(wallet);
+    *special_wallet_balance = new_total_balance;
+}
+
 /// Sets the total token balance for an investor.
 public(package) fun update_wallet_balance<T>(
     investor_info: &mut InvestorInfo<T>,
@@ -753,6 +768,7 @@ public(package) fun set_special_wallet<T>(
     wallet_type: u64,
 ) {
     investor_info.special_wallets.add(wallet, wallet_type);
+    investor_info.special_wallets_balance.add(wallet, 0);
 }
 
 /// Removes a special wallet from the registry.
@@ -760,6 +776,7 @@ public(package) fun remove_special_wallet<T>(
     investor_info: &mut InvestorInfo<T>,
     wallet: address,
 ): u64 {
+    investor_info.special_wallets_balance.remove(wallet);
     investor_info.special_wallets.remove(wallet)
 }
 

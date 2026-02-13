@@ -286,6 +286,11 @@ fun issue_tokens_internal<T>(
             );
             i = i + 1;
         };
+    } else if (investors.is_special_wallet(to)) {
+        let wallet_balance = investors.special_wallet_balance(to);
+        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
+        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
+        investors.update_special_wallet_total_balance(to, new_balance);
     };
     assert!(total_locked <= value, EValueLockedLargerThanValue);
     emit_issue_event<T>(to, value, total_locked);
@@ -331,13 +336,20 @@ public fun burn<T>(
         assert!(total_balance >= value, ENotEnoughBalance);
         investors.update_investor_total_balance(
             id,
-            ((total_balance as u128) - (value as u128)) as u64,
+            total_balance - value,
         );
         let wallet_balance = investors.investor_wallet_balance(from_address);
         assert!(wallet_balance >= value, ENotEnoughBalance);
         investors.update_wallet_balance(
             from_address,
-            ((wallet_balance as u128) - (value as u128)) as u64,
+            wallet_balance - value,
+        );
+    } else if (investors.is_special_wallet(from_address)) {
+        let wallet_balance = investors.special_wallet_balance(from_address);
+        assert!(wallet_balance >= value, ENotEnoughBalance);
+        investors.update_special_wallet_total_balance(
+            from_address,
+            wallet_balance - value,
         );
     };
     emit_burn_event<T>(from_address, value, reason);
@@ -388,6 +400,11 @@ public fun seize<T>(
         let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
         let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
         investors.update_wallet_balance(to_address, new_balance);
+    } else if (investors.is_special_wallet(to_address)) {
+        let wallet_balance = investors.special_wallet_balance(to_address);
+        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
+        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
+        investors.update_special_wallet_total_balance(to_address, new_balance);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
@@ -398,6 +415,13 @@ public fun seize<T>(
         let wallet_balance = investors.investor_wallet_balance(from_address);
         assert!(wallet_balance >= value, ENotEnoughBalance);
         investors.update_wallet_balance(from_address, wallet_balance - value);
+    } else if (investors.is_special_wallet(from_address)) {
+        let wallet_balance = investors.special_wallet_balance(from_address);
+        assert!(wallet_balance >= value, ENotEnoughBalance);
+        investors.update_special_wallet_total_balance(
+            from_address,
+            wallet_balance - value,
+        );
     };
     emit_seize_event<T>(from_address, to_address, value, reason);
     emit_transfer_event<T>(from_address, to_address, value);
@@ -450,6 +474,11 @@ public fun transfer<T>(
         let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
         let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
         investors.update_wallet_balance(to_address, new_balance);
+    } else if (investors.is_special_wallet(to_address)) {
+        let wallet_balance = investors.special_wallet_balance(to_address);
+        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
+        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
+        investors.update_special_wallet_total_balance(to_address, new_balance);
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
@@ -463,6 +492,10 @@ public fun transfer<T>(
         let wallet_balance = investors.investor_wallet_balance(from_address);
         assert!(wallet_balance >= value, ENotEnoughBalance);
         investors.update_wallet_balance(from_address, wallet_balance - value);
+    } else if (investors.is_special_wallet(from_address)) {
+        let wallet_balance = investors.special_wallet_balance(from_address);
+        assert!(wallet_balance >= value, ENotEnoughBalance);
+        investors.update_special_wallet_total_balance(from_address, wallet_balance - value);
     };
     // Resolve the request
     rule.resolve_transfer_funds(request, DsProtocol());

@@ -4,7 +4,7 @@ module securitize::registry_service_tests;
 use pas::namespace::{Namespace, init_for_testing};
 use securitize::{
     registry_service::{Self, InvestorInfo},
-    test_helpers::{TEST_VOLORO, setup_with_treasury},
+    test_helpers::{TEST_VOLORO, setup_with_treasury, add_platform_wallet},
     trust_service::Auth,
     version::Version
 };
@@ -12,6 +12,7 @@ use sui::test_scenario::{Self as ts, Scenario};
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
+const PLATFORM_WALLET: address = @0x3001;
 
 fun setup_for_testing(ts: &mut Scenario) {
     ts.next_tx(ADMIN);
@@ -1086,6 +1087,98 @@ fun test_is_special_wallet_false() {
 
     // Random address should not be a special wallet
     assert!(!registry_service::is_special_wallet(&registry, @0x1234), 0);
+
+    ts::return_shared(registry);
+    ts.end();
+}
+
+// ==================== Special Wallet Balance Tests ====================
+
+#[test]
+fun test_special_wallet_balance_is_zero_on_add() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    // Add a platform wallet using test helper
+    add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    ts.next_tx(ADMIN);
+    let registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    // Verify the special wallet balance is 0 initially
+    assert!(registry_service::special_wallet_balance(&registry, PLATFORM_WALLET) == 0, 0);
+
+    ts::return_shared(registry);
+    ts.end();
+}
+
+#[test]
+fun test_update_special_wallet_total_balance() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    // Add a platform wallet using test helper
+    add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    // Initially balance should be 0
+    assert!(registry_service::special_wallet_balance(&registry, PLATFORM_WALLET) == 0, 0);
+
+    // Update the balance to 1000
+    registry_service::update_special_wallet_total_balance(&mut registry, PLATFORM_WALLET, 1000);
+
+    // Verify the balance is now 1000
+    assert!(registry_service::special_wallet_balance(&registry, PLATFORM_WALLET) == 1000, 1);
+
+    // Update the balance again to 500
+    registry_service::update_special_wallet_total_balance(&mut registry, PLATFORM_WALLET, 500);
+
+    // Verify the balance is now 500
+    assert!(registry_service::special_wallet_balance(&registry, PLATFORM_WALLET) == 500, 2);
+
+    ts::return_shared(registry);
+    ts.end();
+}
+
+#[test]
+fun test_special_wallet_balance_after_remove_and_read() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    // Add a platform wallet using test helper
+    add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Verify initial balance is 0
+    assert!(registry_service::special_wallet_balance(&registry, PLATFORM_WALLET) == 0, 0);
+
+    // Remove the platform wallet
+    securitize::wallet_manager::remove_special_wallet<TEST_VOLORO>(
+        &mut registry,
+        &auth,
+        PLATFORM_WALLET,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+
+    // Re-add the wallet
+    add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    ts.next_tx(ADMIN);
+    let registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+
+    // Verify balance is reset to 0 after re-adding
+    assert!(registry_service::special_wallet_balance(&registry, PLATFORM_WALLET) == 0, 1);
 
     ts::return_shared(registry);
     ts.end();
