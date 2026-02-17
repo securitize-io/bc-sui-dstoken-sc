@@ -253,7 +253,10 @@ export class SuiClient {
 
     public static async devInspectU64(ptb: Transaction, sender: string) {
         const value = await this.devInspectRaw(ptb, sender)
-        return BigInt(bcs.u64().parse(new Uint8Array(value!)))
+        if (!value) {
+            throw new Error('devInspectU64 received empty result - the Move function may have aborted')
+        }
+        return BigInt(bcs.u64().parse(new Uint8Array(value)))
     }
 
     public static async devInspectOptionU64(ptb: Transaction, sender: string): Promise<bigint | null> {
