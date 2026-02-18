@@ -1,7 +1,0 @@
-[package]
-name = "demo_usd"
-edition = "2024.beta"
-
-[dependencies]
-pas = { local = "../../pas" }
-ptb = { local = "../../ptb" }
