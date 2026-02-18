@@ -6,13 +6,18 @@
 module securitize::ds_token;
 
 use pas::{
+    clawback_funds::ClawbackFunds,
+    keys::{transfer_funds_action, clawback_funds_action},
     namespace::Namespace,
+    request::Request,
     rule::{Self, Rule},
-    transfer_funds_request::TransferFundsRequest,
+    templates::Templates,
+    transfer_funds::TransferFunds,
     vault::Vault
 };
+use ptb::ptb::Command;
 use securitize::{
-    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser},
+    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, SetTemplateCommand, Pauser},
     compliance_service::{Self, ComplianceConfig},
     events::{
         emit_issue_event,
@@ -63,9 +68,12 @@ const ENotEnoughBalance: vector<u8> = b"Not enough balance to perform the operat
 #[error(code = 10)]
 const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
-/// Witness struct for the Ds Protocol.
+/// Witness struct for the Transfer Approve Action.
 /// To be used inside the Permissioned Token Standard.
-public struct DsProtocol() has drop;
+public struct TransferApproval<phantom T>() has drop;
+/// Witness struct for the Clawback Approve Action.
+/// To be used inside the Permissioned Token Standard.
+public struct ClawbackApproval<phantom T>() has drop;
 
 public struct DsTokenKey<phantom T>() has copy, drop, store;
 
@@ -81,6 +89,9 @@ public struct Treasury<phantom T> has key {
 
 /// Key used to store the TreasuryCap<T> in the Treasury<T>.
 public struct TreasuryCapKey() has copy, drop, store;
+
+/// Key used to store the RuleCap<T> in the Treasury<T>.
+public struct RuleCapKey() has copy, drop, store;
 
 /// Initializes a new Treasury for the given token type T.
 ///
@@ -100,6 +111,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, BurnTokens>(version, ctx);
     auth.add_role_ability<T, Master, SeizeTokens>(version, ctx);
     auth.add_role_ability<T, Master, MetadataUpdate>(version, ctx);
+    auth.add_role_ability<T, Master, SetTemplateCommand>(version, ctx);
     auth.add_role_ability<T, Master, Pauser>(version, ctx);
 
     auth.add_role_ability<T, Issuer, IssueTokens>(version, ctx);
@@ -116,11 +128,13 @@ public(package) fun new<T: key>(
     };
     // Register PAS rule
     let clawback = true;
-    let mut rule = rule::new(namespace, rule_permit, DsProtocol());
+    let (mut rule, rule_cap) = rule::new(namespace, rule_permit);
     rule.enable_funds_management(&mut treasury_cap, clawback);
+    rule.set_required_approval<T, TransferApproval<T>>(&rule_cap, transfer_funds_action());
+    rule.set_required_approval<T, ClawbackApproval<T>>(&rule_cap, clawback_funds_action());
     rule.share();
-
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
+    dof::add(&mut treasury.id, RuleCapKey(), rule_cap);
     treasury
 }
 
@@ -308,23 +322,20 @@ public fun burn<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     rule: &Rule<T>,
-    from: &mut Vault,
-    from_address: address,
-    value: u64,
+    mut request: Request<ClawbackFunds<T>>,
     reason: String,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
-    assert!(from.owner() == from_address, EVaultOwnerMismatch);
 
+    let from_address = request.data().owner();
+    let value = request.data().amount();
+
+    assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     compliance_service::validate_burn(investors, from_address, value);
-    let balance = rule.clawback_funds(
-        from,
-        value,
-        DsProtocol(),
-    );
+    request.approve(ClawbackApproval<T>());
+    let balance = pas::clawback_funds::resolve(request, rule);
     // Burn the balance
     dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
@@ -366,27 +377,27 @@ public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     rule: &Rule<T>,
+    mut request: Request<ClawbackFunds<T>>,
     from: &mut Vault,
-    from_address: address,
     to: &Vault,
     to_address: address,
-    value: u64,
     reason: String,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
+
+    let from_address = request.data().owner();
+    let value = request.data().amount();
+
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
     assert!(from.owner() == from_address, EVaultOwnerMismatch);
     assert!(to.owner() == to_address, EVaultOwnerMismatch);
 
     compliance_service::validate_seize(investors, from_address, to_address, value);
     // Withdraw from the investor's vault and deposit to the treasury's vault
-    let balance = rule.clawback_funds(
-        from,
-        value,
-        DsProtocol(),
-    );
+    request.approve(ClawbackApproval<T>());
+    let balance = pas::clawback_funds::resolve(request, rule);
     to.deposit_funds(balance);
 
     if (investors.is_wallet(to_address)) {
@@ -437,15 +448,14 @@ public fun transfer<T>(
     treasury: &Treasury<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &ComplianceConfig<T>,
-    rule: &Rule<T>,
-    request: TransferFundsRequest<T>,
+    request: &mut Request<TransferFunds<T>>,
     version: &Version,
     clock: &Clock,
 ) {
     version.check_is_valid();
-    let from_address = request.sender();
-    let to_address = request.recipient();
-    let value = request.amount();
+    let from_address = request.data().sender();
+    let to_address = request.data().recipient();
+    let value = request.data().amount();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
     assert!(
@@ -459,7 +469,7 @@ public fun transfer<T>(
     compliance_service::validate_transfer(
         compliance_config,
         investors,
-        &request,
+        request,
         clock.timestamp_ms(),
         version,
     );
@@ -498,7 +508,7 @@ public fun transfer<T>(
         investors.update_special_wallet_total_balance(from_address, wallet_balance - value);
     };
     // Resolve the request
-    rule.resolve_transfer_funds(request, DsProtocol());
+    request.approve(TransferApproval<T>());
     emit_transfer_event<T>(from_address, to_address, value);
 }
 
@@ -536,6 +546,32 @@ public fun set_metadata<T>(
         currency.set_icon_url<T>(metadata_cap, i);
         emit_icon_uri_updated_event<T>(old_icon_uri, i);
     });
+}
+
+public fun set_template_command<T>(
+    auth: &Auth<T>,
+    templates: &mut Templates,
+    command: Command,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetTemplateCommand>(ctx.sender()), ENotAuthorized);
+    templates.set_template_command<TransferApproval<T>>(
+        internal::permit<TransferApproval<T>>(),
+        command,
+    );
+}
+
+public fun unset_template_command<T>(
+    auth: &Auth<T>,
+    templates: &mut Templates,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetTemplateCommand>(ctx.sender()), ENotAuthorized);
+    templates.unset_template_command<TransferApproval<T>>(internal::permit<TransferApproval<T>>());
 }
 
 /// Pauses the treasury, preventing token operations.
