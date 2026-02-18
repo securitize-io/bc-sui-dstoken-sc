@@ -1,1 +1,0 @@
-# Permissioned Assets Standard sdk
