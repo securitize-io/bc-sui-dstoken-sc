@@ -1,10 +1,10 @@
 #[test_only]
 module securitize::registry_service_tests;
 
-use pas::namespace::{Namespace, init_for_testing};
+use pas::namespace::Namespace;
 use securitize::{
     registry_service::{Self, InvestorInfo},
-    test_helpers::{TEST_VOLORO, setup_with_treasury, add_platform_wallet},
+    test_helpers::{Self as test_helpers, TEST_VOLORO, setup_with_treasury, add_platform_wallet},
     trust_service::Auth,
     version::Version
 };
@@ -310,7 +310,7 @@ fun test_remove_investor_unauthorized() {
 fun test_remove_investor_who_has_a_wallet() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -388,7 +388,7 @@ fun test_remove_investor_not_found() {
 fun test_update_investor() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -424,7 +424,7 @@ fun test_update_investor() {
 fun test_update_investor_when_already_registered() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -480,7 +480,7 @@ fun test_update_investor_when_already_registered() {
 fun test_update_investor_unauthorized() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -519,7 +519,7 @@ fun test_update_investor_unauthorized() {
 fun test_update_investor_attribute_values_length_mismatch() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -556,7 +556,7 @@ fun test_update_investor_attribute_values_length_mismatch() {
 fun test_update_investor_attribute_expirations_length_mismatch() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -593,7 +593,7 @@ fun test_update_investor_attribute_expirations_length_mismatch() {
 fun test_update_investor_fails_when_investor_wallet_mismatch() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    init_for_testing(ts.ctx()); // init namespace
+    test_helpers::init_namespace_for_testing(&mut ts); // init namespace
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();

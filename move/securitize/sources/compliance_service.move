@@ -5,7 +5,7 @@
 /// with the registry service to enforce transfer policies.
 module securitize::compliance_service;
 
-use pas::transfer_funds_request::TransferFundsRequest;
+use pas::{request::Request, transfer_funds::TransferFunds};
 use securitize::{
     abilities::{RegisterRule, UnregisterRule, SetCountryCompliance, ManageRules},
     accredited_only::AccreditedOnly,
@@ -141,15 +141,15 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 public(package) fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
-    request: &TransferFundsRequest<T>,
+    request: &Request<TransferFunds<T>>,
     current_time_ms: u64,
     version: &Version,
 ) {
     version.check_is_valid();
 
-    let from_address = request.sender();
-    let to_address = request.recipient();
-    let amount = request.amount();
+    let from_address = request.data().sender();
+    let to_address = request.data().recipient();
+    let amount = request.data().amount();
 
     assert!(
         registry.is_special_wallet(to_address) || registry.is_wallet(to_address),
@@ -745,8 +745,8 @@ fun get_party_info<T>(registry: &InvestorInfo<T>, addr: address, amount: u64): P
             investor_id: option::none(),
             country: std::string::utf8(b""),
             region: NONE,
-            balance: 0,
-            transferable_balance: 0,
+            balance: 0, // intentionally unused for special wallets (early exit invariant)
+            transferable_balance: 0, // intentionally unused for special wallets (early exit invariant)
             is_accredited: false,
             is_qualified: false,
             is_exit_investor: false,

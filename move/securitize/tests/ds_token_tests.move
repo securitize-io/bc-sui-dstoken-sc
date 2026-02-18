@@ -749,14 +749,13 @@ fun test_burn_tokens() {
     assert!(total_before == 1, 1);
 
     // Now burn some tokens (partial burn - investor still has balance)
+    let request = vault.clawback_funds<TEST_VOLORO>(50, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
         &mut investor_info,
         &rule,
-        &mut vault,
-        INVESTOR1,
-        50,
+        request,
         b"test burn".to_string(),
         &version,
         ts.ctx(),
@@ -838,14 +837,13 @@ fun test_burn_unauthorized() {
     let version = ts.take_shared<Version>();
     let mut vault = ts.take_shared<Vault>();
 
+    let request = vault.clawback_funds<TEST_VOLORO>(50, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
         &mut investor_info,
         &rule,
-        &mut vault,
-        INVESTOR1,
-        50,
+        request,
         b"unauthorized burn".to_string(),
         &version,
         ts.ctx(),
@@ -854,68 +852,6 @@ fun test_burn_unauthorized() {
     ts::return_shared(treasury);
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
-    ts::return_shared(version);
-    ts::return_shared(vault);
-    ts.end();
-}
-
-#[test]
-#[expected_failure(abort_code = ds_token::EVaultOwnerMismatch)]
-fun test_burn_vault_owner_mismatch() {
-    let mut ts = ts::begin(ADMIN);
-    setup_full(&mut ts);
-
-    // Register investor and issue tokens (vault is created automatically)
-    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
-
-    ts.next_tx(ADMIN);
-    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
-    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
-    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
-    let version = ts.take_shared<Version>();
-    let mut vault = ts.take_shared<Vault>();
-    let clock = clock::create_for_testing(ts.ctx());
-
-    ds_token::issue_tokens(
-        &mut treasury,
-        &auth,
-        &mut investor_info,
-        &mut compliance,
-        &vault,
-        INVESTOR1,
-        500,
-        0,
-        b"".to_string(),
-        &version,
-        vector[],
-        vector[],
-        clock.timestamp_ms(),
-        &clock,
-        ts.ctx(),
-    );
-
-    // Try to burn with wrong from_address
-    ds_token::burn(
-        &mut treasury,
-        &auth,
-        &mut investor_info,
-        &rule,
-        &mut vault,
-        INVESTOR2, // Wrong! Vault belongs to INVESTOR1
-        50,
-        b"test burn".to_string(),
-        &version,
-        ts.ctx(),
-    );
-
-    clock::destroy_for_testing(clock);
-    ts::return_shared(treasury);
-    ts::return_shared(auth);
-    ts::return_shared(investor_info);
-    ts::return_shared(compliance);
     ts::return_shared(rule);
     ts::return_shared(version);
     ts::return_shared(vault);
@@ -995,15 +931,15 @@ fun test_seize_tokens() {
     assert!(total_before == 1, 1);
 
     // Seize tokens (partial seize - investor still has balance)
+    let request = investor_vault.clawback_funds<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
         &rule,
+        request,
         &mut investor_vault,
-        INVESTOR1,
         &issuer_vault,
         ISSUER_WALLET,
-        50,
         b"seize reason".to_string(),
         &version,
         ts.ctx(),
@@ -1090,15 +1026,15 @@ fun test_seize_unauthorized() {
     // Get investor vault
     let mut investor_vault = ts.take_shared<Vault>();
 
+    let request = investor_vault.clawback_funds<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
         &rule,
+        request,
         &mut investor_vault,
-        INVESTOR1,
         &issuer_vault,
         ISSUER_WALLET,
-        50,
         b"unauthorized seize".to_string(),
         &version,
         ts.ctx(),
@@ -1175,15 +1111,15 @@ fun test_seize_to_non_issuer_wallet() {
     let mut vault1 = ts.take_shared<Vault>();
 
     // Try to seize to a non-issuer wallet (INVESTOR2) - should fail with ENotIssuerWallet
+    let request = vault1.clawback_funds<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
         &rule,
+        request,
         &mut vault1,
-        INVESTOR1,
         &vault2,
         INVESTOR2, // Not an issuer wallet!
-        50,
         b"invalid seize".to_string(),
         &version,
         ts.ctx(),
@@ -1368,14 +1304,13 @@ fun test_burn_from_platform_wallet_updates_balance() {
     assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 500, 0);
 
     // Burn some tokens from platform wallet
+    let request = vault.clawback_funds<TEST_VOLORO>(200, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
         &mut investor_info,
         &rule,
-        &mut vault,
-        PLATFORM_WALLET,
-        200,
+        request,
         b"burn from platform".to_string(),
         &version,
         ts.ctx(),
@@ -1453,15 +1388,15 @@ fun test_seize_to_issuer_wallet_updates_balance() {
     // Verify issuer wallet balance is 0 initially
     assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 0, 0);
 
+    let request = investor_vault.clawback_funds<TEST_VOLORO>(150, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
         &rule,
+        request,
         &mut investor_vault,
-        INVESTOR1,
         &issuer_vault,
         ISSUER_WALLET,
-        150,
         b"seize to issuer".to_string(),
         &version,
         ts.ctx(),
@@ -1542,15 +1477,15 @@ fun test_seize_from_platform_wallet_updates_balance() {
     let issuer_vault = ts.take_shared<Vault>();
     let mut platform_vault = ts.take_shared<Vault>();
 
+    let request = platform_vault.clawback_funds<TEST_VOLORO>(200, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
         &rule,
+        request,
         &mut platform_vault,
-        PLATFORM_WALLET,
         &issuer_vault,
         ISSUER_WALLET,
-        200,
         b"seize from platform".to_string(),
         &version,
         ts.ctx(),
