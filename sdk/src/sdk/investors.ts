@@ -153,8 +153,8 @@ export class Investors {
         return SuiClient.devInspectU64(ptb, sender)
     }
 
-    async investorWalletBalance(investorId: string, walletAddress: string, sender: string) {
-        const ptb = this.buildGetPTB('investor_wallet_balance', [investorId, walletAddress])
+    async investorWalletBalance(walletAddress: string, sender: string) {
+        const ptb = this.buildGetPTB('investor_wallet_balance', [walletAddress])
         return SuiClient.devInspectU64(ptb, sender)
     }
 

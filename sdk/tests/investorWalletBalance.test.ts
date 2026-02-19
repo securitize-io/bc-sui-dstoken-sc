@@ -118,7 +118,13 @@ describe('Investor Wallet Balance', () => {
         it('should update total after transfer between wallets of same investor', async () => {
             // Transfer from wallet1 to wallet2 (both belong to same investor)
             await executeTxFunc(
-                dsToken.transfer(sender, wallet1.toSuiAddress(), wallet2.toSuiAddress(), 100_000n)
+                dsToken.transfer(
+                    wallet1.toSuiAddress(),
+                    wallet1.toSuiAddress(),
+                    wallet2.toSuiAddress(),
+                    100_000n
+                ),
+                wallet1
             )
 
             const totalBalance = await investors.investorWalletBalanceTotal(investorId, sender)
@@ -169,12 +175,10 @@ describe('Investor Wallet Balance', () => {
 
             // Verify individual wallet balances
             const walletABalance = await investors.investorWalletBalance(
-                twoWalletInvestorId,
                 walletA.toSuiAddress(),
                 sender
             )
             const walletBBalance = await investors.investorWalletBalance(
-                twoWalletInvestorId,
                 walletB.toSuiAddress(),
                 sender
             )
@@ -274,14 +278,13 @@ describe('Investor Wallet Balance', () => {
                 )
             )
 
-            let totalBalance = await investors.investorWalletBalanceTotal(
-                burnAllInvestorId,
-                sender
-            )
+            let totalBalance = await investors.investorWalletBalanceTotal(burnAllInvestorId, sender)
             expect(totalBalance).toBe(500_000n)
 
             // Burn all tokens
-            await executeTxFunc(dsToken.burn(sender, burnWallet.toSuiAddress(), 500_000n, 'burn all'))
+            await executeTxFunc(
+                dsToken.burn(sender, burnWallet.toSuiAddress(), 500_000n, 'burn all')
+            )
 
             totalBalance = await investors.investorWalletBalanceTotal(burnAllInvestorId, sender)
             expect(totalBalance).toBe(0n)
@@ -353,8 +356,12 @@ describe('Investor Wallet Balance', () => {
             const isolatedWalletA = await createFundedWallet()
             const isolatedWalletB = await createFundedWallet()
 
-            await registerInvestor(tokenAddress, isolatedInvestorA, [isolatedWalletA.toSuiAddress()])
-            await registerInvestor(tokenAddress, isolatedInvestorB, [isolatedWalletB.toSuiAddress()])
+            await registerInvestor(tokenAddress, isolatedInvestorA, [
+                isolatedWalletA.toSuiAddress(),
+            ])
+            await registerInvestor(tokenAddress, isolatedInvestorB, [
+                isolatedWalletB.toSuiAddress(),
+            ])
 
             // Issue tokens to investor A only
             await executeTxFunc(
@@ -412,21 +419,9 @@ describe('Investor Wallet Balance', () => {
             // wallet2: 500,000 + 100,000 (transfer) = 600,000
             // wallet3: 250,000
 
-            const balance1 = await investors.investorWalletBalance(
-                investorId,
-                wallet1.toSuiAddress(),
-                sender
-            )
-            const balance2 = await investors.investorWalletBalance(
-                investorId,
-                wallet2.toSuiAddress(),
-                sender
-            )
-            const balance3 = await investors.investorWalletBalance(
-                investorId,
-                wallet3.toSuiAddress(),
-                sender
-            )
+            const balance1 = await investors.investorWalletBalance(wallet1.toSuiAddress(), sender)
+            const balance2 = await investors.investorWalletBalance(wallet2.toSuiAddress(), sender)
+            const balance3 = await investors.investorWalletBalance(wallet3.toSuiAddress(), sender)
 
             expect(balance1).toBe(700_000n)
             expect(balance2).toBe(600_000n)
@@ -437,31 +432,15 @@ describe('Investor Wallet Balance', () => {
             const newWallet = await createFundedWallet()
             await registerInvestor(tokenAddress, investorId2, [newWallet.toSuiAddress()])
 
-            const balance = await investors.investorWalletBalance(
-                investorId2,
-                newWallet.toSuiAddress(),
-                sender
-            )
+            const balance = await investors.investorWalletBalance(newWallet.toSuiAddress(), sender)
 
             expect(balance).toBe(0n)
         })
 
         it('should sum of individual wallets equal total balance', async () => {
-            const balance1 = await investors.investorWalletBalance(
-                investorId,
-                wallet1.toSuiAddress(),
-                sender
-            )
-            const balance2 = await investors.investorWalletBalance(
-                investorId,
-                wallet2.toSuiAddress(),
-                sender
-            )
-            const balance3 = await investors.investorWalletBalance(
-                investorId,
-                wallet3.toSuiAddress(),
-                sender
-            )
+            const balance1 = await investors.investorWalletBalance(wallet1.toSuiAddress(), sender)
+            const balance2 = await investors.investorWalletBalance(wallet2.toSuiAddress(), sender)
+            const balance3 = await investors.investorWalletBalance(wallet3.toSuiAddress(), sender)
             const totalBalance = await investors.investorWalletBalanceTotal(investorId, sender)
 
             expect(balance1 + balance2 + balance3).toBe(totalBalance)
@@ -469,7 +448,6 @@ describe('Investor Wallet Balance', () => {
 
         it('should update wallet balance after additional issuance', async () => {
             const balanceBefore = await investors.investorWalletBalance(
-                investorId,
                 wallet2.toSuiAddress(),
                 sender
             )
@@ -488,7 +466,6 @@ describe('Investor Wallet Balance', () => {
             )
 
             const balanceAfter = await investors.investorWalletBalance(
-                investorId,
                 wallet2.toSuiAddress(),
                 sender
             )
@@ -498,10 +475,11 @@ describe('Investor Wallet Balance', () => {
 
         it('should update wallet balance after transfer to different investor', async () => {
             const otherInvestorWallet = await createFundedWallet()
-            await registerInvestor(tokenAddress, 'OtherInvestor', [otherInvestorWallet.toSuiAddress()])
+            await registerInvestor(tokenAddress, 'OtherInvestor', [
+                otherInvestorWallet.toSuiAddress(),
+            ])
 
             const balanceBefore = await investors.investorWalletBalance(
-                investorId,
                 wallet1.toSuiAddress(),
                 sender
             )
@@ -509,15 +487,15 @@ describe('Investor Wallet Balance', () => {
             // Transfer from wallet1 to different investor
             await executeTxFunc(
                 dsToken.transfer(
-                    sender,
+                    wallet1.toSuiAddress(),
                     wallet1.toSuiAddress(),
                     otherInvestorWallet.toSuiAddress(),
                     150_000n
-                )
+                ),
+                wallet1
             )
 
             const balanceAfter = await investors.investorWalletBalance(
-                investorId,
                 wallet1.toSuiAddress(),
                 sender
             )
@@ -538,7 +516,6 @@ describe('Investor Wallet Balance', () => {
             // Get current balances
             const totalBefore = await investors.investorWalletBalanceTotal(investorId, sender)
             const wallet3Balance = await investors.investorWalletBalance(
-                investorId,
                 wallet3.toSuiAddress(),
                 sender
             )
