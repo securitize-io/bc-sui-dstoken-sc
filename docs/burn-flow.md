@@ -10,7 +10,7 @@ sequenceDiagram
     participant Treasury as 🏦 Treasury
     participant Registry as 👥 InvestorInfo
 
-    Burner->>DS: burn(vault, amount, ...)
+    Burner->>DS: burn(chest, amount, ...)
 
     DS->>Compliance: validate_burn()
 
@@ -19,7 +19,7 @@ sequenceDiagram
     alt Validation passes
         Compliance-->>DS: ✅ Validation passed
 
-        DS->>PTS: clawback(vault, amount, witness)
+        DS->>PTS: clawback(chest, amount, witness)
         Note over PTS: DsProtocol witness<br/>authorizes the withdrawal
         PTS-->>DS: Balance<T>
 
