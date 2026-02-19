@@ -10,7 +10,7 @@ sequenceDiagram
     participant PTS as 📦 Permissioned Token<br/>Standard
     participant Registry as 👥 InvestorInfo
 
-    Issuer->>DS: issue_tokens(vault, amount, ...)
+    Issuer->>DS: issue_tokens(chest, amount, ...)
 
     DS->>Compliance: validate_issue()
 
@@ -25,7 +25,7 @@ sequenceDiagram
         DS->>Treasury: Mint tokens(amount)
         Treasury-->>DS: Balance<T>
 
-        DS->>PTS: deposit_to_vault(vault, balance, witness)
+        DS->>PTS: deposit_to_chest(chest, balance, witness)
         Note over PTS: DsProtocol witness<br/>authorizes the deposit
         PTS-->>DS: ✅ Tokens deposited
 

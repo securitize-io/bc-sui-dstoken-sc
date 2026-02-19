@@ -116,12 +116,12 @@ describe('DSToken', () => {
             await assertInvestorBalance(tokenAddress, 'testInvestor', '1000000')
         })
 
-        it('should issue tokens with no vault', async () => {
+        it('should issue tokens with no chest', async () => {
             const totalIssued = await dsToken.getTotalIssued()
             expect(totalIssued).toBe('1000000')
 
             await executeTxFunc(
-                dsToken.issueNoVault(sender, sender, 1_000_000n, 0, '', [], [], issuanceTimeMS)
+                dsToken.issueNoChest(sender, sender, 1_000_000n, 0, '', [], [], issuanceTimeMS)
             )
 
             const totalIssuedAfter = await dsToken.getTotalIssued()

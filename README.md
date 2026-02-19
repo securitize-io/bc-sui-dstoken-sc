@@ -107,9 +107,9 @@ The protocol supports four main token operations, each with compliance validatio
 
 | Operation | Description | Documentation |
 |-----------|-------------|---------------|
-| **Transfer** | Move tokens between vaults with compliance checks | [Transfer Flow](docs/transfer-flow.md) |
-| **Issue** | Mint new tokens to a vault | [Issue Flow](docs/issue-flow.md) |
-| **Burn** | Destroy tokens from a vault | [Burn Flow](docs/burn-flow.md) |
+| **Transfer** | Move tokens between chests with compliance checks | [Transfer Flow](docs/transfer-flow.md) |
+| **Issue** | Mint new tokens to a chest | [Issue Flow](docs/issue-flow.md) |
+| **Burn** | Destroy tokens from a chest | [Burn Flow](docs/burn-flow.md) |
 | **Seize** | Force transfer tokens (regulatory/legal action) | [Seize Flow](docs/seize-flow.md) |
 
 All operations follow a similar pattern:

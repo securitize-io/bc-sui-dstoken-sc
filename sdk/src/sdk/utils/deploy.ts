@@ -1,4 +1,4 @@
-import {deploy as baseDeploy, PublishSingleton, SuiClient} from '../../easysui'
+import {ADMIN_KEYPAIR, deploy as baseDeploy, PublishSingleton, SuiClient, MoveType} from '../../easysui'
 import fs from "fs";
 import path from "path";
 import {Config} from "./config";
@@ -6,11 +6,12 @@ import {Config} from "./config";
 export async function deploy() {
     const result = await baseDeploy(Config)
 
-    // PAS is published as a dependency — resolve PAS_PACKAGE_ID and PAS_NAMESPACE
+    // PAS is published as a dependency — resolve PAS_PACKAGE_ID, PAS_NAMESPACE, and PAS_UPGRADE_CAP
     const network = process.env.NETWORK || 'localnet'
     const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
     let pasPackageId: string | undefined
     let pasNamespace: string | undefined
+    let pasUpgradeCap: string | undefined
 
     if (isEphemeralChain && fs.existsSync(PublishSingleton.pubFile)) {
         // Ephemeral chains: PAS is published in a separate TX — read Pub file and query RPC
@@ -28,10 +29,16 @@ export async function deploy() {
                 pasNamespace = PublishSingleton.findObjectIdByType(
                     `${pasPackageId}::namespace::Namespace`, true, data[0]
                 )
+                pasUpgradeCap = PublishSingleton.findObjectIdByType(
+                    '0x2::package::UpgradeCap', true, data[0]
+                )
             }
         }
     } else if (network === 'testnet') {
-        // Testnet: Namespace is in the same publish response
+        // Testnet: PAS is in the same package — Namespace is in the publish response
+        pasPackageId = PublishSingleton.packageId
+        pasUpgradeCap = PublishSingleton.upgradeCapId
+
         const resp = PublishSingleton.publishResponse()
 
         // Search objectChanges (standard format)
@@ -39,11 +46,9 @@ export async function deploy() {
             (chng) => chng.type === 'created' && chng.objectType.endsWith('::namespace::Namespace')
         )
         if (objChange && objChange.type === 'created') {
-            pasPackageId = objChange.objectType.split('::')[0]
             pasNamespace = objChange.objectId
         }
-
-        // Fallback: search changed_objects (test-publish format)
+        // Fallback: search changed_objects (new format)
         if (!pasNamespace) {
             const changedObjects = (resp as any).changed_objects as
                 | Array<{ objectId: string; objectType: string; idOperation: string }>
@@ -52,10 +57,26 @@ export async function deploy() {
                 (obj) => obj.idOperation === 'CREATED' && obj.objectType.endsWith('::namespace::Namespace')
             )
             if (nsObj) {
-                pasPackageId = nsObj.objectType.split('::')[0]
                 pasNamespace = nsObj.objectId
             }
         }
+    }
+
+    // Call PAS setup functions: namespace::setup and templates::setup
+    if (pasPackageId && pasNamespace && pasUpgradeCap) {
+        await SuiClient.moveCall({
+            signer: ADMIN_KEYPAIR!,
+            target: `${pasPackageId}::namespace::setup`,
+            args: [pasNamespace, pasUpgradeCap],
+            argTypes: [MoveType.object, MoveType.object],
+        })
+
+        await SuiClient.moveCall({
+            signer: ADMIN_KEYPAIR!,
+            target: `${pasPackageId}::templates::setup`,
+            args: [pasNamespace],
+            argTypes: [MoveType.object],
+        })
     }
 
     if (pasPackageId && pasNamespace) {

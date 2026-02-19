@@ -131,8 +131,8 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    getPASVault(address: string) {
-        const key = 'VaultKey'
+    getPASChest(address: string) {
+        const key = 'ChestKey'
         const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
         return deriveObjectId(Config.vars.PAS_NAMESPACE, 'keys', key, Config.vars.PAS_PACKAGE_ID, undefined, serializedBcs)
     }
@@ -148,13 +148,13 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const pasVault = this.getPASVault(to);
+        const pasChest = this.getPASChest(to);
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            pasVault,
+            pasChest,
             to,
             value,
             reasonCode,
@@ -198,7 +198,7 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    issueNoVaultPTB(
+    issueNoChestPTB(
         to: string,
         value: bigint,
         reasonCode: number,
@@ -241,10 +241,10 @@ export class DSToken {
             MoveType.u64,
             MoveType.object,
         ]
-        return this.buildSetPTB('issue_tokens_no_vault', args, ptb, argsTypes)
+        return this.buildSetPTB('issue_tokens_no_chest', args, ptb, argsTypes)
     }
 
-    async issueNoVault(
+    async issueNoChest(
         signer: string,
         to: string,
         value: bigint,
@@ -254,7 +254,7 @@ export class DSToken {
         releaseTimes: number[],
         issuanceTimeMS: number,
     ) {
-        const ptb = this.issueNoVaultPTB(to, value, reasonCode, reasonString, valuesLocked, releaseTimes, issuanceTimeMS)
+        const ptb = this.issueNoChestPTB(to, value, reasonCode, reasonString, valuesLocked, releaseTimes, issuanceTimeMS)
         return this.buildSetBytes(ptb, signer)
     }
 
@@ -265,13 +265,13 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const pasVault = this.getPASVault(from);
+        const pasChest = this.getPASChest(from);
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.pasRule,
-            pasVault,
+            pasChest,
             from,
             value,
             reason,
@@ -309,15 +309,15 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const fromPASVault = this.getPASVault(from);
-        const toVault = this.getPASVault(to);
+        const fromPASChest = this.getPASChest(from);
+        const toChest = this.getPASChest(to);
         const args = [
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.pasRule,
-            fromPASVault,
+            fromPASChest,
             from,
-            toVault,
+            toChest,
             to,
             value,
             reason,
@@ -386,18 +386,18 @@ export class DSToken {
         ptb?: Transaction,
     ) {
         ptb ??= new Transaction()
-        const fromRwaVault = this.getPASVault(from)
-        const toRwaVault = this.getPASVault(to)
+        const fromRwaChest = this.getPASChest(from)
+        const toRwaChest = this.getPASChest(to)
         const auth = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::vault::new_auth`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::new_auth`,
         })
         const transferRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::vault::transfer_funds`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::transfer_funds`,
             typeArguments: [this.tokenAddress],
             arguments: [
-                ptb.object(fromRwaVault),
+                ptb.object(fromRwaChest),
                 auth,
-                ptb.object(toRwaVault),
+                ptb.object(toRwaChest),
                 ptb.pure.u64(amount),
             ],
         })
