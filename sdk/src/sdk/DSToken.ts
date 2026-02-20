@@ -432,4 +432,111 @@ export class DSToken {
         const ptb = this.transferPTB(from, to, amount)
         return this.buildSetBytes(ptb, signer)
     }
+
+    private getTemplatesObjectId() {
+        return deriveObjectId(Config.vars.PAS_NAMESPACE, 'keys', 'TemplateKey', Config.vars.PAS_PACKAGE_ID)
+    }
+
+    setTemplateCommandPTB(
+        command: any,
+        ptb?: Transaction,
+    ) {
+        ptb ??= new Transaction()
+        const args = [
+            this.tokenDetails.auth,
+            this.getTemplatesObjectId(),
+            command,
+            Config.vars.VERSION,
+        ]
+        return this.buildSetPTB('set_template_command', args, ptb)
+    }
+
+    async setTemplateCommand(
+        signer: string,
+        command: any,
+    ) {
+        const ptb = this.setTemplateCommandPTB(command)
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    unsetTemplateCommandPTB(ptb?: Transaction) {
+        ptb ??= new Transaction()
+        const args = [
+            this.tokenDetails.auth,
+            this.getTemplatesObjectId(),
+            Config.vars.VERSION,
+        ]
+        return this.buildSetPTB('unset_template_command', args, ptb)
+    }
+
+    async unsetTemplateCommand(signer: string) {
+        const ptb = this.unsetTemplateCommandPTB()
+        return this.buildSetBytes(ptb, signer)
+    }
+
+    buildTransferCommand(ptb: Transaction) {
+        const ptbPkg = Config.vars.PTB_PACKAGE_ID
+        const pkg = Config.vars.PACKAGE_ID
+
+        const treasuryArg = ptb.moveCall({
+            target: `${ptbPkg}::ptb::object_by_type_string`,
+            arguments: [ptb.pure.string(`${pkg}::ds_token::Treasury<${this.tokenAddress}>`)],
+        })
+
+        const investorsArg = ptb.moveCall({
+            target: `${ptbPkg}::ptb::object_by_type_string`,
+            arguments: [ptb.pure.string(`${pkg}::registry_service::InvestorInfo<${this.tokenAddress}>`)],
+        })
+
+        const complianceArg = ptb.moveCall({
+            target: `${ptbPkg}::ptb::object_by_type_string`,
+            arguments: [ptb.pure.string(`${pkg}::compliance_service::ComplianceConfig<${this.tokenAddress}>`)],
+        })
+
+        const requestArg = ptb.moveCall({
+            target: `${ptbPkg}::ptb::ext_input`,
+            arguments: [ptb.pure.string('request')],
+        })
+
+        const versionArg = ptb.moveCall({
+            target: `${ptbPkg}::ptb::object_by_type_string`,
+            arguments: [ptb.pure.string(`${pkg}::version::Version`)],
+        })
+
+        const clockArg = ptb.moveCall({
+            target: `${ptbPkg}::ptb::clock`,
+        })
+
+        const argsVec = ptb.makeMoveVec({
+            type: `${ptbPkg}::ptb::Argument`,
+            elements: [treasuryArg, investorsArg, complianceArg, requestArg, versionArg, clockArg],
+        })
+
+        const typeArgsVec = ptb.makeMoveVec({
+            type: '0x1::string::String',
+            elements: [ptb.pure.string(this.tokenAddress)],
+        })
+
+        return ptb.moveCall({
+            target: `${ptbPkg}::ptb::move_call`,
+            arguments: [
+                ptb.pure.string(pkg),
+                ptb.pure.string('ds_token'),
+                ptb.pure.string('transfer'),
+                argsVec,
+                typeArgsVec,
+            ],
+        })
+    }
+
+    setTransferTemplateCommandPTB(ptb?: Transaction) {
+        ptb ??= new Transaction()
+        const command = this.buildTransferCommand(ptb)
+        return this.setTemplateCommandPTB(command, ptb)
+    }
+
+    async setTransferTemplateCommand(signer: string) {
+        const ptb = this.setTransferTemplateCommandPTB()
+        return this.buildSetBytes(ptb, signer)
+    }
 }

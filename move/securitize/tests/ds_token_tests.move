@@ -1,7 +1,8 @@
 #[test_only]
 module securitize::ds_token_tests;
 
-use pas::{rule::Rule, chest::Chest};
+use pas::{rule::Rule, chest::Chest, templates::Templates};
+use ptb::ptb;
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
     ds_token::{Self, Treasury},
@@ -11,7 +12,9 @@ use securitize::{
     trust_service::Auth,
     version::Version
 };
+use std::string::String;
 use sui::{clock, test_scenario::{Self as ts, Scenario}};
+use ptb::ptb::Command;
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
@@ -1498,5 +1501,287 @@ fun test_seize_from_platform_wallet_updates_balance() {
     ts::return_shared(version);
     ts::return_shared(platform_chest);
     ts::return_shared(issuer_chest);
+    ts.end();
+}
+
+// ==================== Template Command Tests ====================
+
+/// Helper: convert a type name to std::string::String
+fun type_to_string<T>(): String {
+    std::type_name::with_defining_ids<T>().into_string().into_bytes().to_string()
+}
+
+/// Helper: get the package address as a string
+fun pkg_address_string<T>(): String {
+    std::type_name::with_defining_ids<T>().address_string().into_bytes().to_string()
+}
+
+/// Helper: build a transfer Command for ds_token::transfer<TEST_VOLORO>
+fun build_transfer_command(): Command {
+    let pkg = pkg_address_string<Treasury<TEST_VOLORO>>();
+    let arguments = vector[
+        ptb::object_by_type_string(type_to_string<Treasury<TEST_VOLORO>>()),
+        ptb::object_by_type_string(type_to_string<InvestorInfo<TEST_VOLORO>>()),
+        ptb::object_by_type_string(type_to_string<ComplianceConfig<TEST_VOLORO>>()),
+        ptb::ext_input(b"request".to_string()),
+        ptb::object_by_type_string(type_to_string<Version>()),
+        ptb::clock(),
+    ];
+    ptb::move_call(
+        pkg,
+        b"ds_token".to_string(),
+        b"transfer".to_string(),
+        arguments,
+        vector[type_to_string<TEST_VOLORO>()],
+    )
+}
+
+#[test]
+fun test_set_template_command() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+    test_helpers::setup_templates(&mut ts);
+
+    let command = build_transfer_command();
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::set_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        command,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+
+    // Verify the command was stored by successfully unsetting it
+    // (unset aborts with ETemplateNotSet if the command doesn't exist)
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::unset_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::ENotAuthorized)]
+fun test_set_template_command_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+    test_helpers::setup_templates(&mut ts);
+
+    let command = build_transfer_command();
+
+    ts.next_tx(UNAUTHORIZED);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::set_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        command,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure]
+fun test_unset_template_command() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+    test_helpers::setup_templates(&mut ts);
+
+    let command = build_transfer_command();
+
+    // First set the template
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::set_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        command,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+
+    // Unset it
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::unset_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+
+    // Try to unset again — should abort with ETemplateNotSet,
+    // proving the first unset actually removed the command
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::unset_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::ENotAuthorized)]
+fun test_unset_template_command_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+    test_helpers::setup_templates(&mut ts);
+
+    let command = build_transfer_command();
+
+    // Set the template as admin
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::set_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        command,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+
+    // Try to unset from unauthorized address
+    ts.next_tx(UNAUTHORIZED);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::unset_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure]
+fun test_unset_template_command_not_set() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+    test_helpers::setup_templates(&mut ts);
+
+    // Try to unset without setting first
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut templates = ts.take_shared<Templates>();
+    let version = ts.take_shared<Version>();
+
+    ds_token::unset_template_command<TEST_VOLORO>(
+        &auth,
+        &mut templates,
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(templates);
+    ts::return_shared(version);
+    ts.end();
+}
+
+// ==================== Rule Cap Tests ====================
+
+#[test]
+fun test_rule_cap_borrow() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Borrow rule_cap - should succeed for ADMIN (Master role has AccessRuleCap)
+    let _cap = ds_token::rule_cap<TEST_VOLORO>(&treasury, &auth, &version, ts.ctx());
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::ENotAuthorized)]
+fun test_rule_cap_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    ts.next_tx(UNAUTHORIZED);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Try to borrow rule_cap from unauthorized address - should fail
+    let _cap = ds_token::rule_cap<TEST_VOLORO>(&treasury, &auth, &version, ts.ctx());
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
