@@ -291,5 +291,13 @@ public(package) fun add_platform_wallet(ts: &mut Scenario, wallet: address) {
     ts::return_shared(namespace);
 }
 
+/// Set up Templates for testing (required for template command tests)
+public(package) fun setup_templates(ts: &mut Scenario) {
+    ts.next_tx(ADMIN);
+    let mut namespace = ts.take_shared<Namespace>();
+    pas::templates::setup(&mut namespace);
+    ts::return_shared(namespace);
+}
+
 /// One year in milliseconds (365 days)
 public fun one_year_ms(): u64 { 31_536_000_000 }

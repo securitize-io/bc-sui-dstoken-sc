@@ -6,18 +6,26 @@
 module securitize::ds_token;
 
 use pas::{
+    chest::Chest,
     clawback_funds::ClawbackFunds,
     keys::{transfer_funds_action, clawback_funds_action},
     namespace::Namespace,
     request::Request,
-    rule::{Self, Rule},
+    rule::{Self, Rule, RuleCap},
     templates::Templates,
-    transfer_funds::TransferFunds,
-    chest::Chest
+    transfer_funds::TransferFunds
 };
 use ptb::ptb::Command;
 use securitize::{
-    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, SetTemplateCommand, Pauser},
+    abilities::{
+        IssueTokens,
+        MetadataUpdate,
+        BurnTokens,
+        SeizeTokens,
+        SetTemplateCommand,
+        AccessRuleCap,
+        Pauser
+    },
     compliance_service::{Self, ComplianceConfig},
     events::{
         emit_issue_event,
@@ -112,6 +120,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, SeizeTokens>(version, ctx);
     auth.add_role_ability<T, Master, MetadataUpdate>(version, ctx);
     auth.add_role_ability<T, Master, SetTemplateCommand>(version, ctx);
+    auth.add_role_ability<T, Master, AccessRuleCap>(version, ctx);
     auth.add_role_ability<T, Master, Pauser>(version, ctx);
 
     auth.add_role_ability<T, Issuer, IssueTokens>(version, ctx);
@@ -608,6 +617,22 @@ public fun unpause<T>(
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
     emit_unpause_event<T>(ctx.sender());
+}
+
+/// Returns a reference to the RuleCap stored in the Treasury.
+/// Only authorized addresses with the AccessRuleCap ability can call this function.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the AccessRuleCap ability
+public fun rule_cap<T>(
+    treasury: &Treasury<T>,
+    auth: &Auth<T>,
+    version: &Version,
+    ctx: &TxContext,
+): &RuleCap<T> {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, AccessRuleCap>(ctx.sender()), ENotAuthorized);
+    dof::borrow<RuleCapKey, RuleCap<T>>(&treasury.id, RuleCapKey())
 }
 
 // ==== View Functions ====

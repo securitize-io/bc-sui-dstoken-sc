@@ -12,11 +12,16 @@ export async function deploy() {
     let pasPackageId: string | undefined
     let pasNamespace: string | undefined
     let pasUpgradeCap: string | undefined
+    let ptbPackageId: string | undefined
 
     if (isTestChain && fs.existsSync(PublishSingleton.pubFile)) {
-        // Ephemeral chains: PAS is published in a separate TX — read Pub file and query RPC
+        // Ephemeral chains: PAS & PTB are published in a separate TX — read Pub file and query RPC
         const content = fs.readFileSync(PublishSingleton.pubFile, 'utf8')
         const pasMatch = content.match(/\[\[published\]\][^[]*?packages\/pas[^[]*?published-at\s*=\s*"(0x[0-9a-fA-F]+)"/)
+        const ptbMatch = content.match(/\[\[published\]\][^[]*?packages\/ptb[^[]*?published-at\s*=\s*"(0x[0-9a-fA-F]+)"/)
+        if (ptbMatch) {
+            ptbPackageId = ptbMatch[1]
+        }
         if (pasMatch) {
             pasPackageId = pasMatch[1]
             const { data } = await SuiClient.client.queryTransactionBlocks({
@@ -53,12 +58,13 @@ export async function deploy() {
         })
     }
 
-    if (pasPackageId && pasNamespace) {
+    if (pasPackageId || ptbPackageId) {
         const envFile = path.join(process.cwd(), `.env.${network}`)
         let envContent = fs.readFileSync(envFile, 'utf8')
         const patches: Record<string, string> = {
-            PAS_PACKAGE_ID: pasPackageId,
-            PAS_NAMESPACE: pasNamespace,
+            ...(pasPackageId && { PAS_PACKAGE_ID: pasPackageId }),
+            ...(pasNamespace && { PAS_NAMESPACE: pasNamespace }),
+            ...(ptbPackageId && { PTB_PACKAGE_ID: ptbPackageId }),
         }
         for (const [key, value] of Object.entries(patches)) {
             const regex = new RegExp(`^${key}=.*$`, 'm')

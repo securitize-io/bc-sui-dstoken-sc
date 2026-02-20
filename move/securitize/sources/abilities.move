@@ -17,6 +17,8 @@ public struct MetadataUpdate() has drop;
 
 public struct SetTemplateCommand() has drop;
 
+public struct AccessRuleCap() has drop;
+
 public struct Pauser() has drop;
 
 // ==================== Trust Service Abilities ====================
