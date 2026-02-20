@@ -8,12 +8,12 @@ export async function deploy() {
 
     // PAS is published as a dependency — resolve PAS_PACKAGE_ID, PAS_NAMESPACE, and PAS_UPGRADE_CAP
     const network = process.env.NETWORK || 'localnet'
-    const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
+    const isTestChain = network !== 'mainnet' //TODO change it when PAS in MVR
     let pasPackageId: string | undefined
     let pasNamespace: string | undefined
     let pasUpgradeCap: string | undefined
 
-    if (isEphemeralChain && fs.existsSync(PublishSingleton.pubFile)) {
+    if (isTestChain && fs.existsSync(PublishSingleton.pubFile)) {
         // Ephemeral chains: PAS is published in a separate TX — read Pub file and query RPC
         const content = fs.readFileSync(PublishSingleton.pubFile, 'utf8')
         const pasMatch = content.match(/\[\[published\]\][^[]*?packages\/pas[^[]*?published-at\s*=\s*"(0x[0-9a-fA-F]+)"/)
@@ -32,32 +32,6 @@ export async function deploy() {
                 pasUpgradeCap = PublishSingleton.findObjectIdByType(
                     '0x2::package::UpgradeCap', true, data[0]
                 )
-            }
-        }
-    } else if (network === 'testnet') {
-        // Testnet: PAS is in the same package — Namespace is in the publish response
-        pasPackageId = PublishSingleton.packageId
-        pasUpgradeCap = PublishSingleton.upgradeCapId
-
-        const resp = PublishSingleton.publishResponse()
-
-        // Search objectChanges (standard format)
-        const objChange = resp.objectChanges?.find(
-            (chng) => chng.type === 'created' && chng.objectType.endsWith('::namespace::Namespace')
-        )
-        if (objChange && objChange.type === 'created') {
-            pasNamespace = objChange.objectId
-        }
-        // Fallback: search changed_objects (new format)
-        if (!pasNamespace) {
-            const changedObjects = (resp as any).changed_objects as
-                | Array<{ objectId: string; objectType: string; idOperation: string }>
-                | undefined
-            const nsObj = changedObjects?.find(
-                (obj) => obj.idOperation === 'CREATED' && obj.objectType.endsWith('::namespace::Namespace')
-            )
-            if (nsObj) {
-                pasNamespace = nsObj.objectId
             }
         }
     }

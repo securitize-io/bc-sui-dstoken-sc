@@ -89,15 +89,13 @@ export class PublishSingleton {
         }
         fs.rmSync(`${packagePath}/build`, { recursive: true, force: true })
 
-        const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
-        const publishCmd = isEphemeralChain ? `test-publish --build-env testnet --pubfile-path ${this.pubFile}` : 'publish'
+        const isTestChain = network !== 'mainnet'
+        const publishCmd = isTestChain ? `test-publish --build-env testnet --pubfile-path ${this.pubFile}` : 'publish'
 
         let buildCommand = `sui client ${publishCmd} ${packagePath}`
 
-        if (isEphemeralChain) {
+        if (isTestChain) {
             buildCommand += ' --publish-unpublished-deps'
-        } else if (network === 'testnet') {
-            buildCommand += ' --with-unpublished-dependencies'
         }
 
         buildCommand += inBytes ? ` --serialize-unsigned-transaction --sender ${sender}` : ' --json'
