@@ -141,15 +141,34 @@ export class DSToken {
         return { ptb, clawbackRequest }
     }
 
-    resolveClawbackRequestPTB(
-        clawbackRequest: ReturnType<Transaction['moveCall']>,
-        ptb?: Transaction
-    ) {
+    initiateTransferFundsPTB(from: string, to: string, amount: bigint, ptb?: Transaction) {
         ptb ??= new Transaction()
+        const fromRwaChest = this.getPASChest(from)
+        const toRwaChest = this.getPASChest(to)
+        const auth = ptb.moveCall({
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::new_auth`,
+        })
+        const transferRequest = ptb.moveCall({
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::transfer_funds`,
+            typeArguments: [this.tokenAddress],
+            arguments: [
+                ptb.object(fromRwaChest),
+                auth,
+                ptb.object(toRwaChest),
+                ptb.pure.u64(amount),
+            ],
+        })
+        return { ptb, transferRequest }
+    }
+
+    resolveTransferRequestPTB(
+        transferRequest: ReturnType<Transaction['moveCall']>,
+        ptb: Transaction
+    ) {
         ptb.moveCall({
             target: `${Config.vars.PAS_PACKAGE_ID}::transfer_funds::resolve`,
             typeArguments: [this.tokenAddress],
-            arguments: [clawbackRequest, ptb.object(this.tokenDetails.pasRule)],
+            arguments: [transferRequest, ptb.object(this.tokenDetails.pasRule)],
         })
         return ptb
     }
@@ -402,31 +421,15 @@ export class DSToken {
         to: string,
         amount: bigint,
         ptb?: Transaction,
-        clawbackRequest?: ReturnType<Transaction['moveCall']>
+        transferRequest?: ReturnType<Transaction['moveCall']>
     ) {
-        if (!clawbackRequest) {
-            const result = this.initiateClawbackFundsPTB(from, amount, ptb)
+        if (!transferRequest) {
+            const result = this.initiateTransferFundsPTB(from, to, amount, ptb)
             ptb = result.ptb
-            clawbackRequest = result.clawbackRequest
+            transferRequest = result.transferRequest
         } else {
             ptb ??= new Transaction()
         }
-
-        const fromRwaChest = this.getPASChest(from)
-        const toRwaChest = this.getPASChest(to)
-        const auth = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::new_auth`,
-        })
-        const transferRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::transfer_funds`,
-            typeArguments: [this.tokenAddress],
-            arguments: [
-                ptb.object(fromRwaChest),
-                auth,
-                ptb.object(toRwaChest),
-                ptb.pure.u64(amount),
-            ],
-        })
 
         const args = [
             this.tokenDetails.treasury,
@@ -445,8 +448,8 @@ export class DSToken {
             MoveType.object,
         ]
 
-        this.resolveClawbackRequestPTB(clawbackRequest, ptb)
-        return this.buildSetPTB('transfer', args, ptb, argsTypes)
+        ptb = this.buildSetPTB('transfer', args, ptb, argsTypes)
+        return this.resolveTransferRequestPTB(transferRequest, ptb)
     }
 
     async transfer(signer: string, from: string, to: string, amount: bigint) {
