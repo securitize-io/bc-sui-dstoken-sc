@@ -63,8 +63,8 @@ public fun new<T>(
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     assert!(non_us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
-    emit_uint_rule_set_event<T>(b"us_lock_period_ms".to_string(), 0, us_lock_period_ms);
-    emit_uint_rule_set_event<T>(b"non_us_lock_period_ms".to_string(), 0, non_us_lock_period_ms);
+    emit_uint_rule_set_event<T>(b"usLockPeriod".to_string(), 0, us_lock_period_ms);
+    emit_uint_rule_set_event<T>(b"nonUSLockPeriod".to_string(), 0, non_us_lock_period_ms);
     new_init(LockupRestriction {
         us_lock_period_ms,
         non_us_lock_period_ms,
@@ -90,7 +90,7 @@ public fun set_us_lock_period<T>(
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
-        b"us_lock_period_ms".to_string(),
+        b"usLockPeriod".to_string(),
         rule.us_lock_period_ms,
         period_ms,
     );
@@ -114,7 +114,7 @@ public fun set_non_us_lock_period<T>(
     assert!(period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
     let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
-        b"non_us_lock_period_ms".to_string(),
+        b"nonUSLockPeriod".to_string(),
         rule.non_us_lock_period_ms,
         period_ms,
     );
