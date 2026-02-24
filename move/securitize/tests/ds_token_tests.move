@@ -1,7 +1,7 @@
 #[test_only]
 module securitize::ds_token_tests;
 
-use pas::{rule::Rule, chest::Chest, templates::Templates};
+use pas::{policy::Policy, chest::Chest, templates::Templates};
 use ptb::ptb;
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
@@ -716,7 +716,7 @@ fun test_burn_tokens() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let mut chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -757,7 +757,7 @@ fun test_burn_tokens() {
         &mut treasury,
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         b"test burn".to_string(),
         &version,
@@ -780,7 +780,7 @@ fun test_burn_tokens() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(chest);
     ts.end();
@@ -801,7 +801,7 @@ fun test_burn_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -845,7 +845,7 @@ fun test_burn_unauthorized() {
         &mut treasury,
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         b"unauthorized burn".to_string(),
         &version,
@@ -855,7 +855,7 @@ fun test_burn_unauthorized() {
     ts::return_shared(treasury);
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(chest);
     ts.end();
@@ -914,7 +914,7 @@ fun test_seize_tokens() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     // Get issuer chest (most recently created)
     let issuer_chest = ts.take_shared<Chest>();
@@ -938,7 +938,7 @@ fun test_seize_tokens() {
     ds_token::seize(
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         &issuer_chest,
         ISSUER_WALLET,
@@ -960,7 +960,7 @@ fun test_seize_tokens() {
 
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(investor_chest);
     ts::return_shared(issuer_chest);
@@ -982,7 +982,7 @@ fun test_seize_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -1010,7 +1010,7 @@ fun test_seize_unauthorized() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(chest);
 
@@ -1021,7 +1021,7 @@ fun test_seize_unauthorized() {
     ts.next_tx(UNAUTHORIZED);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     // Get issuer chest (most recently created)
     let issuer_chest = ts.take_shared<Chest>();
@@ -1032,7 +1032,7 @@ fun test_seize_unauthorized() {
     ds_token::seize(
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         &issuer_chest,
         ISSUER_WALLET,
@@ -1043,7 +1043,7 @@ fun test_seize_unauthorized() {
 
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(investor_chest);
     ts::return_shared(issuer_chest);
@@ -1065,7 +1065,7 @@ fun test_seize_to_non_issuer_wallet() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let chest1 = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -1093,7 +1093,7 @@ fun test_seize_to_non_issuer_wallet() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(chest1);
 
@@ -1104,7 +1104,7 @@ fun test_seize_to_non_issuer_wallet() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     // Get INVESTOR2's chest (most recently created)
     let chest2 = ts.take_shared<Chest>();
@@ -1116,7 +1116,7 @@ fun test_seize_to_non_issuer_wallet() {
     ds_token::seize(
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         &chest2,
         INVESTOR2, // Not an issuer wallet!
@@ -1127,7 +1127,7 @@ fun test_seize_to_non_issuer_wallet() {
 
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(chest1);
     ts::return_shared(chest2);
@@ -1277,7 +1277,7 @@ fun test_burn_from_platform_wallet_updates_balance() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let mut chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -1309,7 +1309,7 @@ fun test_burn_from_platform_wallet_updates_balance() {
         &mut treasury,
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         b"burn from platform".to_string(),
         &version,
@@ -1324,7 +1324,7 @@ fun test_burn_from_platform_wallet_updates_balance() {
     ts::return_shared(auth);
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(chest);
     ts.end();
@@ -1380,7 +1380,7 @@ fun test_seize_to_issuer_wallet_updates_balance() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let issuer_chest = ts.take_shared<Chest>();
     let mut investor_chest = ts.take_shared<Chest>();
@@ -1392,7 +1392,7 @@ fun test_seize_to_issuer_wallet_updates_balance() {
     ds_token::seize(
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         &issuer_chest,
         ISSUER_WALLET,
@@ -1411,7 +1411,7 @@ fun test_seize_to_issuer_wallet_updates_balance() {
 
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(investor_chest);
     ts::return_shared(issuer_chest);
@@ -1471,7 +1471,7 @@ fun test_seize_from_platform_wallet_updates_balance() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let rule = ts.take_shared<Rule<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let issuer_chest = ts.take_shared<Chest>();
     let mut platform_chest = ts.take_shared<Chest>();
@@ -1480,7 +1480,7 @@ fun test_seize_from_platform_wallet_updates_balance() {
     ds_token::seize(
         &auth,
         &mut investor_info,
-        &rule,
+        &policy,
         request,
         &issuer_chest,
         ISSUER_WALLET,
@@ -1497,7 +1497,7 @@ fun test_seize_from_platform_wallet_updates_balance() {
 
     ts::return_shared(auth);
     ts::return_shared(investor_info);
-    ts::return_shared(rule);
+    ts::return_shared(policy);
     ts::return_shared(version);
     ts::return_shared(platform_chest);
     ts::return_shared(issuer_chest);
@@ -1745,10 +1745,10 @@ fun test_unset_template_command_not_set() {
     ts.end();
 }
 
-// ==================== Rule Cap Tests ====================
+// ==================== Policy Cap Tests ====================
 
 #[test]
-fun test_rule_cap_borrow() {
+fun test_policy_cap_borrow() {
     let mut ts = ts::begin(ADMIN);
     setup_full(&mut ts);
 
@@ -1757,8 +1757,8 @@ fun test_rule_cap_borrow() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    // Borrow rule_cap - should succeed for ADMIN (Master role has AccessRuleCap)
-    let _cap = ds_token::rule_cap<TEST_VOLORO>(&treasury, &auth, &version, ts.ctx());
+    // Borrow policy_cap - should succeed for ADMIN (Master role has AccessPolicyCap)
+    let _cap = ds_token::policy_cap<TEST_VOLORO>(&treasury, &auth, &version, ts.ctx());
 
     ts::return_shared(treasury);
     ts::return_shared(auth);
@@ -1768,7 +1768,7 @@ fun test_rule_cap_borrow() {
 
 #[test]
 #[expected_failure(abort_code = ds_token::ENotAuthorized)]
-fun test_rule_cap_unauthorized() {
+fun test_policy_cap_unauthorized() {
     let mut ts = ts::begin(ADMIN);
     setup_full(&mut ts);
 
@@ -1777,8 +1777,8 @@ fun test_rule_cap_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    // Try to borrow rule_cap from unauthorized address - should fail
-    let _cap = ds_token::rule_cap<TEST_VOLORO>(&treasury, &auth, &version, ts.ctx());
+    // Try to borrow policy_cap from unauthorized address - should fail
+    let _cap = ds_token::policy_cap<TEST_VOLORO>(&treasury, &auth, &version, ts.ctx());
 
     ts::return_shared(treasury);
     ts::return_shared(auth);

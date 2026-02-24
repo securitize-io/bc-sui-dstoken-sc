@@ -37,6 +37,6 @@ public fun create_ds_token(
         url,
         ctx,
     );
-    let rule_permit = internal::permit<VOLORO>();
-    setup::setup(setup_registry, namespace, currency, rule_permit, treasury_cap, version, ctx)
+    let policy_permit = internal::permit<VOLORO>();
+    setup::setup(setup_registry, namespace, currency, policy_permit, treasury_cap, version, ctx)
 }

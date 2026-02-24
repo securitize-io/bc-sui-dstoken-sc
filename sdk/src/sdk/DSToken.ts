@@ -168,7 +168,7 @@ export class DSToken {
         ptb.moveCall({
             target: `${Config.vars.PAS_PACKAGE_ID}::transfer_funds::resolve`,
             typeArguments: [this.tokenAddress],
-            arguments: [transferRequest, ptb.object(this.tokenDetails.pasRule)],
+            arguments: [transferRequest, ptb.object(this.tokenDetails.pasPolicy)],
         })
         return ptb
     }
@@ -328,7 +328,7 @@ export class DSToken {
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
-            this.tokenDetails.pasRule,
+            this.tokenDetails.pasPolicy,
             clawbackRequest,
             reason,
             Config.vars.VERSION,
@@ -369,7 +369,7 @@ export class DSToken {
         const args = [
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
-            this.tokenDetails.pasRule,
+            this.tokenDetails.pasPolicy,
             clawbackRequest,
             toChest,
             to,

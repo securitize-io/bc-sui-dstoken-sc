@@ -6,7 +6,7 @@ export type AbilityType =
     | 'SeizeTokens'
     | 'MetadataUpdate'
     | 'SetTemplateCommand'
-    | 'AccessRuleCap'
+    | 'AccessPolicyCap'
     | 'Pauser'
     // Trust Service abilities
     | 'SetServiceOwner'

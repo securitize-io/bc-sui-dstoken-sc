@@ -11,7 +11,7 @@ use pas::{
     keys::{transfer_funds_action, clawback_funds_action},
     namespace::Namespace,
     request::Request,
-    rule::{Self, Rule, RuleCap},
+    policy::{Self, Policy, PolicyCap},
     templates::Templates,
     transfer_funds::TransferFunds
 };
@@ -23,7 +23,7 @@ use securitize::{
         BurnTokens,
         SeizeTokens,
         SetTemplateCommand,
-        AccessRuleCap,
+        AccessPolicyCap,
         Pauser
     },
     compliance_service::{Self, ComplianceConfig},
@@ -98,8 +98,8 @@ public struct Treasury<phantom T> has key {
 /// Key used to store the TreasuryCap<T> in the Treasury<T>.
 public struct TreasuryCapKey() has copy, drop, store;
 
-/// Key used to store the RuleCap<T> in the Treasury<T>.
-public struct RuleCapKey() has copy, drop, store;
+/// Key used to store the PolicyCap<T> in the Treasury<T>.
+public struct PolicyCapKey() has copy, drop, store;
 
 /// Initializes a new Treasury for the given token type T.
 ///
@@ -108,7 +108,7 @@ public(package) fun new<T: key>(
     uid: &mut UID,
     auth: &mut Auth<T>,
     namespace: &mut Namespace,
-    rule_permit: internal::Permit<T>,
+    policy_permit: internal::Permit<T>,
     mut treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
@@ -120,7 +120,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, SeizeTokens>(version, ctx);
     auth.add_role_ability<T, Master, MetadataUpdate>(version, ctx);
     auth.add_role_ability<T, Master, SetTemplateCommand>(version, ctx);
-    auth.add_role_ability<T, Master, AccessRuleCap>(version, ctx);
+    auth.add_role_ability<T, Master, AccessPolicyCap>(version, ctx);
     auth.add_role_ability<T, Master, Pauser>(version, ctx);
 
     auth.add_role_ability<T, Issuer, IssueTokens>(version, ctx);
@@ -135,15 +135,15 @@ public(package) fun new<T: key>(
         metadata_cap,
         paused: false,
     };
-    // Register PAS rule
+    // Register PAS policy
     let clawback = true;
-    let (mut rule, rule_cap) = rule::new(namespace, rule_permit);
-    rule.enable_funds_management(&mut treasury_cap, clawback);
-    rule.set_required_approval<T, TransferApproval<T>>(&rule_cap, transfer_funds_action());
-    rule.set_required_approval<T, ClawbackApproval<T>>(&rule_cap, clawback_funds_action());
-    rule.share();
+    let (mut policy, policy_cap) = policy::new(namespace, policy_permit);
+    policy.enable_funds_management(&mut treasury_cap, clawback);
+    policy.set_required_approval<T, TransferApproval<T>>(&policy_cap, transfer_funds_action());
+    policy.set_required_approval<T, ClawbackApproval<T>>(&policy_cap, clawback_funds_action());
+    policy.share();
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
-    dof::add(&mut treasury.id, RuleCapKey(), rule_cap);
+    dof::add(&mut treasury.id, PolicyCapKey(), policy_cap);
     treasury
 }
 
@@ -330,7 +330,7 @@ public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    rule: &Rule<T>,
+    policy: &Policy<T>,
     mut request: Request<ClawbackFunds<T>>,
     reason: String,
     version: &Version,
@@ -344,7 +344,7 @@ public fun burn<T>(
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     compliance_service::validate_burn(investors, from_address, value);
     request.approve(ClawbackApproval<T>());
-    let balance = pas::clawback_funds::resolve(request, rule);
+    let balance = pas::clawback_funds::resolve(request, policy);
     // Burn the balance
     dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
@@ -385,7 +385,7 @@ public fun burn<T>(
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    rule: &Rule<T>,
+    policy: &Policy<T>,
     mut request: Request<ClawbackFunds<T>>,
     to: &Chest,
     to_address: address,
@@ -404,7 +404,7 @@ public fun seize<T>(
     compliance_service::validate_seize(investors, from_address, to_address, value);
     // Withdraw from the investor's chest and deposit to the treasury's chest
     request.approve(ClawbackApproval<T>());
-    let balance = pas::clawback_funds::resolve(request, rule);
+    let balance = pas::clawback_funds::resolve(request, policy);
     to.deposit_funds(balance);
 
     if (investors.is_wallet(to_address)) {
@@ -619,20 +619,20 @@ public fun unpause<T>(
     emit_unpause_event<T>(ctx.sender());
 }
 
-/// Returns a reference to the RuleCap stored in the Treasury.
-/// Only authorized addresses with the AccessRuleCap ability can call this function.
+/// Returns a reference to the PolicyCap stored in the Treasury.
+/// Only authorized addresses with the AccessPolicyCap ability can call this function.
 ///
 /// # Aborts
-/// * `ENotAuthorized` - If the sender does not have the AccessRuleCap ability
-public fun rule_cap<T>(
+/// * `ENotAuthorized` - If the sender does not have the AccessPolicyCap ability
+public fun policy_cap<T>(
     treasury: &Treasury<T>,
     auth: &Auth<T>,
     version: &Version,
     ctx: &TxContext,
-): &RuleCap<T> {
+): &PolicyCap<T> {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, AccessRuleCap>(ctx.sender()), ENotAuthorized);
-    dof::borrow<RuleCapKey, RuleCap<T>>(&treasury.id, RuleCapKey())
+    assert!(auth.owner_has_ability<T, AccessPolicyCap>(ctx.sender()), ENotAuthorized);
+    dof::borrow<PolicyCapKey, PolicyCap<T>>(&treasury.id, PolicyCapKey())
 }
 
 // ==== View Functions ====

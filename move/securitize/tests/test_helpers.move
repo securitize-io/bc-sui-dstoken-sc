@@ -92,8 +92,8 @@ public(package) fun create_ds_token(
         url.to_string(),
         ctx,
     );
-    let rule_permit = internal::permit<TEST_VOLORO>();
-    setup::setup(setup_registry, namespace, currency, rule_permit, treasury_cap, version, ctx)
+    let policy_permit = internal::permit<TEST_VOLORO>();
+    setup::setup(setup_registry, namespace, currency, policy_permit, treasury_cap, version, ctx)
 }
 
 /// Setup complete DS Token environment with Treasury.
