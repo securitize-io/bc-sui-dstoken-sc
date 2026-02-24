@@ -1,5 +1,18 @@
 # @securitize/sui-sdk
 
+## 1.8.8
+
+### Patch Changes
+
+- Fixed SDK to return total balance of a single wallet
+- Fixing issuance function
+- Include console.log errors
+- Fix to avoid derivated addresses in PTB
+- Implement latest version
+- Updated SDK to allow testnet deployment
+- Include console.log on autodeployment feature
+- fixing roles
+
 ## 1.8.7
 
 ### Patch Changes
