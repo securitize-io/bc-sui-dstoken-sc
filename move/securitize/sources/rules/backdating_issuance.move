@@ -41,7 +41,7 @@ public fun new<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_bool_rule_set_event<T>(
-        b"disallow_backdating".to_string(),
+        b"disallowBackDating".to_string(),
         false,
         disallow_backdating,
     );
@@ -67,7 +67,7 @@ public fun set_disallow_backdating<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
-        b"disallow_backdating".to_string(),
+        b"disallowBackDating".to_string(),
         rule.disallow_backdating,
         disallow,
     );

@@ -51,12 +51,12 @@ public fun new<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_bool_rule_set_event<T>(
-        b"force_accredited".to_string(),
+        b"forceAccredited".to_string(),
         false,
         force_accredited,
     );
     emit_bool_rule_set_event<T>(
-        b"force_us_accredited".to_string(),
+        b"forceAccreditedUS".to_string(),
         false,
         force_us_accredited,
     );
@@ -82,7 +82,7 @@ public fun set_force_accredited<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
-    emit_bool_rule_set_event<T>(b"force_accredited".to_string(), rule.force_accredited, force);
+    emit_bool_rule_set_event<T>(b"forceAccredited".to_string(), rule.force_accredited, force);
     rule.force_accredited = force;
 }
 
@@ -101,7 +101,7 @@ public fun set_force_us_accredited<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
-        b"force_us_accredited".to_string(),
+        b"forceAccreditedUS".to_string(),
         rule.force_us_accredited,
         force,
     );

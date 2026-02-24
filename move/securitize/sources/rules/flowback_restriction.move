@@ -48,7 +48,7 @@ public fun new<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_uint_rule_set_event<T>(
-        b"block_flowback_end_time_ms".to_string(),
+        b"blockFlowbackEndTime".to_string(),
         0,
         block_flowback_end_time_ms,
     );
@@ -74,7 +74,7 @@ public fun set_flowback_end_time<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
-        b"block_flowback_end_time_ms".to_string(),
+        b"blockFlowbackEndTime".to_string(),
         rule.block_flowback_end_time_ms,
         end_time,
     );

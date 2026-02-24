@@ -13,6 +13,10 @@ use securitize::{
 };
 use sui::vec_map::{Self, VecMap};
 
+// ==== Region Constants ====
+const US: u64 = 1;
+const EU: u64 = 2;
+
 // ==== Error Codes ====
 
 #[error(code = 0)]
@@ -58,20 +62,25 @@ public fun new<T>(
     regions.zip_do!(region_mins, |region, min| {
         region_min_tokens.insert(region, min);
         emit_string_to_uint_map_rule_set_event<T>(
-            b"region_min_tokens".to_string(),
+            b"regionMinTokens".to_string(),
             region.to_string(),
             0,
             min,
         );
+        if (region == US) {
+            emit_uint_rule_set_event<T>(b"minUSTokens".to_string(), 0, min);
+        } else if (region == EU) {
+            emit_uint_rule_set_event<T>(b"minEUTokens".to_string(), 0, min);
+        };
     });
 
     emit_uint_rule_set_event<T>(
-        b"min_holdings_per_investor".to_string(),
+        b"minimumHoldingsPerInvestor".to_string(),
         0,
         min_holdings_per_investor,
     );
     emit_uint_rule_set_event<T>(
-        b"max_holdings_per_investor".to_string(),
+        b"maximumHoldingsPerInvestor".to_string(),
         0,
         max_holdings_per_investor,
     );
@@ -99,7 +108,7 @@ public fun set_min_holdings<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
-        b"min_holdings_per_investor".to_string(),
+        b"minimumHoldingsPerInvestor".to_string(),
         rule.min_holdings_per_investor,
         min,
     );
@@ -121,7 +130,7 @@ public fun set_max_holdings<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_uint_rule_set_event<T>(
-        b"max_holdings_per_investor".to_string(),
+        b"maximumHoldingsPerInvestor".to_string(),
         rule.max_holdings_per_investor,
         max,
     );
@@ -152,11 +161,16 @@ public fun set_region_min_holdings<T>(
     };
     rule.region_min_tokens.insert(region, min);
     emit_string_to_uint_map_rule_set_event<T>(
-        b"region_min_tokens".to_string(),
+        b"regionMinTokens".to_string(),
         region.to_string(),
         old_value,
         min,
     );
+    if (region == US) {
+        emit_uint_rule_set_event<T>(b"minUSTokens".to_string(), old_value, min);
+    } else if (region == EU) {
+        emit_uint_rule_set_event<T>(b"minEUTokens".to_string(), old_value, min);
+    };
 }
 
 /// Remove region-specific minimum
@@ -177,11 +191,16 @@ public fun remove_region_min_holdings<T>(
     if (rule.region_min_tokens.contains(&region)) {
         let (_, old_value) = rule.region_min_tokens.remove(&region);
         emit_string_to_uint_map_rule_set_event<T>(
-            b"region_min_tokens".to_string(),
+            b"regionMinTokens".to_string(),
             region.to_string(),
             old_value,
             0,
         );
+        if (region == US) {
+            emit_uint_rule_set_event<T>(b"minUSTokens".to_string(), old_value, 0);
+        } else if (region == EU) {
+            emit_uint_rule_set_event<T>(b"minEUTokens".to_string(), old_value, 0);
+        };
     };
 }
 

@@ -46,7 +46,7 @@ public fun new<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_uint_rule_set_event<T>(
-        b"max_supply".to_string(),
+        b"authorizedSecurities".to_string(),
         0,
         max_supply,
     );
@@ -71,7 +71,7 @@ public fun set_max_supply<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
-    emit_uint_rule_set_event<T>(b"max_supply".to_string(), rule.max_supply, max_supply);
+    emit_uint_rule_set_event<T>(b"authorizedSecurities".to_string(), rule.max_supply, max_supply);
     rule.max_supply = max_supply;
 }
 

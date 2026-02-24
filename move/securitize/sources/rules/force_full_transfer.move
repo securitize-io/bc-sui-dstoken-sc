@@ -50,12 +50,12 @@ public fun new<T>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_bool_rule_set_event<T>(
-        b"force_full_transfer_us".to_string(),
+        b"forceFullTransfer".to_string(),
         false,
         force_full_transfer_us,
     );
     emit_bool_rule_set_event<T>(
-        b"force_full_transfer_worldwide".to_string(),
+        b"worldWideForceFullTransfer".to_string(),
         false,
         force_full_transfer_worldwide,
     );
@@ -82,7 +82,7 @@ public fun set_force_us<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
-        b"force_full_transfer_us".to_string(),
+        b"forceFullTransfer".to_string(),
         rule.force_full_transfer_us,
         force,
     );
@@ -104,7 +104,7 @@ public fun set_force_worldwide<T>(
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule = wrapper.borrow_update_mut();
     emit_bool_rule_set_event<T>(
-        b"force_full_transfer_worldwide".to_string(),
+        b"worldWideForceFullTransfer".to_string(),
         rule.force_full_transfer_worldwide,
         force,
     );
