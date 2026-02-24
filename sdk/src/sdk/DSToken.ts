@@ -1,17 +1,17 @@
-import {CLOCK_ID, deriveObjectId, MoveType, SuiClient} from "../easysui";
-import {Config} from "./utils/config";
-import {getTokenDetails, TokenDetails} from "./token";
-import {Transaction} from "@mysten/sui/transactions";
-import {TokenMetadata} from "./domains";
-import {bcs} from "@mysten/sui/bcs";
+import { CLOCK_ID, deriveObjectId, MoveType, SuiClient } from '../easysui'
+import { Config } from './utils/config'
+import { getTokenDetails, TokenDetails } from './token'
+import { Transaction } from '@mysten/sui/transactions'
+import { TokenMetadata } from './domains'
+import { bcs } from '@mysten/sui/bcs'
 
 export class DSToken {
-    private readonly tokenAddress: string;
-    private readonly tokenDetails: TokenDetails;
+    private readonly tokenAddress: string
+    private readonly tokenDetails: TokenDetails
 
     constructor(tokenAddress: string) {
-        this.tokenAddress = tokenAddress;
-        this.tokenDetails = getTokenDetails(tokenAddress);
+        this.tokenAddress = tokenAddress
+        this.tokenDetails = getTokenDetails(tokenAddress)
     }
 
     private getTarget(func: string) {
@@ -19,11 +19,7 @@ export class DSToken {
     }
 
     private buildGetPTB(func: string, args: any[]) {
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            args,
-        )
+        return SuiClient.getPTB(this.getTarget(func), [this.tokenAddress], args)
     }
 
     private buildSetPTB(func: string, args: any[], ptb?: Transaction, argTypes: any[] = []) {
@@ -86,19 +82,14 @@ export class DSToken {
         const fields = (res.data?.content as any)?.fields
 
         if (!fields) {
-            throw new Error("Unable to find metadata.")
+            throw new Error('Unable to find metadata.')
         }
-        return fields;
+        return fields
     }
 
-// ==== Token Management Functions ====
+    // ==== Token Management Functions ====
 
-    setMetadataPTB(
-        name?: string,
-        description?: string,
-        iconUrl?: string,
-        ptb?: Transaction
-    ) {
+    setMetadataPTB(name?: string, description?: string, iconUrl?: string, ptb?: Transaction) {
         ptb ??= new Transaction()
         const args = [
             this.tokenDetails.treasury,
@@ -121,12 +112,7 @@ export class DSToken {
         return this.buildSetPTB('set_metadata', args, ptb, argsTypes)
     }
 
-    async setMetadata(
-        signer: string,
-        name?: string,
-        description?: string,
-        iconUrl?: string,
-    ) {
+    async setMetadata(signer: string, name?: string, description?: string, iconUrl?: string) {
         const ptb = this.setMetadataPTB(name, description, iconUrl)
         return this.buildSetBytes(ptb, signer)
     }
@@ -134,7 +120,38 @@ export class DSToken {
     getPASChest(address: string) {
         const key = 'ChestKey'
         const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
-        return deriveObjectId(Config.vars.PAS_NAMESPACE, 'keys', key, Config.vars.PAS_PACKAGE_ID, undefined, serializedBcs)
+        return deriveObjectId(
+            Config.vars.PAS_NAMESPACE,
+            'keys',
+            key,
+            Config.vars.PAS_PACKAGE_ID,
+            undefined,
+            serializedBcs
+        )
+    }
+
+    initiateClawbackFundsPTB(from: string, value: bigint, ptb?: Transaction) {
+        ptb ??= new Transaction()
+        const pasChest = this.getPASChest(from)
+        const clawbackRequest = ptb.moveCall({
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::clawback_funds`,
+            typeArguments: [this.tokenAddress],
+            arguments: [ptb.object(pasChest), ptb.pure.u64(value)],
+        })
+        return { ptb, clawbackRequest }
+    }
+
+    resolveClawbackRequestPTB(
+        clawbackRequest: ReturnType<Transaction['moveCall']>,
+        ptb?: Transaction
+    ) {
+        ptb ??= new Transaction()
+        ptb.moveCall({
+            target: `${Config.vars.PAS_PACKAGE_ID}::transfer_funds::resolve`,
+            typeArguments: [this.tokenAddress],
+            arguments: [clawbackRequest, ptb.object(this.tokenDetails.pasRule)],
+        })
+        return ptb
     }
 
     issuePTB(
@@ -145,10 +162,10 @@ export class DSToken {
         valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
-        ptb?: Transaction,
+        ptb?: Transaction
     ) {
         ptb ??= new Transaction()
-        const pasChest = this.getPASChest(to);
+        const pasChest = this.getPASChest(to)
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
@@ -192,9 +209,17 @@ export class DSToken {
         reasonString: string,
         valuesLocked: bigint[],
         releaseTimes: number[],
-        issuanceTimeMS: number,
+        issuanceTimeMS: number
     ) {
-        const ptb = this.issuePTB(to, value, reasonCode, reasonString, valuesLocked, releaseTimes, issuanceTimeMS)
+        const ptb = this.issuePTB(
+            to,
+            value,
+            reasonCode,
+            reasonString,
+            valuesLocked,
+            releaseTimes,
+            issuanceTimeMS
+        )
         return this.buildSetBytes(ptb, signer)
     }
 
@@ -206,7 +231,7 @@ export class DSToken {
         valuesLocked: bigint[],
         releaseTimes: number[],
         issuanceTimeMS: number,
-        ptb?: Transaction,
+        ptb?: Transaction
     ) {
         ptb ??= new Transaction()
         const args = [
@@ -252,9 +277,17 @@ export class DSToken {
         reasonString: string,
         valuesLocked: bigint[],
         releaseTimes: number[],
-        issuanceTimeMS: number,
+        issuanceTimeMS: number
     ) {
-        const ptb = this.issueNoChestPTB(to, value, reasonCode, reasonString, valuesLocked, releaseTimes, issuanceTimeMS)
+        const ptb = this.issueNoChestPTB(
+            to,
+            value,
+            reasonCode,
+            reasonString,
+            valuesLocked,
+            releaseTimes,
+            issuanceTimeMS
+        )
         return this.buildSetBytes(ptb, signer)
     }
 
@@ -263,17 +296,21 @@ export class DSToken {
         value: bigint,
         reason: string,
         ptb?: Transaction,
+        clawbackRequest?: ReturnType<Transaction['moveCall']>
     ) {
-        ptb ??= new Transaction()
-        const pasChest = this.getPASChest(from);
+        if (!clawbackRequest) {
+            const result = this.initiateClawbackFundsPTB(from, value, ptb)
+            ptb = result.ptb
+            clawbackRequest = result.clawbackRequest
+        } else {
+            ptb ??= new Transaction()
+        }
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.pasRule,
-            pasChest,
-            from,
-            value,
+            clawbackRequest,
             reason,
             Config.vars.VERSION,
         ]
@@ -283,20 +320,13 @@ export class DSToken {
             MoveType.object,
             MoveType.object,
             MoveType.object,
-            MoveType.address,
-            MoveType.u64,
             MoveType.string,
             MoveType.object,
         ]
         return this.buildSetPTB('burn', args, ptb, argsTypes)
     }
 
-    async burn(
-        signer: string,
-        from: string,
-        value: bigint,
-        reason: string,
-    ) {
+    async burn(signer: string, from: string, value: bigint, reason: string) {
         const ptb = this.burnPTB(from, value, reason)
         return this.buildSetBytes(ptb, signer)
     }
@@ -307,19 +337,23 @@ export class DSToken {
         value: bigint,
         reason: string,
         ptb?: Transaction,
+        clawbackRequest?: ReturnType<Transaction['moveCall']>
     ) {
-        ptb ??= new Transaction()
-        const fromPASChest = this.getPASChest(from);
-        const toChest = this.getPASChest(to);
+        if (!clawbackRequest) {
+            const result = this.initiateClawbackFundsPTB(from, value, ptb)
+            ptb = result.ptb
+            clawbackRequest = result.clawbackRequest
+        } else {
+            ptb ??= new Transaction()
+        }
+        const toChest = this.getPASChest(to)
         const args = [
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.pasRule,
-            fromPASChest,
-            from,
+            clawbackRequest,
             toChest,
             to,
-            value,
             reason,
             Config.vars.VERSION,
         ]
@@ -328,34 +362,22 @@ export class DSToken {
             MoveType.object,
             MoveType.object,
             MoveType.object,
-            MoveType.address,
             MoveType.object,
             MoveType.address,
-            MoveType.u64,
             MoveType.string,
             MoveType.object,
         ]
         return this.buildSetPTB('seize', args, ptb, argsTypes)
     }
 
-    async seize(
-        signer: string,
-        from: string,
-        to: string,
-        value: bigint,
-        reason: string,
-    ) {
+    async seize(signer: string, from: string, to: string, value: bigint, reason: string) {
         const ptb = this.seizePTB(from, to, value, reason)
         return this.buildSetBytes(ptb, signer)
     }
 
     pausePTB(ptb?: Transaction) {
         ptb ??= new Transaction()
-        const args = [
-            this.tokenDetails.treasury,
-            this.tokenDetails.auth,
-            Config.vars.VERSION,
-        ]
+        const args = [this.tokenDetails.treasury, this.tokenDetails.auth, Config.vars.VERSION]
         return this.buildSetPTB('pause', args, ptb)
     }
 
@@ -366,11 +388,7 @@ export class DSToken {
 
     unpausePTB(ptb?: Transaction) {
         ptb ??= new Transaction()
-        const args = [
-            this.tokenDetails.treasury,
-            this.tokenDetails.auth,
-            Config.vars.VERSION,
-        ]
+        const args = [this.tokenDetails.treasury, this.tokenDetails.auth, Config.vars.VERSION]
         return this.buildSetPTB('unpause', args, ptb)
     }
 
@@ -384,8 +402,16 @@ export class DSToken {
         to: string,
         amount: bigint,
         ptb?: Transaction,
+        clawbackRequest?: ReturnType<Transaction['moveCall']>
     ) {
-        ptb ??= new Transaction()
+        if (!clawbackRequest) {
+            const result = this.initiateClawbackFundsPTB(from, amount, ptb)
+            ptb = result.ptb
+            clawbackRequest = result.clawbackRequest
+        } else {
+            ptb ??= new Transaction()
+        }
+
         const fromRwaChest = this.getPASChest(from)
         const toRwaChest = this.getPASChest(to)
         const auth = ptb.moveCall({
@@ -406,7 +432,6 @@ export class DSToken {
             this.tokenDetails.treasury,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            this.tokenDetails.pasRule,
             transferRequest,
             Config.vars.VERSION,
             CLOCK_ID,
@@ -418,29 +443,27 @@ export class DSToken {
             MoveType.object,
             MoveType.object,
             MoveType.object,
-            MoveType.object,
         ]
+
+        this.resolveClawbackRequestPTB(clawbackRequest, ptb)
         return this.buildSetPTB('transfer', args, ptb, argsTypes)
     }
 
-    async transfer(
-        signer: string,
-        from: string,
-        to: string,
-        amount: bigint,
-    ) {
+    async transfer(signer: string, from: string, to: string, amount: bigint) {
         const ptb = this.transferPTB(from, to, amount)
         return this.buildSetBytes(ptb, signer)
     }
 
     private getTemplatesObjectId() {
-        return deriveObjectId(Config.vars.PAS_NAMESPACE, 'keys', 'TemplateKey', Config.vars.PAS_PACKAGE_ID)
+        return deriveObjectId(
+            Config.vars.PAS_NAMESPACE,
+            'keys',
+            'TemplateKey',
+            Config.vars.PAS_PACKAGE_ID
+        )
     }
 
-    setTemplateCommandPTB(
-        command: any,
-        ptb?: Transaction,
-    ) {
+    setTemplateCommandPTB(command: any, ptb?: Transaction) {
         ptb ??= new Transaction()
         const args = [
             this.tokenDetails.auth,
@@ -451,21 +474,14 @@ export class DSToken {
         return this.buildSetPTB('set_template_command', args, ptb)
     }
 
-    async setTemplateCommand(
-        signer: string,
-        command: any,
-    ) {
+    async setTemplateCommand(signer: string, command: any) {
         const ptb = this.setTemplateCommandPTB(command)
         return this.buildSetBytes(ptb, signer)
     }
 
     unsetTemplateCommandPTB(ptb?: Transaction) {
         ptb ??= new Transaction()
-        const args = [
-            this.tokenDetails.auth,
-            this.getTemplatesObjectId(),
-            Config.vars.VERSION,
-        ]
+        const args = [this.tokenDetails.auth, this.getTemplatesObjectId(), Config.vars.VERSION]
         return this.buildSetPTB('unset_template_command', args, ptb)
     }
 
@@ -485,12 +501,18 @@ export class DSToken {
 
         const investorsArg = ptb.moveCall({
             target: `${ptbPkg}::ptb::object_by_type_string`,
-            arguments: [ptb.pure.string(`${pkg}::registry_service::InvestorInfo<${this.tokenAddress}>`)],
+            arguments: [
+                ptb.pure.string(`${pkg}::registry_service::InvestorInfo<${this.tokenAddress}>`),
+            ],
         })
 
         const complianceArg = ptb.moveCall({
             target: `${ptbPkg}::ptb::object_by_type_string`,
-            arguments: [ptb.pure.string(`${pkg}::compliance_service::ComplianceConfig<${this.tokenAddress}>`)],
+            arguments: [
+                ptb.pure.string(
+                    `${pkg}::compliance_service::ComplianceConfig<${this.tokenAddress}>`
+                ),
+            ],
         })
 
         const requestArg = ptb.moveCall({
