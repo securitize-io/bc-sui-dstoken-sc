@@ -44,12 +44,8 @@ async function resolveDependencyArtifacts(): Promise<DependencyArtifacts> {
     const pasPackageId = extractPackageId(content, 'packages/pas')
     const ptbPackageId = extractPackageId(content, 'packages/ptb')
 
-    if (!pasPackageId) {
-        return { ptbPackageId }
-    }
-
     const { pasNamespace, pasUpgradeCap } =
-        await resolvePasObjectsFromRpc(pasPackageId)
+        await resolvePasObjectsFromRpc(pasPackageId!)
 
     return {
         pasPackageId,
@@ -69,18 +65,20 @@ function extractPackageId(content: string, packagePath: string): string | undefi
 }
 
 async function resolvePasObjectsFromRpc(pasPackageId: string) {
-    const { data } = await SuiClient.client.queryTransactionBlocks({
-        filter: { ChangedObject: pasPackageId },
-        options: { showObjectChanges: true },
-        order: 'ascending',
-        limit: 1,
+    const { data: objData } = await SuiClient.client.getObject({
+        id: pasPackageId,
+        options: { showPreviousTransaction: true },
     })
 
-    if (!data.length) {
-        throw new Error(`Failed to resolve PAS objects for package ${pasPackageId}`)
+    const publishDigest = objData?.previousTransaction
+    if (!publishDigest) {
+        throw new Error(`Failed to resolve publish tx for package ${pasPackageId}`)
     }
 
-    const tx = data[0]
+    const tx = await SuiClient.client.getTransactionBlock({
+        digest: publishDigest,
+        options: { showObjectChanges: true },
+    })
 
     return {
         pasNamespace: PublishSingleton.findObjectIdByType(
