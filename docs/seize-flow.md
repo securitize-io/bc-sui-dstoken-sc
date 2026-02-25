@@ -9,7 +9,7 @@ sequenceDiagram
     participant PTS as 📦 Permissioned Token<br/>Standard
     participant Registry as 👥 InvestorInfo
 
-    Seizer->>DS: seize(from_vault, to_vault, amount, ...)
+    Seizer->>DS: seize(from_chest, to_chest, amount, ...)
 
     DS->>Compliance: validate_seize()
 
@@ -18,8 +18,8 @@ sequenceDiagram
     alt Validation passes
         Compliance-->>DS: ✅ Validation passed
 
-        DS->>PTS: clawback_to_vault(from_vault, to_vault, amount, witness)
-        Note over PTS: DsProtocol witness<br/>authorizes the clawback<br/>and deposit to target vault
+        DS->>PTS: clawback_to_chest(from_chest, to_chest, amount, witness)
+        Note over PTS: DsProtocol witness<br/>authorizes the clawback<br/>and deposit to target chest
         PTS-->>DS: ✅ Tokens transferred
 
         DS->>Registry: Update from_investor<br/>total_balance -= amount

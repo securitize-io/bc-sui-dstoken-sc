@@ -9,7 +9,7 @@ sequenceDiagram
     participant Compliance as ✓ Compliance<br/>Service
     participant Registry as 👥 InvestorInfo
 
-    User->>PTS: Create transfer request<br/>(from_vault, to_vault, amount)
+    User->>PTS: Create transfer request<br/>(from_chest, to_chest, amount)
     PTS-->>User: TransferRequest<T><br/>(hot potato 🥔)
 
     User->>DS: transfer(request, ...)

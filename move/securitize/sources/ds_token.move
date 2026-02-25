@@ -6,13 +6,26 @@
 module securitize::ds_token;
 
 use pas::{
+    chest::Chest,
+    clawback_funds::ClawbackFunds,
+    keys::{transfer_funds_action, clawback_funds_action},
     namespace::Namespace,
-    rule::{Self, Rule},
-    transfer_funds_request::TransferFundsRequest,
-    vault::Vault
+    policy::{Self, Policy, PolicyCap},
+    request::Request,
+    templates::Templates,
+    transfer_funds::TransferFunds
 };
+use ptb::ptb::Command;
 use securitize::{
-    abilities::{IssueTokens, MetadataUpdate, BurnTokens, SeizeTokens, Pauser},
+    abilities::{
+        IssueTokens,
+        MetadataUpdate,
+        BurnTokens,
+        SeizeTokens,
+        SetTemplateCommand,
+        AccessPolicyCap,
+        Pauser
+    },
     compliance_service::{Self, ComplianceConfig},
     events::{
         emit_issue_event,
@@ -50,7 +63,7 @@ const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this ac
 #[error(code = 3)]
 const ETreasuryPaused: vector<u8> = b"Token transfers are paused";
 #[error(code = 4)]
-const EVaultOwnerMismatch: vector<u8> = b"Vault owner does not match the expected address";
+const EChestOwnerMismatch: vector<u8> = b"Chest owner does not match the expected address";
 #[error(code = 5)]
 const EValueZero: vector<u8> = b"Value to issue or transfer cannot be zero";
 #[error(code = 6)]
@@ -63,9 +76,12 @@ const ENotEnoughBalance: vector<u8> = b"Not enough balance to perform the operat
 #[error(code = 10)]
 const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
-/// Witness struct for the Ds Protocol.
+/// Witness struct for the Transfer Approve Action.
 /// To be used inside the Permissioned Token Standard.
-public struct DsProtocol() has drop;
+public struct TransferApproval<phantom T>() has drop;
+/// Witness struct for the Clawback Approve Action.
+/// To be used inside the Permissioned Token Standard.
+public struct ClawbackApproval<phantom T>() has drop;
 
 public struct DsTokenKey<phantom T>() has copy, drop, store;
 
@@ -82,6 +98,9 @@ public struct Treasury<phantom T> has key {
 /// Key used to store the TreasuryCap<T> in the Treasury<T>.
 public struct TreasuryCapKey() has copy, drop, store;
 
+/// Key used to store the PolicyCap<T> in the Treasury<T>.
+public struct PolicyCapKey() has copy, drop, store;
+
 /// Initializes a new Treasury for the given token type T.
 ///
 /// Called by the setup module during token deployment.
@@ -89,7 +108,7 @@ public(package) fun new<T: key>(
     uid: &mut UID,
     auth: &mut Auth<T>,
     namespace: &mut Namespace,
-    rule_permit: internal::Permit<T>,
+    policy_permit: internal::Permit<T>,
     mut treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
@@ -100,6 +119,8 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, BurnTokens>(version, ctx);
     auth.add_role_ability<T, Master, SeizeTokens>(version, ctx);
     auth.add_role_ability<T, Master, MetadataUpdate>(version, ctx);
+    auth.add_role_ability<T, Master, SetTemplateCommand>(version, ctx);
+    auth.add_role_ability<T, Master, AccessPolicyCap>(version, ctx);
     auth.add_role_ability<T, Master, Pauser>(version, ctx);
 
     auth.add_role_ability<T, Issuer, IssueTokens>(version, ctx);
@@ -114,13 +135,15 @@ public(package) fun new<T: key>(
         metadata_cap,
         paused: false,
     };
-    // Register PAS rule
+    // Register PAS policy
     let clawback = true;
-    let mut rule = rule::new(namespace, rule_permit, DsProtocol());
-    rule.enable_funds_management(&mut treasury_cap, clawback);
-    rule.share();
-
+    let (mut policy, policy_cap) = policy::new(namespace, policy_permit);
+    policy.enable_funds_management(&mut treasury_cap, clawback);
+    policy.set_required_approval<T, TransferApproval<T>>(&policy_cap, transfer_funds_action());
+    policy.set_required_approval<T, ClawbackApproval<T>>(&policy_cap, clawback_funds_action());
+    policy.share();
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
+    dof::add(&mut treasury.id, PolicyCapKey(), policy_cap);
     treasury
 }
 
@@ -131,18 +154,18 @@ public(package) fun share<T>(treasury: Treasury<T>) {
 
 // ==== Public Functions ====
 
-/// Issues new tokens and deposits them into the specified vault.
+/// Issues new tokens and deposits them into the specified chest.
 /// Only authorized addresses with the IssueTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
-/// * `EVaultOwnerMismatch` - If the vault owner does not match to_address
+/// * `EChestOwnerMismatch` - If the chest owner does not match to_address
 public fun issue_tokens<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    to: &Vault,
+    to: &Chest,
     to_address: address,
     value: u64,
     reason_code: u64,
@@ -156,7 +179,7 @@ public fun issue_tokens<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, IssueTokens>(ctx.sender()), ENotAuthorized);
-    assert!(to.owner() == to_address, EVaultOwnerMismatch);
+    assert!(to.owner() == to_address, EChestOwnerMismatch);
     let treasury_cap = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
         TreasuryCapKey(),
@@ -177,19 +200,19 @@ public fun issue_tokens<T>(
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
-    // Deposit to the investor's vault
+    // Deposit to the investor's chest
     to.deposit_funds(
         balance,
     );
 }
 
-/// Issues new tokens and deposits them to the vault derived by the provided address.
-/// Meant to be used in combination with the investor registration when investors' vault is not yet created.
+/// Issues new tokens and deposits them to the chest derived by the provided address.
+/// Meant to be used in combination with the investor registration when investors' chest is not yet created.
 /// Only authorized addresses with the IssueTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
-public fun issue_tokens_no_vault<T>(
+public fun issue_tokens_no_chest<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
@@ -228,7 +251,7 @@ public fun issue_tokens_no_vault<T>(
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
-    balance.send_funds(namespace.vault_address(to));
+    balance.send_funds(namespace.chest_address(to));
 }
 
 fun issue_tokens_internal<T>(
@@ -297,34 +320,31 @@ fun issue_tokens_internal<T>(
     emit_transfer_event<T>(@0x0, to, value);
 }
 
-/// Burns tokens from the specified vault, reducing the total supply.
+/// Burns tokens from the specified chest, reducing the total supply.
 /// Only authorized addresses with the BurnTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the BurnTokens ability
-/// * `EVaultOwnerMismatch` - If the vault owner does not match from_address
+/// * `EChestOwnerMismatch` - If the chest owner does not match from_address
 public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    rule: &Rule<T>,
-    from: &mut Vault,
-    from_address: address,
-    value: u64,
+    policy: &Policy<T>,
+    mut request: Request<ClawbackFunds<T>>,
     reason: String,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
-    assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
-    assert!(from.owner() == from_address, EVaultOwnerMismatch);
 
+    let from_address = request.data().owner();
+    let value = request.data().amount();
+
+    assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     compliance_service::validate_burn(investors, from_address, value);
-    let balance = rule.clawback_funds(
-        from,
-        value,
-        DsProtocol(),
-    );
+    request.approve(ClawbackApproval<T>());
+    let balance = pas::clawback_funds::resolve(request, policy);
     // Burn the balance
     dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
@@ -356,37 +376,35 @@ public fun burn<T>(
     emit_transfer_event<T>(from_address, @0x0, value);
 }
 
-/// Seizes tokens from one vault and transfers them to another vault.
+/// Seizes tokens from one chest and transfers them to another chest.
 /// Only authorized addresses with the SeizeTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the SeizeTokens ability
-/// * `EVaultOwnerMismatch` - If the vault owner does not match the expected address
+/// * `EChestOwnerMismatch` - If the chest owner does not match the expected address
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    rule: &Rule<T>,
-    from: &mut Vault,
-    from_address: address,
-    to: &Vault,
+    policy: &Policy<T>,
+    mut request: Request<ClawbackFunds<T>>,
+    to: &Chest,
     to_address: address,
-    value: u64,
     reason: String,
     version: &Version,
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
+
+    let from_address = request.data().owner();
+    let value = request.data().amount();
+
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
-    assert!(from.owner() == from_address, EVaultOwnerMismatch);
-    assert!(to.owner() == to_address, EVaultOwnerMismatch);
+    assert!(to.owner() == to_address, EChestOwnerMismatch);
 
     compliance_service::validate_seize(investors, from_address, to_address, value);
-    // Withdraw from the investor's vault and deposit to the treasury's vault
-    let balance = rule.clawback_funds(
-        from,
-        value,
-        DsProtocol(),
-    );
+    // Withdraw from the investor's chest and deposit to the treasury's chest
+    request.approve(ClawbackApproval<T>());
+    let balance = pas::clawback_funds::resolve(request, policy);
     to.deposit_funds(balance);
 
     if (investors.is_wallet(to_address)) {
@@ -427,7 +445,7 @@ public fun seize<T>(
     emit_transfer_event<T>(from_address, to_address, value);
 }
 
-/// Processes a token transfer request between vaults.
+/// Processes a token transfer request between chests.
 /// The treasury must not be paused for the transfer to succeed.
 ///
 /// # Aborts
@@ -437,15 +455,14 @@ public fun transfer<T>(
     treasury: &Treasury<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &ComplianceConfig<T>,
-    rule: &Rule<T>,
-    request: TransferFundsRequest<T>,
+    request: &mut Request<TransferFunds<T>>,
     version: &Version,
     clock: &Clock,
 ) {
     version.check_is_valid();
-    let from_address = request.sender();
-    let to_address = request.recipient();
-    let value = request.amount();
+    let from_address = request.data().sender();
+    let to_address = request.data().recipient();
+    let value = request.data().amount();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
     assert!(
@@ -459,7 +476,7 @@ public fun transfer<T>(
     compliance_service::validate_transfer(
         compliance_config,
         investors,
-        &request,
+        request,
         clock.timestamp_ms(),
         version,
     );
@@ -498,7 +515,7 @@ public fun transfer<T>(
         investors.update_special_wallet_total_balance(from_address, wallet_balance - value);
     };
     // Resolve the request
-    rule.resolve_transfer_funds(request, DsProtocol());
+    request.approve(TransferApproval<T>());
     emit_transfer_event<T>(from_address, to_address, value);
 }
 
@@ -538,6 +555,32 @@ public fun set_metadata<T>(
     });
 }
 
+public fun set_template_command<T>(
+    auth: &Auth<T>,
+    templates: &mut Templates,
+    command: Command,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetTemplateCommand>(ctx.sender()), ENotAuthorized);
+    templates.set_template_command<TransferApproval<T>>(
+        internal::permit<TransferApproval<T>>(),
+        command,
+    );
+}
+
+public fun unset_template_command<T>(
+    auth: &Auth<T>,
+    templates: &mut Templates,
+    version: &Version,
+    ctx: &mut TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetTemplateCommand>(ctx.sender()), ENotAuthorized);
+    templates.unset_template_command<TransferApproval<T>>(internal::permit<TransferApproval<T>>());
+}
+
 /// Pauses the treasury, preventing token operations.
 /// Only authorized addresses should be able to call this function.
 ///
@@ -574,6 +617,22 @@ public fun unpause<T>(
     assert!(treasury.is_paused(), ETreasuryNotPaused);
     treasury.paused = false;
     emit_unpause_event<T>(ctx.sender());
+}
+
+/// Returns a reference to the PolicyCap stored in the Treasury.
+/// Only authorized addresses with the AccessPolicyCap ability can call this function.
+///
+/// # Aborts
+/// * `ENotAuthorized` - If the sender does not have the AccessPolicyCap ability
+public fun policy_cap<T>(
+    treasury: &Treasury<T>,
+    auth: &Auth<T>,
+    version: &Version,
+    ctx: &TxContext,
+): &PolicyCap<T> {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, AccessPolicyCap>(ctx.sender()), ENotAuthorized);
+    dof::borrow<PolicyCapKey, PolicyCap<T>>(&treasury.id, PolicyCapKey())
 }
 
 // ==== View Functions ====

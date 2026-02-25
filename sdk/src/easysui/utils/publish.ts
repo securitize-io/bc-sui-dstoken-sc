@@ -33,7 +33,6 @@ export class PublishSingleton {
         if (!PublishSingleton.instance) {
             const publishResp = await PublishSingleton.publishPackage(signer, _packagePath)
             this.findPublishedPackageId(publishResp)
-            // suiClientGen(packageId)
             PublishSingleton.instance = new PublishSingleton(publishResp)
         }
     }
@@ -45,6 +44,7 @@ export class PublishSingleton {
         return PublishSingleton.instance
     }
 
+    /** Returns the main (last) publish response */
     public static publishResponse(): SuiTransactionBlockResponse {
         return this.getInstance().publishResp
     }
@@ -89,10 +89,15 @@ export class PublishSingleton {
         }
         fs.rmSync(`${packagePath}/build`, { recursive: true, force: true })
 
-        const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
-        const publishCmd = isEphemeralChain ? `test-publish --build-env testnet --pubfile-path ${this.pubFile}` : 'publish'
+        const isTestChain = network !== 'mainnet'
+        const publishCmd = isTestChain ? `test-publish --build-env testnet --pubfile-path ${this.pubFile}` : 'publish'
 
         let buildCommand = `sui client ${publishCmd} ${packagePath}`
+
+        if (isTestChain) {
+            buildCommand += ' --publish-unpublished-deps'
+        }
+
         buildCommand += inBytes ? ` --serialize-unsigned-transaction --sender ${sender}` : ' --json'
 
         return buildCommand
@@ -113,7 +118,7 @@ export class PublishSingleton {
         const _packagePath = this.getPackagePath(packagePath)
         const cmd = this.getPublishCmd(_packagePath, signer, true)
         try {
-            return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
+            return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 50 * 1024 * 1024}).trim()
         } catch (e: any) {
             const stderr = e.stderr?.toString().trim() || ''
             const stdout = e.stdout?.toString().trim() || ''
@@ -129,7 +134,7 @@ export class PublishSingleton {
         const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress())
         let res: string
         try {
-            res = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
+            res = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 50 * 1024 * 1024})
         } catch (e: any) {
             const stderr = e.stderr?.toString().trim() || ''
             const stdout = e.stdout?.toString().trim() || ''
@@ -140,7 +145,8 @@ export class PublishSingleton {
         if (!match) {
             throw new Error(`No JSON found in the publish command output: ${res}`);
         }
-        return JSON.parse(match[0])
+        const resp = JSON.parse(match[0])
+        return resp
     }
 
     static findPublishedPackageId(
@@ -149,21 +155,74 @@ export class PublishSingleton {
         const packageChng = resp.objectChanges?.find(
             (chng): chng is SuiObjectChangePublished => chng.type === 'published'
         )
-
-        if (!packageChng) {
-            throw new Error('Expected to find package published')
+        
+        if (packageChng) {
+            return packageChng.packageId
         }
 
-        return packageChng.packageId
+        // Fallback: check changed_objects array for package with CREATED idOperation
+        const changedObjects = (resp as any).changed_objects as
+            | Array<{ objectId: string; objectType: string; idOperation: string }>
+            | undefined
+
+        const createdPackage = changedObjects?.find(
+            (obj) => obj.objectType === 'package' && obj.idOperation === 'CREATED'
+        )
+
+        if (createdPackage) {
+            return createdPackage.objectId
+        }
+
+        throw new Error('Expected to find package published')
     }
 
     static findObjectChangeCreatedByType(
         resp: SuiTransactionBlockResponse,
         type: string
     ): SuiObjectChangeCreated | undefined {
-        return resp.objectChanges?.find(
+        // Try standard objectChanges format first
+        const found = resp.objectChanges?.find(
             (chng): chng is SuiObjectChangeCreated =>
                 chng.type === 'created' && chng.objectType === type
         )
+
+        if (found) {
+            return found
+        }
+
+        // Fallback: check changed_objects array
+        const changedObjects = (resp as any).changed_objects as
+            | Array<{ objectId: string; objectType: string; idOperation: string }>
+            | undefined
+
+        const createdObj = changedObjects?.find(
+            (obj) => obj.idOperation === 'CREATED' && this.typeMatches(obj.objectType, type)
+        )
+
+        if (createdObj) {
+            // Return a compatible shape
+            return {
+                type: 'created',
+                objectType: createdObj.objectType,
+                objectId: createdObj.objectId,
+                owner: {} as any,
+                digest: '',
+                version: '',
+            } as SuiObjectChangeCreated
+        }
+
+        return undefined
     }
+
+    private static typeMatches(fullType: string, shortType: string): boolean {
+        // Normalize short addresses (0x2) to full addresses (0x000...0002)
+        const normalizeType = (t: string) =>
+            t.replace(/0x([0-9a-fA-F]{1,63})::/g, (_, addr) => {
+                return `0x${addr.padStart(64, '0')}::`
+            })
+
+        return normalizeType(fullType) === normalizeType(shortType)
+    }
+
+
 }

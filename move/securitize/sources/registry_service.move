@@ -5,7 +5,7 @@
 /// for compliance verification during token transfers.
 module securitize::registry_service;
 
-use pas::{namespace::Namespace, vault};
+use pas::{chest, namespace::Namespace};
 use securitize::{
     abilities::{
         RegisterInvestor,
@@ -409,8 +409,8 @@ public fun add_wallet<T>(
     assert!(!investor_info.is_special_wallet(wallet_addr), ESpecialWallet);
     assert!(investor_info.is_investor(investor_id), EInvestorNotFound);
     assert!(!investor_info.is_wallet(wallet_addr), EWalletAlreadyExists);
-    if (!namespace.vault_exists(wallet_addr)) {
-        vault::create_and_share(namespace, wallet_addr);
+    if (!namespace.chest_exists(wallet_addr)) {
+        chest::create_and_share(namespace, wallet_addr);
     };
 
     let wallet = Wallet {

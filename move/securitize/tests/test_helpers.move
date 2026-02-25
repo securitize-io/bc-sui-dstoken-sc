@@ -34,7 +34,26 @@ public(package) fun init_basic_objects_for_testing(ts: &mut Scenario) {
     ts.next_tx(ADMIN);
     version::init_for_testing(ts.ctx());
     setup::init_for_testing(ts.ctx());
+    init_namespace_for_testing(ts);
+}
+
+fun package_id<T>(): ID {
+    sui::address::from_ascii_bytes(
+        std::type_name::with_defining_ids<T>().address_string().as_bytes(),
+    ).to_id()
+}
+
+/// Initialize a namespace with upgrade cap set (required by PAS).
+/// Call this instead of `namespace::init_for_testing` directly.
+public(package) fun init_namespace_for_testing(ts: &mut Scenario) {
     namespace::init_for_testing(ts.ctx());
+    ts.next_tx(ADMIN);
+    let mut ns = ts.take_shared<Namespace>();
+    let pkg_id = package_id<Namespace>();
+    let upgrade_cap = sui::package::test_publish(pkg_id, ts.ctx());
+    namespace::setup(&mut ns, &upgrade_cap);
+    transfer::public_transfer(upgrade_cap, ADMIN);
+    ts::return_shared(ns);
 }
 
 /// Initialize CoinRegistry for testing (must be called from @0x0)
@@ -73,8 +92,8 @@ public(package) fun create_ds_token(
         url.to_string(),
         ctx,
     );
-    let rule_permit = internal::permit<TEST_VOLORO>();
-    setup::setup(setup_registry, namespace, currency, rule_permit, treasury_cap, version, ctx)
+    let policy_permit = internal::permit<TEST_VOLORO>();
+    setup::setup(setup_registry, namespace, currency, policy_permit, treasury_cap, version, ctx)
 }
 
 /// Setup complete DS Token environment with Treasury.
@@ -269,6 +288,14 @@ public(package) fun add_platform_wallet(ts: &mut Scenario, wallet: address) {
     ts::return_shared(investor_info);
     ts::return_shared(auth);
     ts::return_shared(version);
+    ts::return_shared(namespace);
+}
+
+/// Set up Templates for testing (required for template command tests)
+public(package) fun setup_templates(ts: &mut Scenario) {
+    ts.next_tx(ADMIN);
+    let mut namespace = ts.take_shared<Namespace>();
+    pas::templates::setup(&mut namespace);
     ts::return_shared(namespace);
 }
 

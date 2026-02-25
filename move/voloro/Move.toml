@@ -4,4 +4,4 @@ edition = "2024"
 
 [dependencies]
 securitize = { local = "../securitize" }
-pas = { local = "../pas/packages/pas" }
+pas = { git = "git@github.com:MystenLabs/pas.git", subdir = "packages/pas", rev = "main" }
