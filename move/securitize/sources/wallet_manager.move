@@ -5,7 +5,7 @@
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
-use pas::{namespace::Namespace, chest};
+use pas::{chest, namespace::Namespace};
 use securitize::{
     abilities::{SetIssuerWallet, SetPlatformWallet, RemoveSpecialWallet},
     events::{emit_special_wallet_added_event, emit_special_wallet_removed_event},

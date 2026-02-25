@@ -5,7 +5,7 @@
 /// for compliance verification during token transfers.
 module securitize::registry_service;
 
-use pas::{namespace::Namespace, chest};
+use pas::{chest, namespace::Namespace};
 use securitize::{
     abilities::{
         RegisterInvestor,

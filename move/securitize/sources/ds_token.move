@@ -10,8 +10,8 @@ use pas::{
     clawback_funds::ClawbackFunds,
     keys::{transfer_funds_action, clawback_funds_action},
     namespace::Namespace,
-    request::Request,
     policy::{Self, Policy, PolicyCap},
+    request::Request,
     templates::Templates,
     transfer_funds::TransferFunds
 };

@@ -277,7 +277,10 @@ public(package) fun emit_name_updated_event<T>(old_name: String, new_name: Strin
     event::emit(NameUpdated<T> { old_name, new_name });
 }
 
-public(package) fun emit_description_updated_event<T>(old_description: String, new_description: String) {
+public(package) fun emit_description_updated_event<T>(
+    old_description: String,
+    new_description: String,
+) {
     event::emit(DescriptionUpdated<T> { old_description, new_description });
 }
 
