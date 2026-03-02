@@ -640,10 +640,10 @@ fun test_validate_issue_not_whitelisted() {
 fun test_validate_issue_forbidden_region() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
-    setup_investor(&mut ts, b"INV001", INVESTOR1, b"NK");
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"TEST");
 
-    // Set NK country to FORBIDDEN region (4)
-    test_helpers::set_country_compliance(&mut ts, b"NK", 4);
+    // Set TEST country to FORBIDDEN region (4)
+    test_helpers::set_country_compliance(&mut ts, b"TEST", 4);
 
     ts.next_tx(ADMIN);
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
@@ -1707,10 +1707,10 @@ fun test_validate_transfer_to_forbidden_region() {
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     // Register INVESTOR2 in a forbidden country
-    setup_investor(&mut ts, b"INV002", INVESTOR2, b"NK");
+    setup_investor(&mut ts, b"INV002", INVESTOR2, b"TEST");
     ts.next_tx(ADMIN);
     let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
-    test_helpers::set_country_compliance(&mut ts, b"NK", 4); // FORBIDDEN = 4
+    test_helpers::set_country_compliance(&mut ts, b"TEST", 4); // FORBIDDEN = 4
 
     ts.next_tx(INVESTOR1);
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
