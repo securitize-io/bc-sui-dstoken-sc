@@ -1,18 +1,22 @@
 #[test_only]
 module securitize::investor_limits_tests;
 
+use pas::chest::Chest;
 use securitize::{
+    compliance_service::ComplianceConfig,
+    ds_token::{Self, Treasury},
     investor_limits,
     registry_service::InvestorInfo,
     rule_wrapper::{unwrap_init, new_update, unwrap_update},
-    test_helpers::{TEST_VOLORO, setup_with_treasury},
+    test_helpers::{Self as test_helpers, TEST_VOLORO, setup_with_treasury},
     trust_service::Auth,
     version::Version
 };
-use sui::test_scenario::{Self as ts, Scenario};
+use sui::{clock, test_scenario::{Self as ts, Scenario}};
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
+const WALLET1: address = @0x1001;
 
 fun setup_for_testing(ts: &mut Scenario) {
     ts.next_tx(ADMIN);
@@ -1125,23 +1129,65 @@ fun test_validate_investor_limits_for_transfer_to_eu_passes() {
     let country = b"Greece".to_string();
     let investor_id = b"investor_123".to_string();
 
+    // Register investor with wallet (creates PAS chest)
+    test_helpers::register_investor_with_wallet(&mut ts, b"investor_123", WALLET1);
+
+    // Set attributes and country
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
 
-    investor_info.register_investor(&auth, investor_id, &version, ts.ctx());
     investor_info.set_attribute(&auth, investor_id, 2, 2, 500, &version, ts.ctx());
     investor_info.set_country_compliance<TEST_VOLORO>(country, 2); // EU country
     assert!(investor_info.get_country_compliance(country) == 2, 0);
-
     investor_info.set_country<TEST_VOLORO>(&auth, investor_id, country, &version, ts.ctx());
-    investor_info.update_investor_total_balance(investor_id, 1000);
-    investor_info.adjust_investors_counts_by_country(
-        investor_id,
-        country,
-        true,
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(version);
+
+    // Issue tokens — record_issuance handles balance + investor count adjustment
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &chest,
+        WALLET1,
+        1000,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
     );
+
+    clock.destroy_for_testing();
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(chest);
+
+    // Validate investor limits for transfer
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
 
     assert!(investor_info.get_eu_retail_investor_count(country).is_some() == true, 1);
 
