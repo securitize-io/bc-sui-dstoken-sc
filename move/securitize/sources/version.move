@@ -42,3 +42,8 @@ public fun migrate(pub: &Publisher, version: &mut Version) {
 public fun init_for_testing(ctx: &mut TxContext) {
     init(ctx);
 }
+
+#[test_only]
+public fun set_version_for_testing(self: &mut Version, new_version: u64) {
+    self.version = new_version;
+}

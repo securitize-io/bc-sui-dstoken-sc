@@ -1,7 +1,13 @@
 #[test_only]
 module securitize::ds_token_tests;
 
-use pas::{policy::Policy, chest::Chest, templates::Templates};
+use pas::{
+    policy::Policy,
+    chest::{Self, Chest},
+    namespace::Namespace,
+    templates::Templates,
+    transfer_funds
+};
 use ptb::ptb;
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
@@ -13,7 +19,7 @@ use securitize::{
     version::Version
 };
 use std::string::String;
-use sui::{clock, test_scenario::{Self as ts, Scenario}};
+use sui::{clock, coin_registry::{Self, Currency}, test_scenario::{Self as ts, Scenario}};
 use ptb::ptb::Command;
 
 const ADMIN: address = @0x001;
@@ -1782,6 +1788,928 @@ fun test_policy_cap_unauthorized() {
 
     ts::return_shared(treasury);
     ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+// ==================== Issue Tokens No Chest Tests ====================
+
+#[test]
+fun test_issue_tokens_no_chest_success() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register investor (this creates their wallet in registry but we won't use the chest)
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let namespace = ts.take_shared<Namespace>();
+    let version = ts.take_shared<Version>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    // Issue tokens without requiring a chest reference
+    ds_token::issue_tokens_no_chest(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &namespace,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Verify investor balance after issuance
+    let investor_id = b"INV001".to_string();
+    let balance = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    assert!(balance == 500, 0);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(namespace);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::ENotAuthorized)]
+fun test_issue_tokens_no_chest_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register investor
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    // Try to issue from unauthorized address
+    ts.next_tx(UNAUTHORIZED);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let namespace = ts.take_shared<Namespace>();
+    let version = ts.take_shared<Version>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    // Should fail - UNAUTHORIZED has no IssueTokens ability
+    ds_token::issue_tokens_no_chest(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &namespace,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(namespace);
+    ts::return_shared(version);
+    ts.end();
+}
+
+// ==================== Seize Chest Owner Mismatch Test ====================
+
+#[test]
+#[expected_failure(abort_code = ds_token::EChestOwnerMismatch)]
+fun test_seize_chest_owner_mismatch() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register investor and issue tokens
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &investor_chest,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(investor_chest);
+
+    // Add issuer wallet (creates issuer's chest)
+    test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
+
+    // Try to seize with mismatched chest owner
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    // Get issuer chest (most recently created)
+    let issuer_chest = ts.take_shared<Chest>();
+    // Get investor chest
+    let mut investor_chest = ts.take_shared<Chest>();
+
+    // Seize but pass wrong to_address (INVESTOR1 instead of ISSUER_WALLET)
+    let request = investor_chest.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    ds_token::seize(
+        &auth,
+        &mut investor_info,
+        &policy,
+        request,
+        &issuer_chest,
+        INVESTOR1, // Wrong! Should be ISSUER_WALLET to match issuer_chest.owner()
+        b"seize mismatch".to_string(),
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(investor_chest);
+    ts::return_shared(issuer_chest);
+    ts.end();
+}
+
+// ==================== Transfer Tests ====================
+
+#[test]
+fun test_transfer_success() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register two investors
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+    setup_investor(&mut ts, b"INV002", INVESTOR2, b"US");
+
+    // Issue tokens to INVESTOR1
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    // INVESTOR2's chest is most recent, so it comes first
+    let chest2 = ts.take_shared<Chest>();
+    let chest1 = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &chest1,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(chest1);
+    ts::return_shared(chest2);
+
+    // Transfer from INVESTOR1 to INVESTOR2
+    ts.next_tx(INVESTOR1);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest2 = ts.take_shared<Chest>();
+    let mut chest1 = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    // Create auth and transfer request
+    let pas_auth = chest::new_auth(ts.ctx());
+    let mut request = chest1.transfer_funds<TEST_VOLORO>(&pas_auth, &chest2, 200, ts.ctx());
+
+    // Call ds_token::transfer
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    // Resolve the request
+    transfer_funds::resolve(request, &policy);
+
+    // Verify balances
+    let investor1_id = b"INV001".to_string();
+    let investor2_id = b"INV002".to_string();
+    let balance1 = registry_service::investor_wallet_balance_total(&investor_info, investor1_id);
+    let balance2 = registry_service::investor_wallet_balance_total(&investor_info, investor2_id);
+    assert!(balance1 == 300, 0);
+    assert!(balance2 == 200, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(chest1);
+    ts::return_shared(chest2);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::EValueZero)]
+fun test_transfer_value_zero() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register two investors
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+    setup_investor(&mut ts, b"INV002", INVESTOR2, b"US");
+
+    // Issue tokens to INVESTOR1
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest2 = ts.take_shared<Chest>();
+    let chest1 = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &chest1,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(chest1);
+    ts::return_shared(chest2);
+
+    // Try to transfer 0 tokens
+    ts.next_tx(INVESTOR1);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest2 = ts.take_shared<Chest>();
+    let mut chest1 = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    // Create auth and transfer request with 0 amount
+    let pas_auth = chest::new_auth(ts.ctx());
+    let mut request = chest1.transfer_funds<TEST_VOLORO>(&pas_auth, &chest2, 0, ts.ctx());
+
+    // Should fail - value is 0
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    transfer_funds::resolve(request, &policy);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(chest1);
+    ts::return_shared(chest2);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::ETreasuryPaused)]
+fun test_transfer_paused() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register two investors
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+    setup_investor(&mut ts, b"INV002", INVESTOR2, b"US");
+
+    // Issue tokens to INVESTOR1 and pause treasury
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest2 = ts.take_shared<Chest>();
+    let chest1 = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &chest1,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Pause the treasury
+    ds_token::pause(&mut treasury, &auth, &version, ts.ctx());
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(chest1);
+    ts::return_shared(chest2);
+
+    // Try to transfer between investor wallets while paused
+    ts.next_tx(INVESTOR1);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest2 = ts.take_shared<Chest>();
+    let mut chest1 = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    let pas_auth = chest::new_auth(ts.ctx());
+    let mut request = chest1.transfer_funds<TEST_VOLORO>(&pas_auth, &chest2, 100, ts.ctx());
+
+    // Should fail - treasury is paused and both are investor wallets
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    transfer_funds::resolve(request, &policy);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(chest1);
+    ts::return_shared(chest2);
+    ts.end();
+}
+
+#[test]
+fun test_transfer_to_special_wallet() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Register investor FIRST (chest created first)
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    // Issue tokens to investor before adding platform wallet
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let investor_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &investor_chest,
+        INVESTOR1,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(investor_chest);
+
+    // Add platform wallet SECOND (chest created second, so it comes first when taking)
+    test_helpers::add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    // Transfer from investor to platform wallet
+    ts.next_tx(INVESTOR1);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    // Platform chest is most recent (created second)
+    let platform_chest = ts.take_shared<Chest>();
+    // Investor chest is older (created first)
+    let mut investor_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    let pas_auth = chest::new_auth(ts.ctx());
+    let mut request = investor_chest.transfer_funds<TEST_VOLORO>(
+        &pas_auth,
+        &platform_chest,
+        200,
+        ts.ctx(),
+    );
+
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    transfer_funds::resolve(request, &policy);
+
+    // Verify balances
+    let investor_balance = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        b"INV001".to_string(),
+    );
+    let platform_balance = registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET);
+    assert!(investor_balance == 300, 0);
+    assert!(platform_balance == 200, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(investor_chest);
+    ts::return_shared(platform_chest);
+    ts.end();
+}
+
+#[test]
+fun test_transfer_from_special_wallet() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Add platform wallet
+    test_helpers::add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    // Issue tokens to platform wallet
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let platform_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &platform_chest,
+        PLATFORM_WALLET,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(platform_chest);
+
+    // Register investor (creates investor chest)
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    // Transfer from platform wallet to investor
+    ts.next_tx(PLATFORM_WALLET);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    // Investor chest is most recent
+    let investor_chest = ts.take_shared<Chest>();
+    let mut platform_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    let pas_auth = chest::new_auth(ts.ctx());
+    let mut request = platform_chest.transfer_funds<TEST_VOLORO>(
+        &pas_auth,
+        &investor_chest,
+        200,
+        ts.ctx(),
+    );
+
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    transfer_funds::resolve(request, &policy);
+
+    // Verify balances
+    let investor_balance = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        b"INV001".to_string(),
+    );
+    let platform_balance = registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET);
+    assert!(investor_balance == 200, 0);
+    assert!(platform_balance == 300, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(investor_chest);
+    ts::return_shared(platform_chest);
+    ts.end();
+}
+
+#[test]
+fun test_transfer_paused_from_special_wallet_allowed() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Add platform wallet
+    test_helpers::add_platform_wallet(&mut ts, PLATFORM_WALLET);
+
+    // Issue tokens to platform wallet and pause treasury
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let platform_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &platform_chest,
+        PLATFORM_WALLET,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    // Pause the treasury
+    ds_token::pause(&mut treasury, &auth, &version, ts.ctx());
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(platform_chest);
+
+    // Register investor (creates investor chest)
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+
+    // Transfer from platform wallet to investor (should succeed even though paused)
+    ts.next_tx(PLATFORM_WALLET);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    // Investor chest is most recent
+    let investor_chest = ts.take_shared<Chest>();
+    let mut platform_chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    let pas_auth = chest::new_auth(ts.ctx());
+    let mut request = platform_chest.transfer_funds<TEST_VOLORO>(
+        &pas_auth,
+        &investor_chest,
+        200,
+        ts.ctx(),
+    );
+
+    // Should succeed - pause only blocks investor-to-investor transfers
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    transfer_funds::resolve(request, &policy);
+
+    // Verify balances
+    let investor_balance = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        b"INV001".to_string(),
+    );
+    let platform_balance = registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET);
+    assert!(investor_balance == 200, 0);
+    assert!(platform_balance == 300, 1);
+
+    clock::destroy_for_testing(clock);
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(investor_chest);
+    ts::return_shared(platform_chest);
+    ts.end();
+}
+
+// ==================== Set Metadata Tests ====================
+
+#[test]
+fun test_set_metadata_name() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut currency = ts.take_shared<Currency<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Update only the name
+    ds_token::set_metadata(
+        &treasury,
+        &auth,
+        &mut currency,
+        option::some(b"New Token Name".to_string()),
+        option::none(),
+        option::none(),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify name was updated
+    assert!(coin_registry::name(&currency) == b"New Token Name".to_string(), 0);
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(currency);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_set_metadata_description() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut currency = ts.take_shared<Currency<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Update only the description
+    ds_token::set_metadata(
+        &treasury,
+        &auth,
+        &mut currency,
+        option::none(),
+        option::some(b"Updated description".to_string()),
+        option::none(),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify description was updated
+    assert!(coin_registry::description(&currency) == b"Updated description".to_string(), 0);
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(currency);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_set_metadata_icon_url() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut currency = ts.take_shared<Currency<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Update only the icon_url
+    ds_token::set_metadata(
+        &treasury,
+        &auth,
+        &mut currency,
+        option::none(),
+        option::none(),
+        option::some(b"https://new-icon.png".to_string()),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify icon_url was updated
+    assert!(coin_registry::icon_url(&currency) == b"https://new-icon.png".to_string(), 0);
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(currency);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_set_metadata_all() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut currency = ts.take_shared<Currency<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Update all fields
+    ds_token::set_metadata(
+        &treasury,
+        &auth,
+        &mut currency,
+        option::some(b"Fully Updated Token".to_string()),
+        option::some(b"Complete new description".to_string()),
+        option::some(b"https://brand-new-icon.png".to_string()),
+        &version,
+        ts.ctx(),
+    );
+
+    // Verify all fields were updated
+    assert!(coin_registry::name(&currency) == b"Fully Updated Token".to_string(), 0);
+    assert!(coin_registry::description(&currency) == b"Complete new description".to_string(), 1);
+    assert!(coin_registry::icon_url(&currency) == b"https://brand-new-icon.png".to_string(), 2);
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(currency);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = ds_token::ENotAuthorized)]
+fun test_set_metadata_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_full(&mut ts);
+
+    // Try to set metadata from unauthorized address
+    ts.next_tx(UNAUTHORIZED);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut currency = ts.take_shared<Currency<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Should fail - UNAUTHORIZED has no MetadataUpdate ability
+    ds_token::set_metadata(
+        &treasury,
+        &auth,
+        &mut currency,
+        option::some(b"Unauthorized Update".to_string()),
+        option::none(),
+        option::none(),
+        &version,
+        ts.ctx(),
+    );
+
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(currency);
     ts::return_shared(version);
     ts.end();
 }
