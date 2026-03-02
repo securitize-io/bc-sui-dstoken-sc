@@ -1,15 +1,22 @@
 #[test_only]
 module securitize::registry_service_tests;
 
-use pas::namespace::Namespace;
+use pas::{chest::Chest, namespace::Namespace};
 use securitize::{
-    compliance_service,
+    compliance_service::{Self, ComplianceConfig},
+    ds_token::{Self, Treasury},
     registry_service::{Self, InvestorInfo},
-    test_helpers::{Self as test_helpers, TEST_VOLORO, setup_with_treasury, add_platform_wallet, add_issuer_wallet},
+    test_helpers::{
+        Self as test_helpers,
+        TEST_VOLORO,
+        setup_with_treasury,
+        add_platform_wallet,
+        add_issuer_wallet
+    },
     trust_service::Auth,
     version::Version
 };
-use sui::test_scenario::{Self as ts, Scenario};
+use sui::{clock, test_scenario::{Self as ts, Scenario}};
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
@@ -1534,13 +1541,13 @@ fun test_remove_wallet_not_empty() {
     setup_for_testing(&mut ts);
     test_helpers::init_namespace_for_testing(&mut ts);
 
+    // Register investor and add wallet (creates PAS chest)
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let mut namespace = ts.take_shared<Namespace>();
 
-    // Register an investor and add a wallet
     registry_service::register_investor<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -1559,14 +1566,53 @@ fun test_remove_wallet_not_empty() {
         ts.ctx(),
     );
 
-    // Set non-zero wallet balance
-    registry_service::update_wallet_balance<TEST_VOLORO>(
-        &mut registry,
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+
+    // Issue tokens to give the wallet a non-zero balance
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &chest,
         WALLET1,
         100,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
     );
 
-    // Try to remove wallet with non-zero balance - should fail
+    clock.destroy_for_testing();
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(chest);
+
+    // Try to remove wallet with non-zero balance — should fail
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
     registry_service::remove_wallet<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -1579,7 +1625,6 @@ fun test_remove_wallet_not_empty() {
     ts::return_shared(registry);
     ts::return_shared(auth);
     ts::return_shared(version);
-    ts::return_shared(namespace);
     ts.end();
 }
 
@@ -1718,7 +1763,10 @@ fun test_investor_wallet_balance_total_not_found() {
     let registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
 
     // Query balance for non-existent investor - should fail
-    let _balance = registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string());
+    let _balance = registry_service::investor_wallet_balance_total(
+        &registry,
+        b"INV001".to_string(),
+    );
 
     ts::return_shared(registry);
     ts.end();
@@ -2031,7 +2079,10 @@ fun test_set_country_compliance_to_none() {
     let version = ts.take_shared<Version>();
 
     // Verify it's US
-    assert!(registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_US, 0);
+    assert!(
+        registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_US,
+        0,
+    );
 
     // Set to NONE (removes entry)
     compliance_service::set_country_compliance<TEST_VOLORO>(
@@ -2044,7 +2095,10 @@ fun test_set_country_compliance_to_none() {
     );
 
     // Should return NONE (0) now
-    assert!(registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_NONE, 1);
+    assert!(
+        registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_NONE,
+        1,
+    );
 
     ts::return_shared(registry);
     ts::return_shared(auth);
@@ -2073,7 +2127,10 @@ fun test_set_country_compliance_to_eu() {
     );
 
     // Verify compliance is EU
-    assert!(registry_service::get_country_compliance(&registry, b"DEU".to_string()) == COMPLIANCE_EU, 0);
+    assert!(
+        registry_service::get_country_compliance(&registry, b"DEU".to_string()) == COMPLIANCE_EU,
+        0,
+    );
 
     // Verify EU retail count is initialized
     let count = registry_service::get_eu_retail_investor_count(&registry, b"DEU".to_string());
@@ -2099,7 +2156,10 @@ fun test_set_country_compliance_update_existing() {
     let version = ts.take_shared<Version>();
 
     // Verify it's US
-    assert!(registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_US, 0);
+    assert!(
+        registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_US,
+        0,
+    );
 
     // Update to JP
     compliance_service::set_country_compliance<TEST_VOLORO>(
@@ -2112,7 +2172,10 @@ fun test_set_country_compliance_update_existing() {
     );
 
     // Should now be JP
-    assert!(registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_JP, 1);
+    assert!(
+        registry_service::get_country_compliance(&registry, b"USA".to_string()) == COMPLIANCE_JP,
+        1,
+    );
 
     ts::return_shared(registry);
     ts::return_shared(auth);
@@ -2142,7 +2205,10 @@ fun test_update_investor_total_balance() {
     );
 
     // Initial balance should be 0
-    assert!(registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string()) == 0, 0);
+    assert!(
+        registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string()) == 0,
+        0,
+    );
 
     // Update total balance
     registry_service::update_investor_total_balance<TEST_VOLORO>(
@@ -2152,7 +2218,10 @@ fun test_update_investor_total_balance() {
     );
 
     // Verify balance is 1000
-    assert!(registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string()) == 1000, 1);
+    assert!(
+        registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string()) == 1000,
+        1,
+    );
 
     ts::return_shared(registry);
     ts::return_shared(auth);
@@ -2194,7 +2263,10 @@ fun test_update_investor_total_balance_multiple_updates() {
     );
 
     // Verify final balance is 500
-    assert!(registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string()) == 500, 0);
+    assert!(
+        registry_service::investor_wallet_balance_total(&registry, b"INV001".to_string()) == 500,
+        0,
+    );
 
     ts::return_shared(registry);
     ts::return_shared(auth);
@@ -2401,7 +2473,10 @@ fun test_set_eu_retail_investors_country_if_not_exists() {
     assert!(count.is_none(), 0);
 
     // Set EU retail country
-    registry_service::set_eu_retail_investors_country_if_not_exists(&mut registry, b"FRA".to_string());
+    registry_service::set_eu_retail_investors_country_if_not_exists(
+        &mut registry,
+        b"FRA".to_string(),
+    );
 
     // Now should return Some(0)
     let count = registry_service::get_eu_retail_investor_count(&registry, b"FRA".to_string());
@@ -2421,8 +2496,14 @@ fun test_set_eu_retail_investors_country_if_not_exists_idempotent() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
 
     // Set EU retail country twice (should be idempotent)
-    registry_service::set_eu_retail_investors_country_if_not_exists(&mut registry, b"FRA".to_string());
-    registry_service::set_eu_retail_investors_country_if_not_exists(&mut registry, b"FRA".to_string());
+    registry_service::set_eu_retail_investors_country_if_not_exists(
+        &mut registry,
+        b"FRA".to_string(),
+    );
+    registry_service::set_eu_retail_investors_country_if_not_exists(
+        &mut registry,
+        b"FRA".to_string(),
+    );
 
     // Should still return Some(0)
     let count = registry_service::get_eu_retail_investor_count(&registry, b"FRA".to_string());
@@ -2484,7 +2565,10 @@ fun test_get_investor_issuances_mut_and_modify() {
     );
 
     // Get mutable issuances and add one
-    let issuances = registry_service::get_investor_issuances_mut(&mut registry, b"INV001".to_string());
+    let issuances = registry_service::get_investor_issuances_mut(
+        &mut registry,
+        b"INV001".to_string(),
+    );
     let issuance = registry_service::new_issuance(1000, 123456789);
     issuances.push_back(issuance);
 
@@ -2524,7 +2608,10 @@ fun test_get_investor_issuances_mut_not_found() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
 
     // Try to get mutable issuances for non-existent investor - should abort
-    let _issuances = registry_service::get_investor_issuances_mut(&mut registry, b"INV001".to_string());
+    let _issuances = registry_service::get_investor_issuances_mut(
+        &mut registry,
+        b"INV001".to_string(),
+    );
 
     ts::return_shared(registry);
     ts.end();
@@ -2622,7 +2709,10 @@ fun test_get_investor_locks_mut_not_found() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
 
     // Try to get mutable locks for non-existent investor - should abort
-    let _lock_state = registry_service::get_investor_locks_mut(&mut registry, b"INV001".to_string());
+    let _lock_state = registry_service::get_investor_locks_mut(
+        &mut registry,
+        b"INV001".to_string(),
+    );
 
     ts::return_shared(registry);
     ts.end();
@@ -3340,9 +3430,9 @@ fun test_compute_locked_sum_mixed_locks() {
 
     // Add mixed locks
     let lock_state = registry_service::get_investor_locks_mut(&mut registry, b"INV001".to_string());
-    registry_service::add_lock(lock_state, 1000, 1, b"permanent".to_string(), 0);        // counted
-    registry_service::add_lock(lock_state, 2000, 2, b"future".to_string(), 5000000);     // counted
-    registry_service::add_lock(lock_state, 3000, 3, b"past".to_string(), 500000);        // NOT counted
+    registry_service::add_lock(lock_state, 1000, 1, b"permanent".to_string(), 0); // counted
+    registry_service::add_lock(lock_state, 2000, 2, b"future".to_string(), 5000000); // counted
+    registry_service::add_lock(lock_state, 3000, 3, b"past".to_string(), 500000); // NOT counted
 
     // Sum should be 1000 + 2000 = 3000 (excluding released lock)
     let lock_state = registry_service::get_investor_locks(&registry, b"INV001".to_string());
@@ -3681,13 +3771,13 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
     test_helpers::set_country_compliance(&mut ts, b"USA", COMPLIANCE_US);
     test_helpers::set_country_compliance(&mut ts, b"JPN", COMPLIANCE_JP);
 
+    // Register investor with wallet (creates PAS chest)
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
     let mut namespace = ts.take_shared<Namespace>();
 
-    // Register investor with wallet
     registry_service::register_investor<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -3706,10 +3796,53 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
         ts.ctx(),
     );
 
-    // Set non-zero balance (required for counts to be adjusted)
-    registry_service::update_investor_total_balance(&mut registry, b"INV001".to_string(), 1000);
+    ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts::return_shared(namespace);
 
-    // Set initial country to USA
+    // Issue tokens to give the investor a non-zero balance
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let chest = ts.take_shared<Chest>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &chest,
+        WALLET1,
+        1000,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+
+    clock.destroy_for_testing();
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(chest);
+
+    // Set initial country to USA and verify counts
+    ts.next_tx(ADMIN);
+    let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
     registry_service::set_country<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -3719,11 +3852,10 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
         ts.ctx(),
     );
 
-    // Verify US count increased
     assert!(registry_service::get_us_investor_count(&registry) == 1, 0);
     assert!(registry_service::get_jp_investor_count(&registry) == 0, 1);
 
-    // Change country to JPN (this triggers adjust_investor_counts_after_country_change)
+    // Change country to JPN (triggers adjust_investor_counts_after_country_change)
     registry_service::set_country<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -3733,14 +3865,12 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
         ts.ctx(),
     );
 
-    // Verify counts adjusted: US decreased, JP increased
     assert!(registry_service::get_us_investor_count(&registry) == 0, 2);
     assert!(registry_service::get_jp_investor_count(&registry) == 1, 3);
 
     ts::return_shared(registry);
     ts::return_shared(auth);
     ts::return_shared(version);
-    ts::return_shared(namespace);
     ts.end();
 }
 
