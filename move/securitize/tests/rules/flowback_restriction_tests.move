@@ -8,6 +8,7 @@ use securitize::{
     trust_service::Auth,
     version::Version
 };
+use sui::clock;
 use sui::test_scenario::{Self as ts, Scenario};
 
 const ADMIN: address = @0x001;
@@ -256,6 +257,145 @@ fun test_validate_rule_permanent_restriction() {
     // Non-US to US with permanent restriction should fail
     flowback_restriction::validate_rule(&rule, EU, US, false, 999999999);
 
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+#[expected_failure(abort_code = flowback_restriction::ENotAuthorized)]
+fun test_set_flowback_end_time_unauthorized() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Create rule as ADMIN
+    let init_wrapper = flowback_restriction::new<TEST_VOLORO>(
+        &auth,
+        1000000,
+        &version,
+        ts.ctx(),
+    );
+    let rule = unwrap_init(init_wrapper);
+
+    ts::return_shared(auth);
+    ts::return_shared(version);
+
+    // Try to update from UNAUTHORIZED address
+    ts.next_tx(UNAUTHORIZED);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    let mut wrapper = new_update(rule);
+
+    // Should fail - UNAUTHORIZED has no ManageRules ability
+    flowback_restriction::set_flowback_end_time<TEST_VOLORO>(
+        &auth,
+        &mut wrapper,
+        2000000,
+        &version,
+        ts.ctx(),
+    );
+
+    let _ = unwrap_update(wrapper);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+// ==================== is_active Tests ====================
+
+#[test]
+fun test_is_active_when_end_time_is_zero() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Create rule with end_time = 0 (disabled/permanent)
+    let wrapper = flowback_restriction::new<TEST_VOLORO>(
+        &auth,
+        0,
+        &version,
+        ts.ctx(),
+    );
+    let rule = unwrap_init(wrapper);
+
+    // Create clock
+    let mut clock = clock::create_for_testing(ts.ctx());
+    clock.set_for_testing(1000000);
+
+    // is_active returns false when end_time == 0
+    assert!(!flowback_restriction::is_active(&rule, &clock), 0);
+
+    clock.destroy_for_testing();
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_is_active_when_restriction_active() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Create rule with end_time in future
+    let wrapper = flowback_restriction::new<TEST_VOLORO>(
+        &auth,
+        2000000, // restriction ends at 2000000
+        &version,
+        ts.ctx(),
+    );
+    let rule = unwrap_init(wrapper);
+
+    // Create clock at time before end_time
+    let mut clock = clock::create_for_testing(ts.ctx());
+    clock.set_for_testing(1000000); // current time < end_time
+
+    // is_active returns true when current_time < end_time
+    assert!(flowback_restriction::is_active(&rule, &clock), 0);
+
+    clock.destroy_for_testing();
+    ts::return_shared(auth);
+    ts::return_shared(version);
+    ts.end();
+}
+
+#[test]
+fun test_is_active_when_restriction_expired() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    ts.next_tx(ADMIN);
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+
+    // Create rule with end_time in past
+    let wrapper = flowback_restriction::new<TEST_VOLORO>(
+        &auth,
+        1000000, // restriction ends at 1000000
+        &version,
+        ts.ctx(),
+    );
+    let rule = unwrap_init(wrapper);
+
+    // Create clock at time after end_time
+    let mut clock = clock::create_for_testing(ts.ctx());
+    clock.set_for_testing(2000000); // current time > end_time
+
+    // is_active returns false when current_time >= end_time
+    assert!(!flowback_restriction::is_active(&rule, &clock), 0);
+
+    clock.destroy_for_testing();
     ts::return_shared(auth);
     ts::return_shared(version);
     ts.end();
