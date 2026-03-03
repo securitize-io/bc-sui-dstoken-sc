@@ -86,7 +86,11 @@ public fun new<T>(
     emit_uint_rule_set_event<T>(b"minimumTotalInvestors".to_string(), 0, minimum_total_investors);
     emit_uint_rule_set_event<T>(b"usInvestorsLimit".to_string(), 0, us_investors_limit);
     emit_uint_rule_set_event<T>(b"usAccreditedInvestorsLimit".to_string(), 0, us_accredited_limit);
-    emit_uint_rule_set_event<T>(b"nonAccreditedInvestorsLimit".to_string(), 0, non_accredited_limit);
+    emit_uint_rule_set_event<T>(
+        b"nonAccreditedInvestorsLimit".to_string(),
+        0,
+        non_accredited_limit,
+    );
     emit_uint_rule_set_event<T>(b"jpInvestorsLimit".to_string(), 0, jp_investors_limit);
     emit_uint_rule_set_event<T>(b"euRetailInvestorsLimit".to_string(), 0, eu_retail_limit);
     emit_uint_rule_set_event<T>(b"maxUSInvestorsPercentage".to_string(), 0, max_us_percentage);

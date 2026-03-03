@@ -27,6 +27,8 @@ const EAboveMaxHolding: vector<u8> = b"Balance would exceed maximum holding limi
 const ERegionNotFound: vector<u8> = b"Region-specific minimum not configured";
 #[error(code = 3)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 4)]
+const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
 // ==== Structs ====
 
@@ -223,7 +225,7 @@ public fun validate_holding_limits_for_transfer(
         }
     };
     // ---- RECEIVER ----
-    let to_balance_after = to_balance + amount;
+    let to_balance_after = try_from_u256_to_u64!((to_balance as u256) + (amount as u256));
     // Min holdings check (region-aware)
     rule.validate_min_holdings(to_balance_after, to_region);
     // Max holdings check (receiver only)
@@ -237,7 +239,7 @@ public fun validate_holding_limits_for_issuance(
     to_balance: u64,
     to_region: u64,
 ) {
-    let to_balance_after = to_balance + amount;
+    let to_balance_after = try_from_u256_to_u64!((to_balance as u256) + (amount as u256));
     // Min holdings check (region-aware)
     rule.validate_min_holdings(to_balance_after, to_region);
     // Max holdings check
@@ -290,4 +292,12 @@ public fun max_holdings(rule: &HoldingLimits): u64 {
 public fun region_min_holdings(rule: &HoldingLimits, region: u64): u64 {
     assert!(rule.region_min_tokens.contains(&region), ERegionNotFound);
     *rule.region_min_tokens.get(&region)
+}
+
+// ==== Macros ====
+
+macro fun try_from_u256_to_u64($number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64($number);
+    assert!(number_option.is_some(), EArithmeticOverflow);
+    number_option.extract()
 }

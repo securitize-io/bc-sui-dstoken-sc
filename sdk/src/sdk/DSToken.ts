@@ -134,14 +134,14 @@ export class DSToken {
         ptb ??= new Transaction()
         const pasChest = this.getPASChest(from)
         const clawbackRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::clawback_funds`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::clawback_balance`,
             typeArguments: [this.tokenAddress],
             arguments: [ptb.object(pasChest), ptb.pure.u64(value)],
         })
         return { ptb, clawbackRequest }
     }
 
-    initiateTransferFundsPTB(from: string, to: string, amount: bigint, ptb?: Transaction) {
+    initiateSendFundsPTB(from: string, to: string, amount: bigint, ptb?: Transaction) {
         ptb ??= new Transaction()
         const fromRwaChest = this.getPASChest(from)
         const toRwaChest = this.getPASChest(to)
@@ -149,7 +149,7 @@ export class DSToken {
             target: `${Config.vars.PAS_PACKAGE_ID}::chest::new_auth`,
         })
         const transferRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::transfer_funds`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::chest::send_balance`,
             typeArguments: [this.tokenAddress],
             arguments: [
                 ptb.object(fromRwaChest),
@@ -166,7 +166,7 @@ export class DSToken {
         ptb: Transaction
     ) {
         ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::transfer_funds::resolve`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::send_funds::resolve_balance`,
             typeArguments: [this.tokenAddress],
             arguments: [transferRequest, ptb.object(this.tokenDetails.pasPolicy)],
         })
@@ -424,7 +424,7 @@ export class DSToken {
         transferRequest?: ReturnType<Transaction['moveCall']>
     ) {
         if (!transferRequest) {
-            const result = this.initiateTransferFundsPTB(from, to, amount, ptb)
+            const result = this.initiateSendFundsPTB(from, to, amount, ptb)
             ptb = result.ptb
             transferRequest = result.transferRequest
         } else {

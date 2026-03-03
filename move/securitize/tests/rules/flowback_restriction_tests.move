@@ -8,8 +8,7 @@ use securitize::{
     trust_service::Auth,
     version::Version
 };
-use sui::clock;
-use sui::test_scenario::{Self as ts, Scenario};
+use sui::{clock, test_scenario::{Self as ts, Scenario}};
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;

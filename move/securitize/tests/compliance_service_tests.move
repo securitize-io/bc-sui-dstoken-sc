@@ -1,7 +1,7 @@
 #[test_only]
 module securitize::compliance_service_tests;
 
-use pas::{chest::{Self, Chest}, policy::Policy, transfer_funds};
+use pas::{chest::{Self, Chest}, policy::Policy, send_funds};
 use securitize::{
     accredited_only::{Self, AccreditedOnly},
     authorized_securities::{Self, AuthorizedSecurities},
@@ -19,7 +19,7 @@ use securitize::{
     trust_service::Auth,
     version::Version
 };
-use sui::{clock, test_scenario::{Self as ts, Scenario}};
+use sui::{balance::Balance, clock, test_scenario::{Self as ts, Scenario}};
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
@@ -44,7 +44,7 @@ fun test_compliance_config_initialization() {
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
 
     // Initially, no rules should be registered
-    assert!(!compliance_service::has_rule<TEST_VOLORO, AccreditedOnly>(&compliance), 0);
+    assert!(!compliance.has_rule<TEST_VOLORO, AccreditedOnly>(), 0);
 
     ts::return_shared(compliance);
     ts.end();
@@ -69,15 +69,14 @@ fun test_register_rule() {
         ts.ctx(),
     );
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
         ts.ctx(),
     );
 
-    assert!(compliance_service::has_rule<TEST_VOLORO, AccreditedOnly>(&compliance), 0);
+    assert!(compliance.has_rule<TEST_VOLORO, AccreditedOnly>(), 0);
 
     ts::return_shared(compliance);
     ts::return_shared(auth);
@@ -112,8 +111,7 @@ fun test_register_rule_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -146,8 +144,7 @@ fun test_register_rule_already_exists() {
         ts.ctx(),
     );
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule1,
         &version,
@@ -163,8 +160,7 @@ fun test_register_rule_already_exists() {
         ts.ctx(),
     );
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule2,
         &version,
@@ -196,25 +192,23 @@ fun test_unregister_rule() {
         ts.ctx(),
     );
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
         ts.ctx(),
     );
 
-    assert!(compliance_service::has_rule<TEST_VOLORO, AccreditedOnly>(&compliance), 0);
+    assert!(compliance.has_rule<TEST_VOLORO, AccreditedOnly>(), 0);
 
     // Unregister the rule
-    compliance_service::unregister_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.unregister_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         &version,
         ts.ctx(),
     );
 
-    assert!(!compliance_service::has_rule<TEST_VOLORO, AccreditedOnly>(&compliance), 1);
+    assert!(!compliance.has_rule<TEST_VOLORO, AccreditedOnly>(), 1);
 
     ts::return_shared(compliance);
     ts::return_shared(auth);
@@ -234,8 +228,7 @@ fun test_unregister_rule_not_found() {
     let version = ts.take_shared<Version>();
 
     // Try to unregister a rule that doesn't exist
-    compliance_service::unregister_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.unregister_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         &version,
         ts.ctx(),
@@ -261,8 +254,7 @@ fun test_unregister_rule_unauthorized() {
     let version = ts.take_shared<Version>();
 
     let rule = accredited_only::new<TEST_VOLORO>(&auth, true, false, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -279,8 +271,7 @@ fun test_unregister_rule_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::unregister_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.unregister_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         &version,
         ts.ctx(),
@@ -371,8 +362,7 @@ fun test_get_rule_and_modify() {
         ts.ctx(),
     );
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -380,8 +370,7 @@ fun test_get_rule_and_modify() {
     );
 
     // Get rule wrapper (hot potato) and modify
-    let mut wrapper = compliance_service::get_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    let mut wrapper = compliance.get_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         &version,
         ts.ctx(),
@@ -396,8 +385,7 @@ fun test_get_rule_and_modify() {
     );
 
     // Return the rule back to compliance config
-    compliance_service::return_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.return_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         wrapper,
         &version,
@@ -413,7 +401,7 @@ fun test_get_rule_and_modify() {
     // Verify the change persisted using borrow_rule
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
 
-    let rule = compliance_service::borrow_rule<TEST_VOLORO, AccreditedOnly>(&compliance);
+    let rule = compliance.borrow_rule<TEST_VOLORO, AccreditedOnly>();
     assert!(accredited_only::is_force_accredited(rule), 0);
 
     ts::return_shared(compliance);
@@ -434,8 +422,7 @@ fun test_get_rule_unauthorized() {
     let version = ts.take_shared<Version>();
 
     let rule = accredited_only::new<TEST_VOLORO>(&auth, true, false, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -452,14 +439,12 @@ fun test_get_rule_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    let wrapper = compliance_service::get_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    let wrapper = compliance.get_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         &version,
         ts.ctx(),
     );
-    compliance_service::return_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.return_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         wrapper,
         &version,
@@ -486,8 +471,7 @@ fun test_return_rule_unauthorized() {
     let version = ts.take_shared<Version>();
 
     let rule = accredited_only::new<TEST_VOLORO>(&auth, true, false, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -495,8 +479,7 @@ fun test_return_rule_unauthorized() {
     );
 
     // Get rule as admin (succeeds)
-    let wrapper = compliance_service::get_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    let wrapper = compliance.get_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         &version,
         ts.ctx(),
@@ -512,8 +495,7 @@ fun test_return_rule_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::return_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.return_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         wrapper,
         &version,
@@ -536,7 +518,7 @@ fun test_has_rule() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    assert!(!compliance_service::has_rule<TEST_VOLORO, AccreditedOnly>(&compliance), 0);
+    assert!(!compliance.has_rule<TEST_VOLORO, AccreditedOnly>(), 0);
 
     let rule = accredited_only::new<TEST_VOLORO>(
         &auth,
@@ -546,15 +528,14 @@ fun test_has_rule() {
         ts.ctx(),
     );
 
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
         ts.ctx(),
     );
 
-    assert!(compliance_service::has_rule<TEST_VOLORO, AccreditedOnly>(&compliance), 1);
+    assert!(compliance.has_rule<TEST_VOLORO, AccreditedOnly>(), 1);
 
     ts::return_shared(compliance);
     ts::return_shared(auth);
@@ -587,8 +568,7 @@ fun test_validate_issue_basic() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500, // amount
@@ -617,8 +597,7 @@ fun test_validate_issue_not_whitelisted() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500,
@@ -650,8 +629,7 @@ fun test_validate_issue_forbidden_region() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500,
@@ -687,8 +665,7 @@ fun test_validate_issue_to_special_wallet_authorized_securities() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, AuthorizedSecurities>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AuthorizedSecurities>(
         &auth,
         rule,
         &version,
@@ -705,8 +682,7 @@ fun test_validate_issue_to_special_wallet_authorized_securities() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         ISSUER_WALLET,
         500, // amount
@@ -726,8 +702,7 @@ fun test_validate_issue_to_special_wallet_authorized_securities() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         ISSUER_WALLET,
         600, // amount
@@ -776,8 +751,7 @@ fun test_validate_issue_liquidate_only() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500,
@@ -869,8 +843,7 @@ fun test_validate_issue_with_accredited_only_rule() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -887,8 +860,7 @@ fun test_validate_issue_with_accredited_only_rule() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500,
@@ -908,8 +880,7 @@ fun test_validate_issue_with_accredited_only_rule() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR2,
         500,
@@ -945,8 +916,7 @@ fun test_validate_issue_with_authorized_securities_exceeds_max() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, AuthorizedSecurities>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AuthorizedSecurities>(
         &auth,
         rule,
         &version,
@@ -963,8 +933,7 @@ fun test_validate_issue_with_authorized_securities_exceeds_max() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         600, // amount
@@ -999,8 +968,7 @@ fun test_validate_issue_with_authorized_securities_passes() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, AuthorizedSecurities>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AuthorizedSecurities>(
         &auth,
         rule,
         &version,
@@ -1017,8 +985,7 @@ fun test_validate_issue_with_authorized_securities_passes() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         400, // amount
@@ -1055,8 +1022,7 @@ fun test_validate_issue_with_holding_limits_above_max() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, HoldingLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, HoldingLimits>(
         &auth,
         rule,
         &version,
@@ -1074,8 +1040,7 @@ fun test_validate_issue_with_holding_limits_above_max() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500,
@@ -1111,8 +1076,7 @@ fun test_validate_issue_with_holding_limits_passes() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, HoldingLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, HoldingLimits>(
         &auth,
         rule,
         &version,
@@ -1130,8 +1094,7 @@ fun test_validate_issue_with_holding_limits_passes() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR1,
         500,
@@ -1172,8 +1135,7 @@ fun test_validate_issue_with_investor_limits_max_total() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, InvestorLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, InvestorLimits>(
         &auth,
         rule,
         &version,
@@ -1196,8 +1158,7 @@ fun test_validate_issue_with_investor_limits_max_total() {
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
 
-    compliance_service::validate_issue<TEST_VOLORO>(
-        &compliance,
+    compliance.validate_issue<TEST_VOLORO>(
         &mut registry,
         INVESTOR2,
         300,
@@ -1231,8 +1192,7 @@ fun test_issue_to_special_wallet_with_authorized_securities_exceeded() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, AuthorizedSecurities>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AuthorizedSecurities>(
         &auth,
         rule,
         &version,
@@ -1563,11 +1523,11 @@ fun burn_from_investor(ts: &mut Scenario, amount: u64) {
     let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut chest = ts.take_shared<Chest>();
 
-    let request = chest.clawback_funds<TEST_VOLORO>(amount, ts.ctx());
+    let request = chest.clawback_balance<TEST_VOLORO>(amount, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
@@ -1598,12 +1558,12 @@ fun seize_from_to(
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut from_chest = ts.take_shared_by_id<Chest>(from_chest_id);
     let to_chest = ts.take_shared_by_id<Chest>(to_chest_id);
 
-    let request = from_chest.clawback_funds<TEST_VOLORO>(amount, ts.ctx());
+    let request = from_chest.clawback_balance<TEST_VOLORO>(amount, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -1642,7 +1602,7 @@ fun test_validate_transfer_basic() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -1650,8 +1610,7 @@ fun test_validate_transfer_basic() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -1667,7 +1626,7 @@ fun test_validate_transfer_basic() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -1716,7 +1675,7 @@ fun test_validate_transfer_to_forbidden_region() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -1724,8 +1683,7 @@ fun test_validate_transfer_to_forbidden_region() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -1741,7 +1699,7 @@ fun test_validate_transfer_to_forbidden_region() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -1791,7 +1749,7 @@ fun test_validate_transfer_sender_fully_locked() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -1799,8 +1757,7 @@ fun test_validate_transfer_sender_fully_locked() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -1816,7 +1773,7 @@ fun test_validate_transfer_sender_fully_locked() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -1867,7 +1824,7 @@ fun test_validate_transfer_to_liquidate_only() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -1875,8 +1832,7 @@ fun test_validate_transfer_to_liquidate_only() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -1892,7 +1848,7 @@ fun test_validate_transfer_to_liquidate_only() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -1946,7 +1902,7 @@ fun test_validate_transfer_not_whitelisted() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -1954,8 +1910,7 @@ fun test_validate_transfer_not_whitelisted() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -1971,7 +1926,7 @@ fun test_validate_transfer_not_whitelisted() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2025,7 +1980,7 @@ fun test_validate_transfer_from_not_whitelisted() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2033,8 +1988,7 @@ fun test_validate_transfer_from_not_whitelisted() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         100,
@@ -2050,7 +2004,7 @@ fun test_validate_transfer_from_not_whitelisted() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2088,7 +2042,7 @@ fun test_validate_transfer_investor_count_tracking() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2096,8 +2050,7 @@ fun test_validate_transfer_investor_count_tracking() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         500,
@@ -2113,7 +2066,7 @@ fun test_validate_transfer_investor_count_tracking() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2171,7 +2124,7 @@ fun test_exit_investor_decrements_count() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2179,8 +2132,7 @@ fun test_exit_investor_decrements_count() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         500,
@@ -2196,7 +2148,7 @@ fun test_exit_investor_decrements_count() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2243,7 +2195,7 @@ fun test_validate_transfer_to_special_wallet() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2251,8 +2203,7 @@ fun test_validate_transfer_to_special_wallet() {
     let mut investor_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut investor_chest,
+    let mut request = investor_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &issuer_chest,
         200,
@@ -2268,7 +2219,7 @@ fun test_validate_transfer_to_special_wallet() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     // Verify balances
     assert!(
@@ -2345,7 +2296,7 @@ fun test_validate_transfer_from_special_wallet() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2353,8 +2304,7 @@ fun test_validate_transfer_from_special_wallet() {
     let mut from_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         300,
@@ -2370,7 +2320,7 @@ fun test_validate_transfer_from_special_wallet() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     assert!(
         registry_service::investor_wallet_balance<TEST_VOLORO>(&investor_info, INVESTOR1) == 300,
@@ -2406,8 +2356,7 @@ fun test_validate_transfer_same_investor() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, ForceFullTransfer>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, ForceFullTransfer>(
         &auth,
         rule,
         &version,
@@ -2434,7 +2383,7 @@ fun test_validate_transfer_same_investor() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2442,8 +2391,7 @@ fun test_validate_transfer_same_investor() {
     let to_chest = ts.take_shared_by_id<Chest>(wallet2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -2459,7 +2407,7 @@ fun test_validate_transfer_same_investor() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     // Verify wallet balances updated (same investor, just moved between wallets)
     assert!(
@@ -2538,7 +2486,7 @@ fun test_validate_transfer_with_time_lock() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2546,8 +2494,7 @@ fun test_validate_transfer_with_time_lock() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -2563,7 +2510,7 @@ fun test_validate_transfer_with_time_lock() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2596,8 +2543,7 @@ fun test_validate_transfer_with_lockup_restriction() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, LockupRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, LockupRestriction>(
         &auth,
         rule,
         &version,
@@ -2620,7 +2566,7 @@ fun test_validate_transfer_with_lockup_restriction() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2628,8 +2574,7 @@ fun test_validate_transfer_with_lockup_restriction() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -2645,7 +2590,7 @@ fun test_validate_transfer_with_lockup_restriction() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2680,8 +2625,7 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, HoldingLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, HoldingLimits>(
         &auth,
         rule,
         &version,
@@ -2704,7 +2648,7 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2712,8 +2656,7 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         400,
@@ -2729,7 +2672,7 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2762,8 +2705,7 @@ fun test_validate_transfer_with_force_full_transfer() {
         &version,
         ts.ctx(), // worldwide = true
     );
-    compliance_service::register_rule<TEST_VOLORO, ForceFullTransfer>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, ForceFullTransfer>(
         &auth,
         rule,
         &version,
@@ -2786,7 +2728,7 @@ fun test_validate_transfer_with_force_full_transfer() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2794,8 +2736,7 @@ fun test_validate_transfer_with_force_full_transfer() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -2811,7 +2752,7 @@ fun test_validate_transfer_with_force_full_transfer() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2844,8 +2785,7 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, ForceFullTransfer>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, ForceFullTransfer>(
         &auth,
         rule,
         &version,
@@ -2868,7 +2808,7 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2876,8 +2816,7 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
     let mut investor_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut investor_chest,
+    let mut request = investor_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &issuer_chest,
         200,
@@ -2893,7 +2832,7 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -2928,8 +2867,7 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, FlowbackRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, FlowbackRestriction>(
         &auth,
         rule,
         &version,
@@ -2953,7 +2891,7 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -2961,8 +2899,7 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -2978,7 +2915,7 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -3013,8 +2950,7 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, FlowbackRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, FlowbackRestriction>(
         &auth,
         rule,
         &version,
@@ -3038,7 +2974,7 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     let ninety_one_days_ms: u64 = 91 * 24 * 60 * 60 * 1000;
@@ -3048,8 +2984,7 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3065,7 +3000,7 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     assert!(
         registry_service::investor_wallet_balance<TEST_VOLORO>(&investor_info, INVESTOR1) == 300,
@@ -3106,8 +3041,7 @@ fun test_validate_transfer_with_accredited_only() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         rule,
         &version,
@@ -3149,7 +3083,7 @@ fun test_validate_transfer_with_accredited_only() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -3157,8 +3091,7 @@ fun test_validate_transfer_with_accredited_only() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3174,7 +3107,7 @@ fun test_validate_transfer_with_accredited_only() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -3213,8 +3146,7 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, InvestorLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, InvestorLimits>(
         &auth,
         rule,
         &version,
@@ -3237,7 +3169,7 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -3245,8 +3177,7 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3262,7 +3193,7 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -3304,8 +3235,7 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, InvestorLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, InvestorLimits>(
         &auth,
         rule,
         &version,
@@ -3329,7 +3259,7 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -3337,8 +3267,7 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3354,7 +3283,7 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -3408,8 +3337,7 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, InvestorLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, InvestorLimits>(
         &auth,
         rule,
         &version,
@@ -3434,7 +3362,7 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
@@ -3442,8 +3370,7 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3459,7 +3386,7 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -3491,8 +3418,7 @@ fun test_backdating_issuance_allowed() {
         &version,
         ts.ctx(), // disallow_backdating = false → allowed
     );
-    compliance_service::register_rule<TEST_VOLORO, BackdatingIssuance>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, BackdatingIssuance>(
         &auth,
         bd_rule,
         &version,
@@ -3506,8 +3432,7 @@ fun test_backdating_issuance_allowed() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, LockupRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, LockupRestriction>(
         &auth,
         lr_rule,
         &version,
@@ -3571,7 +3496,7 @@ fun test_backdating_issuance_allowed() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
@@ -3580,8 +3505,7 @@ fun test_backdating_issuance_allowed() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3597,7 +3521,7 @@ fun test_backdating_issuance_allowed() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     assert!(
         registry_service::investor_wallet_balance<TEST_VOLORO>(&investor_info, INVESTOR1) == 300,
@@ -3637,8 +3561,7 @@ fun test_cleanup_party_issuances() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, LockupRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, LockupRestriction>(
         &auth,
         rule,
         &version,
@@ -3661,7 +3584,7 @@ fun test_cleanup_party_issuances() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 10_001);
@@ -3670,8 +3593,7 @@ fun test_cleanup_party_issuances() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3687,7 +3609,7 @@ fun test_cleanup_party_issuances() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     assert!(
         registry_service::investor_wallet_balance<TEST_VOLORO>(&investor_info, INVESTOR1) == 300,
@@ -3729,8 +3651,7 @@ fun test_full_lifecycle_with_all_rules() {
     let version = ts.take_shared<Version>();
 
     let r1 = accredited_only::new<TEST_VOLORO>(&auth, true, false, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, AccreditedOnly>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AccreditedOnly>(
         &auth,
         r1,
         &version,
@@ -3738,8 +3659,7 @@ fun test_full_lifecycle_with_all_rules() {
     );
 
     let r2 = authorized_securities::new<TEST_VOLORO>(&auth, 10_000, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, AuthorizedSecurities>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, AuthorizedSecurities>(
         &auth,
         r2,
         &version,
@@ -3747,8 +3667,7 @@ fun test_full_lifecycle_with_all_rules() {
     );
 
     let r3 = backdating_issuance::new<TEST_VOLORO>(&auth, false, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, BackdatingIssuance>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, BackdatingIssuance>(
         &auth,
         r3,
         &version,
@@ -3764,8 +3683,7 @@ fun test_full_lifecycle_with_all_rules() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, HoldingLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, HoldingLimits>(
         &auth,
         r4,
         &version,
@@ -3785,8 +3703,7 @@ fun test_full_lifecycle_with_all_rules() {
         &version,
         ts.ctx(),
     );
-    compliance_service::register_rule<TEST_VOLORO, InvestorLimits>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, InvestorLimits>(
         &auth,
         r5,
         &version,
@@ -3794,8 +3711,7 @@ fun test_full_lifecycle_with_all_rules() {
     );
 
     let r6 = force_full_transfer::new<TEST_VOLORO>(&auth, false, false, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, ForceFullTransfer>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, ForceFullTransfer>(
         &auth,
         r6,
         &version,
@@ -3803,8 +3719,7 @@ fun test_full_lifecycle_with_all_rules() {
     );
 
     let r7 = flowback_restriction::new<TEST_VOLORO>(&auth, 5_000, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, FlowbackRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, FlowbackRestriction>(
         &auth,
         r7,
         &version,
@@ -3812,8 +3727,7 @@ fun test_full_lifecycle_with_all_rules() {
     );
 
     let r8 = lockup_restriction::new<TEST_VOLORO>(&auth, 10_000, 10_000, &version, ts.ctx());
-    compliance_service::register_rule<TEST_VOLORO, LockupRestriction>(
-        &mut compliance,
+    compliance.register_rule<TEST_VOLORO, LockupRestriction>(
         &auth,
         r8,
         &version,
@@ -3896,7 +3810,7 @@ fun test_full_lifecycle_with_all_rules() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
@@ -3905,8 +3819,7 @@ fun test_full_lifecycle_with_all_rules() {
     let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut from_chest,
+    let mut request = from_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &to_chest,
         200,
@@ -3920,7 +3833,7 @@ fun test_full_lifecycle_with_all_rules() {
         &version,
         &clock,
     );
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -3981,7 +3894,7 @@ fun test_full_lifecycle_with_all_rules() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
@@ -3990,8 +3903,7 @@ fun test_full_lifecycle_with_all_rules() {
     let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut inv1_chest,
+    let mut request = inv1_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &issuer_chest,
         800,
@@ -4005,7 +3917,7 @@ fun test_full_lifecycle_with_all_rules() {
         &version,
         &clock,
     );
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -4032,7 +3944,7 @@ fun test_full_lifecycle_with_all_rules() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
@@ -4041,8 +3953,7 @@ fun test_full_lifecycle_with_all_rules() {
     let inv1_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut inv2_chest,
+    let mut request = inv2_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &inv1_chest,
         300,
@@ -4056,7 +3967,7 @@ fun test_full_lifecycle_with_all_rules() {
         &version,
         &clock,
     );
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
@@ -4080,7 +3991,7 @@ fun test_full_lifecycle_with_all_rules() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
@@ -4089,8 +4000,7 @@ fun test_full_lifecycle_with_all_rules() {
     let wallet2_chest = ts.take_shared_by_id<Chest>(wallet2_chest_id);
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest::transfer_funds<TEST_VOLORO>(
-        &mut inv1_chest,
+    let mut request = inv1_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &wallet2_chest,
         100,
@@ -4104,7 +4014,7 @@ fun test_full_lifecycle_with_all_rules() {
         &version,
         &clock,
     );
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock.destroy_for_testing();
     ts::return_shared(treasury);
