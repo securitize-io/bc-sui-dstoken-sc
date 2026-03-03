@@ -8,12 +8,12 @@ module securitize::ds_token;
 use pas::{
     chest::Chest,
     clawback_funds::ClawbackFunds,
-    keys::{transfer_funds_action, clawback_funds_action},
+    keys::{send_funds_action, clawback_funds_action},
     namespace::Namespace,
     policy::{Self, Policy, PolicyCap},
     request::Request,
-    templates::Templates,
-    transfer_funds::TransferFunds
+    send_funds::SendFunds,
+    templates::Templates
 };
 use ptb::ptb::Command;
 use securitize::{
@@ -45,6 +45,7 @@ use securitize::{
 };
 use std::string::String;
 use sui::{
+    balance::Balance,
     clock::Clock,
     coin::TreasuryCap,
     coin_registry::{Currency, MetadataCap},
@@ -108,7 +109,6 @@ public(package) fun new<T: key>(
     uid: &mut UID,
     auth: &mut Auth<T>,
     namespace: &mut Namespace,
-    policy_permit: internal::Permit<T>,
     mut treasury_cap: TreasuryCap<T>,
     metadata_cap: MetadataCap<T>,
     version: &Version,
@@ -137,10 +137,9 @@ public(package) fun new<T: key>(
     };
     // Register PAS policy
     let clawback = true;
-    let (mut policy, policy_cap) = policy::new(namespace, policy_permit);
-    policy.enable_funds_management(&mut treasury_cap, clawback);
-    policy.set_required_approval<T, TransferApproval<T>>(&policy_cap, transfer_funds_action());
-    policy.set_required_approval<T, ClawbackApproval<T>>(&policy_cap, clawback_funds_action());
+    let (mut policy, policy_cap) = policy::new_for_currency(namespace, &mut treasury_cap, clawback);
+    policy.set_required_approval<_, TransferApproval<T>>(&policy_cap, send_funds_action());
+    policy.set_required_approval<_, ClawbackApproval<T>>(&policy_cap, clawback_funds_action());
     policy.share();
     dof::add(&mut treasury.id, TreasuryCapKey(), treasury_cap);
     dof::add(&mut treasury.id, PolicyCapKey(), policy_cap);
@@ -201,7 +200,7 @@ public fun issue_tokens<T>(
     );
     let balance = treasury_cap.mint_balance(value);
     // Deposit to the investor's chest
-    to.deposit_funds(
+    to.deposit_balance(
         balance,
     );
 }
@@ -285,19 +284,21 @@ fun issue_tokens_internal<T>(
     if (investors.is_wallet(to)) {
         let id = investors.get_investor_id_by_wallet(to);
         let total_balance = investors.investor_wallet_balance_total(id);
-        let new_total_u256 = (total_balance as u256) + (value as u256);
-        let new_total = try_from_u256_to_u64(new_total_u256);
-        investors.update_investor_total_balance(id, new_total);
+        investors.update_investor_total_balance(
+            id,
+            try_from_u256_to_u64!((total_balance as u256) + (value as u256)),
+        );
 
         let wallet_balance = investors.investor_wallet_balance(to);
-        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
-        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
-        investors.update_wallet_balance(to, new_balance);
+        investors.update_wallet_balance(
+            to,
+            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
+        );
 
         let mut i = 0;
         while (i < values_locked.length()) {
             let value_locked = values_locked[i];
-            total_locked = total_locked + value_locked;
+            total_locked = try_from_u256_to_u64!((total_locked as u256) + (value_locked as u256));
             lock_manager::add_lock_internal<T>(
                 investors,
                 id,
@@ -311,9 +312,10 @@ fun issue_tokens_internal<T>(
         };
     } else if (investors.is_special_wallet(to)) {
         let wallet_balance = investors.special_wallet_balance(to);
-        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
-        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
-        investors.update_special_wallet_total_balance(to, new_balance);
+        investors.update_special_wallet_total_balance(
+            to,
+            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
+        );
     };
     assert!(total_locked <= value, EValueLockedLargerThanValue);
     emit_issue_event<T>(to, value, total_locked);
@@ -330,8 +332,8 @@ public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    policy: &Policy<T>,
-    mut request: Request<ClawbackFunds<T>>,
+    policy: &Policy<Balance<T>>,
+    mut request: Request<ClawbackFunds<Balance<T>>>,
     reason: String,
     version: &Version,
     ctx: &mut TxContext,
@@ -339,7 +341,7 @@ public fun burn<T>(
     version.check_is_valid();
 
     let from_address = request.data().owner();
-    let value = request.data().amount();
+    let value = request.data().funds().value();
 
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     compliance_service::validate_burn(investors, from_address, value);
@@ -385,8 +387,8 @@ public fun burn<T>(
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
-    policy: &Policy<T>,
-    mut request: Request<ClawbackFunds<T>>,
+    policy: &Policy<Balance<T>>,
+    mut request: Request<ClawbackFunds<Balance<T>>>,
     to: &Chest,
     to_address: address,
     reason: String,
@@ -396,7 +398,7 @@ public fun seize<T>(
     version.check_is_valid();
 
     let from_address = request.data().owner();
-    let value = request.data().amount();
+    let value = request.data().funds().value();
 
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
     assert!(to.owner() == to_address, EChestOwnerMismatch);
@@ -405,24 +407,27 @@ public fun seize<T>(
     // Withdraw from the investor's chest and deposit to the treasury's chest
     request.approve(ClawbackApproval<T>());
     let balance = pas::clawback_funds::resolve(request, policy);
-    to.deposit_funds(balance);
+    to.deposit_balance(balance);
 
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        let new_total_u256 = (total_balance as u256) + (value as u256);
-        let new_total = try_from_u256_to_u64(new_total_u256);
-        investors.update_investor_total_balance(id, new_total);
+        investors.update_investor_total_balance(
+            id,
+            try_from_u256_to_u64!((total_balance as u256) + (value as u256)),
+        );
 
         let wallet_balance = investors.investor_wallet_balance(to_address);
-        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
-        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
-        investors.update_wallet_balance(to_address, new_balance);
+        investors.update_wallet_balance(
+            to_address,
+            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
+        );
     } else if (investors.is_special_wallet(to_address)) {
         let wallet_balance = investors.special_wallet_balance(to_address);
-        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
-        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
-        investors.update_special_wallet_total_balance(to_address, new_balance);
+        investors.update_special_wallet_total_balance(
+            to_address,
+            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
+        );
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
@@ -455,14 +460,14 @@ public fun transfer<T>(
     treasury: &Treasury<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &ComplianceConfig<T>,
-    request: &mut Request<TransferFunds<T>>,
+    request: &mut Request<SendFunds<Balance<T>>>,
     version: &Version,
     clock: &Clock,
 ) {
     version.check_is_valid();
     let from_address = request.data().sender();
     let to_address = request.data().recipient();
-    let value = request.data().amount();
+    let value = request.data().funds().value();
     assert!(value > 0, EValueZero);
     // If the treasury is paused, don't allow investor-to-investor transfers
     assert!(
@@ -483,19 +488,22 @@ public fun transfer<T>(
     if (investors.is_wallet(to_address)) {
         let id = investors.get_investor_id_by_wallet(to_address);
         let total_balance = investors.investor_wallet_balance_total(id);
-        let new_total_u256 = (total_balance as u256) + (value as u256);
-        let new_total = try_from_u256_to_u64(new_total_u256);
-        investors.update_investor_total_balance(id, new_total);
+        investors.update_investor_total_balance(
+            id,
+            try_from_u256_to_u64!((total_balance as u256) + (value as u256)),
+        );
 
         let wallet_balance = investors.investor_wallet_balance(to_address);
-        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
-        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
-        investors.update_wallet_balance(to_address, new_balance);
+        investors.update_wallet_balance(
+            to_address,
+            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
+        );
     } else if (investors.is_special_wallet(to_address)) {
         let wallet_balance = investors.special_wallet_balance(to_address);
-        let new_wallet_balance_u256 = (wallet_balance as u256) + (value as u256);
-        let new_balance = try_from_u256_to_u64(new_wallet_balance_u256);
-        investors.update_special_wallet_total_balance(to_address, new_balance);
+        investors.update_special_wallet_total_balance(
+            to_address,
+            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
+        );
     };
     if (investors.is_wallet(from_address)) {
         let id = investors.get_investor_id_by_wallet(from_address);
@@ -629,10 +637,10 @@ public fun policy_cap<T>(
     auth: &Auth<T>,
     version: &Version,
     ctx: &TxContext,
-): &PolicyCap<T> {
+): &PolicyCap<Balance<T>> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, AccessPolicyCap>(ctx.sender()), ENotAuthorized);
-    dof::borrow<PolicyCapKey, PolicyCap<T>>(&treasury.id, PolicyCapKey())
+    dof::borrow<PolicyCapKey, PolicyCap<Balance<T>>>(&treasury.id, PolicyCapKey())
 }
 
 // ==== View Functions ====
@@ -642,11 +650,11 @@ public fun is_paused<T>(treasury: &Treasury<T>): bool {
     treasury.paused
 }
 
-// ==== Helpers ====
+// ==== Macros ====
 
 // Try to safely convert u256 to u64
-public(package) fun try_from_u256_to_u64(number: u256): u64 {
-    let mut number_option = std::u256::try_as_u64(number);
+macro fun try_from_u256_to_u64($number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64($number);
     assert!(number_option.is_some(), EArithmeticOverflow);
     number_option.extract()
 }

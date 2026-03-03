@@ -5,7 +5,7 @@
 /// with the registry service to enforce transfer policies.
 module securitize::compliance_service;
 
-use pas::{request::Request, transfer_funds::TransferFunds};
+use pas::{request::Request, send_funds::SendFunds};
 use securitize::{
     abilities::{RegisterRule, UnregisterRule, SetCountryCompliance, ManageRules},
     accredited_only::AccreditedOnly,
@@ -33,7 +33,7 @@ use securitize::{
     wallet_manager::is_issuer_wallet
 };
 use std::{string::String, type_name::{Self, TypeName}};
-use sui::{bag::{Self, Bag}, clock::timestamp_ms, derived_object};
+use sui::{bag::{Self, Bag}, balance::Balance, clock::timestamp_ms, derived_object};
 
 // ==== Error Codes ====
 
@@ -55,6 +55,8 @@ const EInvestorLiquidateOnly: vector<u8> = b"Investor is in liquidate-only mode"
 const ENotIssuerWallet: vector<u8> = b"Destination must be an issuer wallet";
 #[error(code = 9)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 10)]
+const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
 // ==== Compliance Region Constants ====
 
@@ -141,7 +143,7 @@ public(package) fun share<T>(config: ComplianceConfig<T>) {
 public(package) fun validate_transfer<T>(
     config: &ComplianceConfig<T>,
     registry: &mut InvestorInfo<T>,
-    request: &Request<TransferFunds<T>>,
+    request: &Request<SendFunds<Balance<T>>>,
     current_time_ms: u64,
     version: &Version,
 ) {
@@ -149,7 +151,7 @@ public(package) fun validate_transfer<T>(
 
     let from_address = request.data().sender();
     let to_address = request.data().recipient();
-    let amount = request.data().amount();
+    let amount = request.data().funds().value();
 
     assert!(
         registry.is_special_wallet(to_address) || registry.is_wallet(to_address),
@@ -599,7 +601,9 @@ fun cleanup_party_issuances<T>(
     };
 
     remove_if!(issuances, |issuance| {
-        issuance.issuance_time_ms() + lock_period_ms <= now_ms
+        let lock_end_u256_ms = (issuance.issuance_time_ms() as u256) + (lock_period_ms as u256);
+        let lock_end_ms = try_from_u256_to_u64!(lock_end_u256_ms);
+        lock_end_ms <= now_ms
     })
 }
 
@@ -883,4 +887,11 @@ macro fun remove_if<$T: drop>($v: &mut vector<$T>, $pred: |&$T| -> bool) {
             i = i + 1;
         }
     }
+}
+
+// Try to safely convert u256 to u64
+macro fun try_from_u256_to_u64($number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64($number);
+    assert!(number_option.is_some(), EArithmeticOverflow);
+    number_option.extract()
 }

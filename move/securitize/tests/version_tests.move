@@ -2,8 +2,7 @@
 module securitize::version_tests;
 
 use securitize::version::{Self, Version};
-use sui::package;
-use sui::test_scenario as ts;
+use sui::{package, test_scenario as ts};
 
 const ADMIN: address = @0x001;
 

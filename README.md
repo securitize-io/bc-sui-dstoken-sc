@@ -89,7 +89,7 @@ pnpm faucet
 
 ## Architecture
 
-The DS Protocol is a factory contract for Ds Tokens. It uses the Permissioned Token Standard (PTS) for the transferability of the tokens and its discoverability by the ecosystem. Below is the high-level architecture showing how the different components interact:
+The DS Protocol is a factory contract for DS Tokens. It uses the Permissioned Asset Standard (PAS) for the transferability of the tokens and its discoverability by the ecosystem. Below is the high-level architecture showing how the different components interact:
 
 ![DS Protocol Architecture](docs/DS%20Protocol%20Overview.png)
 
@@ -97,23 +97,23 @@ The DS Protocol is a factory contract for Ds Tokens. It uses the Permissioned To
 
 - **DS Protocol**: The core module that orchestrates token operations (issue, burn, transfer, seize) and enforces compliance rules
     - **Compliance Service**: Validates all operations against configurable rules (AccreditedOnly, HoldingLimits, InvestorLimits, etc.)
-    - **Treasury**: Manages the TreasuryCap for minting and burning tokens and their Metadata
-    - **InvestorInfo Registry**: Tracks investor balances and metadata across all their wallets
-- **Permissioned Token Standard (PTS)**: Sui's standard for controlled token transfers using the hot-potato pattern
+    - **Treasury**: Manages the TreasuryCap for minting and burning tokens, their Metadata, and stores the PAS `PolicyCap<T>`
+    - **InvestorInfo Registry**: Tracks investor and special wallet balances and metadata across all their wallets
+- **Permissioned Asset Standard (PAS)**: Manages token custody via Chests and enforces a request/approval pattern using `Policy<T>` for transfers and clawbacks
 
 ## Token Operation Flows
 
 The protocol supports four main token operations, each with compliance validation:
 
-| Operation | Description | Documentation |
-|-----------|-------------|---------------|
-| **Transfer** | Move tokens between chests with compliance checks | [Transfer Flow](docs/transfer-flow.md) |
-| **Issue** | Mint new tokens to a chest | [Issue Flow](docs/issue-flow.md) |
-| **Burn** | Destroy tokens from a chest | [Burn Flow](docs/burn-flow.md) |
-| **Seize** | Force transfer tokens (regulatory/legal action) | [Seize Flow](docs/seize-flow.md) |
+| Operation | Description | PAS Pattern | Documentation |
+|-----------|-------------|-------------|---------------|
+| **Transfer** | Move tokens between chests with compliance checks | `Request<SendFunds<T>>` with `TransferApproval<T>`, resolved externally in PTB | [Transfer Flow](docs/transfer-flow.md) |
+| **Issue** | Mint new tokens to a chest | No PAS request, direct mint via `TreasuryCap` | [Issue Flow](docs/issue-flow.md) |
+| **Burn** | Destroy tokens from a chest | `Request<ClawbackFunds<T>>` with `ClawbackApproval<T>`, resolved internally | [Burn Flow](docs/burn-flow.md) |
+| **Seize** | Force transfer tokens to issuer wallet | `Request<ClawbackFunds<T>>` with `ClawbackApproval<T>`, resolved internally | [Seize Flow](docs/seize-flow.md) |
 
 All operations follow a similar pattern:
-1. Request initiated by authorized role
+1. Request initiated by authorized role (capability-based: `IssueTokens`, `BurnTokens`, `SeizeTokens`)
 2. Compliance validation against configured rules
-3. PTS authorization via DsProtocol witness
-4. Registry update to track investor balances
+3. PAS approval via typed witness stamps (`TransferApproval<T>` or `ClawbackApproval<T>`)
+4. Registry update to track investor and special wallet balances

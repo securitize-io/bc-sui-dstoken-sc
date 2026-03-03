@@ -26,6 +26,8 @@ const EUnderLockup: vector<u8> =
 const ELockPeriodTooLong: vector<u8> = b"Lock period exceeds maximum allowed (200 years)";
 #[error(code = 2)]
 const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this action";
+#[error(code = 3)]
+const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
 // ==== Constants ====
 
@@ -175,12 +177,15 @@ public fun compute_transferable_tokens(
     let mut total_locked = 0u64;
 
     investor_issuances.do_ref!(|issuance| {
-        // Check if issuance is still under lockup
+        // Check if issuance is still under lockup (u256 to prevent overflow)
+        let lock_end_ms = try_from_u256_to_u64!(
+            (issuance.issuance_time_ms() as u256) + (lock_period as u256),
+        );
         let locked // Global initial lock window
          =
             timestamp_ms < lock_period
             // Issuance-relative lock window
-            || issuance.issuance_time_ms() + lock_period > timestamp_ms;
+            || lock_end_ms > timestamp_ms;
 
         if (locked) {
             total_locked = total_locked + issuance.issuance_amount();
@@ -206,7 +211,10 @@ public fun is_issuance_locked(
         return false
     };
 
-    timestamp_ms < lock_period || issuance.issuance_time_ms() + lock_period > timestamp_ms
+    let lock_end_ms = try_from_u256_to_u64!(
+        (issuance.issuance_time_ms() as u256) + (lock_period as u256),
+    );
+    timestamp_ms < lock_period || lock_end_ms > timestamp_ms
 }
 
 // ==================== View Functions ====================
@@ -232,4 +240,12 @@ public fun non_us_lock_period(rule: &LockupRestriction): u64 {
 /// Get the lock period for a specific region
 public fun lock_period_for_region(rule: &LockupRestriction, region: u64): u64 {
     get_lock_period(rule, region)
+}
+
+// ==== Macros ====
+
+macro fun try_from_u256_to_u64($number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64($number);
+    assert!(number_option.is_some(), EArithmeticOverflow);
+    number_option.extract()
 }

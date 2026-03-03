@@ -2,13 +2,13 @@
 module securitize::ds_token_tests;
 
 use pas::{
-    policy::Policy,
     chest::{Self, Chest},
     namespace::Namespace,
-    templates::Templates,
-    transfer_funds
+    policy::Policy,
+    send_funds,
+    templates::Templates
 };
-use ptb::ptb;
+use ptb::ptb::{Self, Command};
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
     ds_token::{Self, Treasury},
@@ -19,8 +19,12 @@ use securitize::{
     version::Version
 };
 use std::string::String;
-use sui::{clock, coin_registry::{Self, Currency}, test_scenario::{Self as ts, Scenario}};
-use ptb::ptb::Command;
+use sui::{
+    balance::Balance,
+    clock,
+    coin_registry::{Self, Currency},
+    test_scenario::{Self as ts, Scenario}
+};
 
 const ADMIN: address = @0x001;
 const UNAUTHORIZED: address = @0x002;
@@ -722,7 +726,7 @@ fun test_burn_tokens() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -758,7 +762,7 @@ fun test_burn_tokens() {
     assert!(total_before == 1, 1);
 
     // Now burn some tokens (partial burn - investor still has balance)
-    let request = chest.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    let request = chest.clawback_balance<TEST_VOLORO>(50, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
@@ -807,7 +811,7 @@ fun test_burn_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -846,7 +850,7 @@ fun test_burn_unauthorized() {
     let version = ts.take_shared<Version>();
     let mut chest = ts.take_shared<Chest>();
 
-    let request = chest.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    let request = chest.clawback_balance<TEST_VOLORO>(50, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
@@ -924,7 +928,7 @@ fun test_seize_tokens() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
     let mut investor_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
@@ -942,7 +946,7 @@ fun test_seize_tokens() {
     assert!(total_before == 1, 1);
 
     // Seize tokens (partial seize - investor still has balance)
-    let request = investor_chest.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    let request = investor_chest.clawback_balance<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -992,7 +996,7 @@ fun test_seize_unauthorized() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest = ts.take_shared<Chest>(); // only 1 chest at this point
     let clock = clock::create_for_testing(ts.ctx());
@@ -1033,12 +1037,12 @@ fun test_seize_unauthorized() {
     ts.next_tx(UNAUTHORIZED);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
     let mut investor_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
 
-    let request = investor_chest.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    let request = investor_chest.clawback_balance<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -1077,7 +1081,7 @@ fun test_seize_to_non_issuer_wallet() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest1 = ts.take_shared<Chest>(); // only 1 chest at this point
     let clock = clock::create_for_testing(ts.ctx());
@@ -1118,13 +1122,13 @@ fun test_seize_to_non_issuer_wallet() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest2 = ts.take_shared_by_id<Chest>(inv2_chest_id);
     let mut chest1 = ts.take_shared_by_id<Chest>(inv1_chest_id);
 
     // Try to seize to a non-issuer wallet (INVESTOR2) - should fail with ENotIssuerWallet
-    let request = chest1.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    let request = chest1.clawback_balance<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -1144,20 +1148,6 @@ fun test_seize_to_non_issuer_wallet() {
     ts::return_shared(chest1);
     ts::return_shared(chest2);
     ts.end();
-}
-
-// ==================== Arithmetic Helper Tests ====================
-
-#[test]
-fun test_try_from_u256_to_u64_valid() {
-    let value: u256 = 1000;
-    let result = ds_token::try_from_u256_to_u64(value);
-    assert!(result == 1000, 0);
-
-    // Test max u64 value
-    let max_u64: u256 = 18446744073709551615;
-    let result_max = ds_token::try_from_u256_to_u64(max_u64);
-    assert!(result_max == 18446744073709551615, 1);
 }
 
 // ==================== Issuance Helper Tests ====================
@@ -1289,7 +1279,7 @@ fun test_burn_from_platform_wallet_updates_balance() {
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let mut chest = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
@@ -1316,7 +1306,7 @@ fun test_burn_from_platform_wallet_updates_balance() {
     assert!(registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET) == 500, 0);
 
     // Burn some tokens from platform wallet
-    let request = chest.clawback_funds<TEST_VOLORO>(200, ts.ctx());
+    let request = chest.clawback_balance<TEST_VOLORO>(200, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
@@ -1396,7 +1386,7 @@ fun test_seize_to_issuer_wallet_updates_balance() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
     let mut investor_chest = ts.take_shared_by_id<Chest>(inv_chest_id);
@@ -1404,7 +1394,7 @@ fun test_seize_to_issuer_wallet_updates_balance() {
     // Verify issuer wallet balance is 0 initially
     assert!(registry_service::special_wallet_balance(&investor_info, ISSUER_WALLET) == 0, 0);
 
-    let request = investor_chest.clawback_funds<TEST_VOLORO>(150, ts.ctx());
+    let request = investor_chest.clawback_balance<TEST_VOLORO>(150, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -1422,7 +1412,10 @@ fun test_seize_to_issuer_wallet_updates_balance() {
 
     // Verify investor balance is reduced
     let investor_id = b"INV001".to_string();
-    let investor_balance = registry_service::investor_wallet_balance_total(&investor_info, investor_id);
+    let investor_balance = registry_service::investor_wallet_balance_total(
+        &investor_info,
+        investor_id,
+    );
     assert!(investor_balance == 350, 2);
 
     ts::return_shared(auth);
@@ -1491,12 +1484,12 @@ fun test_seize_from_platform_wallet_updates_balance() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
     let mut platform_chest = ts.take_shared_by_id<Chest>(platform_chest_id);
 
-    let request = platform_chest.clawback_funds<TEST_VOLORO>(200, ts.ctx());
+    let request = platform_chest.clawback_balance<TEST_VOLORO>(200, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -1960,7 +1953,7 @@ fun test_seize_chest_owner_mismatch() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     // Get issuer chest (most recently created)
     let issuer_chest = ts.take_shared<Chest>();
@@ -1968,7 +1961,7 @@ fun test_seize_chest_owner_mismatch() {
     let mut investor_chest = ts.take_shared<Chest>();
 
     // Seize but pass wrong to_address (INVESTOR1 instead of ISSUER_WALLET)
-    let request = investor_chest.clawback_funds<TEST_VOLORO>(50, ts.ctx());
+    let request = investor_chest.clawback_balance<TEST_VOLORO>(50, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
@@ -2045,7 +2038,7 @@ fun test_transfer_success() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest2 = ts.take_shared<Chest>();
     let mut chest1 = ts.take_shared<Chest>();
@@ -2053,7 +2046,7 @@ fun test_transfer_success() {
 
     // Create auth and transfer request
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest1.transfer_funds<TEST_VOLORO>(&pas_auth, &chest2, 200, ts.ctx());
+    let mut request = chest1.send_balance<TEST_VOLORO>(&pas_auth, &chest2, 200, ts.ctx());
 
     // Call ds_token::transfer
     ds_token::transfer(
@@ -2066,7 +2059,7 @@ fun test_transfer_success() {
     );
 
     // Resolve the request
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     // Verify balances
     let investor1_id = b"INV001".to_string();
@@ -2140,7 +2133,7 @@ fun test_transfer_value_zero() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest2 = ts.take_shared<Chest>();
     let mut chest1 = ts.take_shared<Chest>();
@@ -2148,7 +2141,7 @@ fun test_transfer_value_zero() {
 
     // Create auth and transfer request with 0 amount
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest1.transfer_funds<TEST_VOLORO>(&pas_auth, &chest2, 0, ts.ctx());
+    let mut request = chest1.send_balance<TEST_VOLORO>(&pas_auth, &chest2, 0, ts.ctx());
 
     // Should fail - value is 0
     ds_token::transfer(
@@ -2160,7 +2153,7 @@ fun test_transfer_value_zero() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock::destroy_for_testing(clock);
     ts::return_shared(treasury);
@@ -2229,14 +2222,14 @@ fun test_transfer_paused() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     let chest2 = ts.take_shared<Chest>();
     let mut chest1 = ts.take_shared<Chest>();
     let clock = clock::create_for_testing(ts.ctx());
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = chest1.transfer_funds<TEST_VOLORO>(&pas_auth, &chest2, 100, ts.ctx());
+    let mut request = chest1.send_balance<TEST_VOLORO>(&pas_auth, &chest2, 100, ts.ctx());
 
     // Should fail - treasury is paused and both are investor wallets
     ds_token::transfer(
@@ -2248,7 +2241,7 @@ fun test_transfer_paused() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     clock::destroy_for_testing(clock);
     ts::return_shared(treasury);
@@ -2313,7 +2306,7 @@ fun test_transfer_to_special_wallet() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     // Platform chest is most recent (created second)
     let platform_chest = ts.take_shared<Chest>();
@@ -2322,7 +2315,7 @@ fun test_transfer_to_special_wallet() {
     let clock = clock::create_for_testing(ts.ctx());
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = investor_chest.transfer_funds<TEST_VOLORO>(
+    let mut request = investor_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &platform_chest,
         200,
@@ -2338,14 +2331,17 @@ fun test_transfer_to_special_wallet() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     // Verify balances
     let investor_balance = registry_service::investor_wallet_balance_total(
         &investor_info,
         b"INV001".to_string(),
     );
-    let platform_balance = registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET);
+    let platform_balance = registry_service::special_wallet_balance(
+        &investor_info,
+        PLATFORM_WALLET,
+    );
     assert!(investor_balance == 300, 0);
     assert!(platform_balance == 200, 1);
 
@@ -2412,7 +2408,7 @@ fun test_transfer_from_special_wallet() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     // Investor chest is most recent
     let investor_chest = ts.take_shared<Chest>();
@@ -2420,7 +2416,7 @@ fun test_transfer_from_special_wallet() {
     let clock = clock::create_for_testing(ts.ctx());
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = platform_chest.transfer_funds<TEST_VOLORO>(
+    let mut request = platform_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &investor_chest,
         200,
@@ -2436,14 +2432,17 @@ fun test_transfer_from_special_wallet() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     // Verify balances
     let investor_balance = registry_service::investor_wallet_balance_total(
         &investor_info,
         b"INV001".to_string(),
     );
-    let platform_balance = registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET);
+    let platform_balance = registry_service::special_wallet_balance(
+        &investor_info,
+        PLATFORM_WALLET,
+    );
     assert!(investor_balance == 200, 0);
     assert!(platform_balance == 300, 1);
 
@@ -2513,7 +2512,7 @@ fun test_transfer_paused_from_special_wallet_allowed() {
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
-    let policy = ts.take_shared<Policy<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
     // Investor chest is most recent
     let investor_chest = ts.take_shared<Chest>();
@@ -2521,7 +2520,7 @@ fun test_transfer_paused_from_special_wallet_allowed() {
     let clock = clock::create_for_testing(ts.ctx());
 
     let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = platform_chest.transfer_funds<TEST_VOLORO>(
+    let mut request = platform_chest.send_balance<TEST_VOLORO>(
         &pas_auth,
         &investor_chest,
         200,
@@ -2538,14 +2537,17 @@ fun test_transfer_paused_from_special_wallet_allowed() {
         &clock,
     );
 
-    transfer_funds::resolve(request, &policy);
+    send_funds::resolve_balance(request, &policy);
 
     // Verify balances
     let investor_balance = registry_service::investor_wallet_balance_total(
         &investor_info,
         b"INV001".to_string(),
     );
-    let platform_balance = registry_service::special_wallet_balance(&investor_info, PLATFORM_WALLET);
+    let platform_balance = registry_service::special_wallet_balance(
+        &investor_info,
+        PLATFORM_WALLET,
+    );
     assert!(investor_balance == 200, 0);
     assert!(platform_balance == 300, 1);
 

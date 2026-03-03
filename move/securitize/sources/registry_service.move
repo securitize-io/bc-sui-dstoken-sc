@@ -61,6 +61,8 @@ const EWrongInvestor: vector<u8> = b"Wallet belongs to a different investor";
 const EComplianceUnchanged: vector<u8> = b"Compliance region is already set to this value";
 #[error(code = 13)]
 const EWalletNotEmpty: vector<u8> = b"Cannot add or remove wallet with non-zero balance";
+#[error(code = 14)]
+const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
 
 // ==== Attribute Constants ====
 
@@ -929,7 +931,8 @@ public(package) fun compute_locked_sum(state: &InvestorLockState, now_ms: u64): 
     let mut locked_sum = 0;
     state.locks.do_ref!(|l| {
         if (l.release_time_ms == 0 || l.release_time_ms > now_ms) {
-            locked_sum = locked_sum + l.value
+            let new_locked_sum = (locked_sum as u256) + (l.value as u256);
+            locked_sum = try_from_u256_to_u64!(new_locked_sum);
         }
     });
     locked_sum
@@ -1016,4 +1019,12 @@ fun adjust_investor_counts_after_country_change<T>(
         adjust_investors_counts_by_country(investor_info, investor_id, prev_country, false);
         adjust_investors_counts_by_country(investor_info, investor_id, new_country, true);
     };
+}
+
+// ==== Macros ====
+
+macro fun try_from_u256_to_u64($number: u256): u64 {
+    let mut number_option = std::u256::try_as_u64($number);
+    assert!(number_option.is_some(), EArithmeticOverflow);
+    number_option.extract()
 }

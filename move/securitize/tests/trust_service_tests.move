@@ -3,12 +3,11 @@ module securitize::trust_service_tests;
 
 use securitize::{
     abilities::{SetAbilities, SetIssuer, SetTransferAgent, SetServiceOwner},
+    test_helpers::{TEST_VOLORO, setup_with_treasury},
     trust_service::{Self, Auth, Master, Issuer},
-    version::{Version}
+    version::Version
 };
 use sui::test_scenario::{Self as ts, Scenario};
-use securitize::test_helpers::TEST_VOLORO;
-use securitize::test_helpers::setup_with_treasury;
 
 const ADMIN: address = @0x001;
 
@@ -694,7 +693,11 @@ fun test_add_role_ability_already_exists() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
+    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -702,7 +705,11 @@ fun test_add_role_ability_already_exists() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
+    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -740,7 +747,11 @@ fun test_cannot_remove_set_abilities_from_master() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::remove_role_ability<TEST_VOLORO, Master, SetAbilities>(&mut auth, &version, ts.ctx());
+    trust_service::remove_role_ability<TEST_VOLORO, Master, SetAbilities>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -767,7 +778,11 @@ fun test_add_role_ability_unauthorized() {
     ts.next_tx(issuer_addr);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
+    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -794,7 +809,11 @@ fun test_remove_role_ability_unauthorized() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(&mut auth, &version, ts.ctx());
+    trust_service::add_role_ability<TEST_VOLORO, Issuer, CustomAbility>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -857,7 +876,11 @@ fun test_remove_role_type() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::remove_role_type<TEST_VOLORO, NewRole, SetNewRole>(&mut auth, &version, ts.ctx());
+    trust_service::remove_role_type<TEST_VOLORO, NewRole, SetNewRole>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -905,7 +928,11 @@ fun test_cannot_remove_master_role_type() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::remove_role_type<TEST_VOLORO, Master, SetServiceOwner>(&mut auth, &version, ts.ctx());
+    trust_service::remove_role_type<TEST_VOLORO, Master, SetServiceOwner>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -940,7 +967,11 @@ fun test_remove_role_type_with_active_members_fails() {
     ts.next_tx(ADMIN);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::remove_role_type<TEST_VOLORO, NewRole, SetNewRole>(&mut auth, &version, ts.ctx());
+    trust_service::remove_role_type<TEST_VOLORO, NewRole, SetNewRole>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -1002,7 +1033,11 @@ fun test_remove_role_type_unauthorized() {
     ts.next_tx(issuer_addr);
     let mut auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    trust_service::remove_role_type<TEST_VOLORO, NewRole, SetNewRole>(&mut auth, &version, ts.ctx());
+    trust_service::remove_role_type<TEST_VOLORO, NewRole, SetNewRole>(
+        &mut auth,
+        &version,
+        ts.ctx(),
+    );
     ts::return_shared(auth);
     ts::return_shared(version);
 
@@ -1019,7 +1054,10 @@ fun test_role_has_ability_for_non_existent_role() {
     ts.next_tx(ADMIN);
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     // Check ability on None role (which has no abilities mapping)
-    assert!(!trust_service::role_has_ability<TEST_VOLORO, trust_service::None, SetAbilities>(&auth), 0);
+    assert!(
+        !trust_service::role_has_ability<TEST_VOLORO, trust_service::None, SetAbilities>(&auth),
+        0,
+    );
     ts::return_shared(auth);
 
     ts.end();

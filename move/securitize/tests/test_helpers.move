@@ -38,9 +38,9 @@ public(package) fun init_basic_objects_for_testing(ts: &mut Scenario) {
 }
 
 fun package_id<T>(): ID {
-    sui::address::from_ascii_bytes(
-        std::type_name::with_defining_ids<T>().address_string().as_bytes(),
-    ).to_id()
+    sui::address::from_ascii_bytes(std::type_name::with_defining_ids<T>()
+        .address_string()
+        .as_bytes()).to_id()
 }
 
 /// Initialize a namespace with upgrade cap set (required by PAS).
@@ -92,8 +92,7 @@ public(package) fun create_ds_token(
         url.to_string(),
         ctx,
     );
-    let policy_permit = internal::permit<TEST_VOLORO>();
-    setup::setup(setup_registry, namespace, currency, policy_permit, treasury_cap, version, ctx)
+    setup::setup(setup_registry, namespace, currency, treasury_cap, version, ctx)
 }
 
 /// Setup complete DS Token environment with Treasury.
