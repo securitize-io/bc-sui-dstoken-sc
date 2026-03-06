@@ -29,10 +29,9 @@ async function deployToken(tokenSymbol: string): Promise<string[]> {
     fs.mkdirSync(sourcesDir, { recursive: true })
 
     // Write the Move.toml file
-    const securitizePackagePath = `../../${Config.vars.PACKAGE_PATH}`;
     const moveToml = MOVE_TOML
         .replaceAll('{MODULE}', module)
-        .replaceAll('{SECURITIZE_PACKAGE_PATH}', securitizePackagePath)
+        .replaceAll('{TESTNET_ENV}', Config.vars.SECURITIZE_TESTNET_ENV)
     fs.writeFileSync(path.join(tempDir, 'Move.toml'), moveToml)
 
     // Write the contract source file
