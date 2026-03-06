@@ -823,7 +823,7 @@ public(package) fun set_eu_retail_investors_country_if_not_exists<T>(
 }
 
 /// Returns a reference to the investor issuances for a given investor ID.
-public(package) fun get_investor_issuances<T>(
+public fun get_investor_issuances<T>(
     investor_info: &InvestorInfo<T>,
     investor_id: String,
 ): &vector<Issuance> {

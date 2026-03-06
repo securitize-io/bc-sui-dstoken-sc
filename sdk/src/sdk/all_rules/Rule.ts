@@ -5,10 +5,10 @@ import {Transaction, TransactionResult} from "@mysten/sui/transactions";
 import {newPTBDetails, PTBDetails} from "../domains";
 
 export class Rule {
-    private readonly tokenAddress: string;
+    protected readonly tokenAddress: string;
     private readonly ruleType: string;
     private readonly ruleModule: string;
-    private readonly tokenDetails: any;
+    protected readonly tokenDetails: any;
 
     constructor(tokenAddress: string, ruleType: string, ruleModule: string) {
         this.tokenAddress = tokenAddress;
