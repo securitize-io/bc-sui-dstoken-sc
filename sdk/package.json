@@ -26,7 +26,7 @@
         "deploy_testnet": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts --",
         "deploy_mainnet": "sui client switch --env mainnet && cross-env NETWORK=mainnet pnpm exec ts-node ./src/scripts/deploy.ts",
         "deploy_test_token": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
-        "deploy_test_token_alpha": "SECURITIZE_TESTNET_ENV=testnet_alpha sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
+        "deploy_test_token_testnet_env": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts --",
         "setup_pas_alpha": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/setup_pas.ts",
         "exp": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/test_registerInvestor.ts",
         "test": "jest --runInBand",
