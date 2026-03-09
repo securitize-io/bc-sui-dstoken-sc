@@ -4,9 +4,9 @@ name = "{MODULE}"
 edition = "2024"
 
 [dependencies]
-securitize = { git = "git@github.com:chariskms/securitize-test.git", subdir = "packages/pas", rev = "main"  }
+securitize = { git = "git@github.com:securitize-io/bc-sui-dstoken-sc.git", subdir = "move/securitize", rev = "deployment-tests"  }
 pas = { git = "git@github.com:chariskms/pas-test.git", subdir = "packages/pas", rev = "main" }
 
 [dep-replacements.testnet]
-securitize = { use-environment = {TESTNET_ENV} }
+securitize = { use-environment = "{TESTNET_ENV}" }
 `
