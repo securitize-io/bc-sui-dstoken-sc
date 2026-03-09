@@ -1,17 +1,40 @@
-import { ADMIN_KEYPAIR, LockupRestriction } from '../../src'
+import { ADMIN_KEYPAIR, LockupRestriction, DSToken, Investors, CountryCompliance, BackdatingIssuance, createFundedWallet } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
-import { createTestToken, executeTxFunc } from '../test_utils'
+import { createTestToken, executeTxFunc, complianceRules, registerInvestor } from '../test_utils'
+import { Keypair } from '@mysten/sui/cryptography'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
 describe('LockupRestriction Rule', () => {
     let tokenAddress: string
     let lockupRestriction: LockupRestriction
+    let dsToken: DSToken
+    let euInvestorKP: Keypair
 
     beforeAll(async () => {
         await deploy()
         tokenAddress = await createTestToken()
         lockupRestriction = new LockupRestriction(tokenAddress)
+        dsToken = new DSToken(tokenAddress)
+
+        // Set up country compliance
+        const countryCompliance = new CountryCompliance(tokenAddress)
+        await executeTxFunc(countryCompliance.set(sender, 'US', 'us'))
+        await executeTxFunc(countryCompliance.set(sender, 'GR', 'eu'))
+
+        // Allow backdating issuances (needed for compute transferable tokens tests)
+        const backdatingIssuance = new BackdatingIssuance(tokenAddress)
+        await executeTxFunc(backdatingIssuance.register(sender, false))
+
+        // Register US investor with admin wallet
+        const investors = new Investors(tokenAddress)
+        await registerInvestor(tokenAddress, 'usInvestor')
+        await executeTxFunc(investors.setCountry('usInvestor', 'US', sender))
+
+        // Register EU investor with funded wallet
+        euInvestorKP = await createFundedWallet()
+        await registerInvestor(tokenAddress, 'euInvestor', [euInvestorKP.toSuiAddress()])
+        await executeTxFunc(investors.setCountry('euInvestor', 'GR', sender))
     })
 
     describe('Rule Registration', () => {
@@ -123,6 +146,40 @@ describe('LockupRestriction Rule', () => {
             )
             await expect(lockupRestriction.exists(sender)).resolves.toBe(true)
             await executeTxFunc(lockupRestriction.unregister(sender))
+        })
+    })
+
+    describe('Compute Transferable Tokens', () => {
+        it('should return 0n for investor with no tokens', async () => {
+            // Register lockup restriction (usLockPeriod=1000ms, nonUSLockPeriod=1000000000ms)
+            await executeTxFunc(
+                lockupRestriction.register(sender, complianceRules.usLockPeriod, complianceRules.nonUSLockPeriod)
+            )
+
+            const result = await lockupRestriction.computeTransferableTokens('usInvestor', Date.now(), sender)
+            expect(result).toBe(0n)
+        })
+
+        it('should return full balance when US lockup has expired', async () => {
+            // US lock period is 1000ms; issue tokens 5s in the past so lock is expired
+            const issuanceTime = Date.now() - 5000
+            await executeTxFunc(
+                dsToken.issue(sender, sender, 1_000_000n, 0, '', [], [], issuanceTime)
+            )
+
+            const result = await lockupRestriction.computeTransferableTokens('usInvestor', Date.now(), sender)
+            expect(result).toBe(1_000_000n)
+        })
+
+        it('should return 0n when non-US lockup is active', async () => {
+            // Non-US lock period is 1000000000ms (~31 years); issue tokens now
+            const issuanceTime = Date.now()
+            await executeTxFunc(
+                dsToken.issue(sender, euInvestorKP.toSuiAddress(), 500_000n, 0, '', [], [], issuanceTime)
+            )
+
+            const result = await lockupRestriction.computeTransferableTokens('euInvestor', Date.now(), sender)
+            expect(result).toBe(0n)
         })
     })
 })

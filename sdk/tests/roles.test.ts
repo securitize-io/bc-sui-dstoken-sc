@@ -1,6 +1,7 @@
-import { ADMIN_KEYPAIR, Roles, createWallet, createFundedWallet } from '../src'
+import { ADMIN_KEYPAIR, Roles, createWallet, createFundedWallet, SuiClient } from '../src'
 import { deploy } from '../src/sdk/utils/deploy'
 import { createTestToken, executeTxFunc } from './test_utils'
+import { normalizeSuiAddress } from '@mysten/sui/utils'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -344,6 +345,39 @@ describe('Roles', () => {
 
             // Clean up
             await executeTxFunc(roles.removeIssuer(testWallet, sender))
+        })
+    })
+
+    describe('Service Owner with Upgrade Cap', () => {
+        it('should transfer service ownership with upgrade cap', async () => {
+            const newOwnerKP = await createFundedWallet()
+            const newOwner = newOwnerKP.toSuiAddress()
+
+            const tokenPackageId = normalizeSuiAddress(tokenAddress.split('::')[0])
+
+            // Transfer ownership — setServiceOwner finds and transfers UpgradeCap automatically
+            await executeTxFunc(roles.setServiceOwner(newOwner, sender))
+
+            // Verify new owner has Master role
+            await expect(roles.getRole(newOwner)).resolves.toBe('master')
+
+            // Verify old owner no longer has Master role
+            await expect(roles.getRole(sender)).resolves.toBe('none')
+
+            // Verify new owner owns the token's UpgradeCap
+            const newOwnerCaps = await SuiClient.client.getOwnedObjects({
+                owner: newOwner,
+                filter: { StructType: '0x2::package::UpgradeCap' },
+                options: { showContent: true },
+            })
+            const transferredCap = newOwnerCaps.data.find((o) => {
+                const content = o.data?.content as any
+                return normalizeSuiAddress(content?.fields?.package) === tokenPackageId
+            })
+            expect(transferredCap).toBeDefined()
+
+            // Transfer ownership back for other tests
+            await executeTxFunc(roles.setServiceOwner(sender, newOwner), newOwnerKP)
         })
     })
 })

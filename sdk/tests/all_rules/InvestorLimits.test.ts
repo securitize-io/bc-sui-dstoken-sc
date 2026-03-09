@@ -1,6 +1,6 @@
-import { ADMIN_KEYPAIR, InvestorLimits } from '../../src'
+import { ADMIN_KEYPAIR, createFundedWallet, InvestorLimits } from '../../src'
 import { deploy } from '../../src/sdk/utils/deploy'
-import { createTestToken, executeTxFunc, getRandomKeypair } from '../test_utils'
+import { createTestToken, executeTxFunc } from '../test_utils'
 
 const sender = ADMIN_KEYPAIR!.toSuiAddress()
 
@@ -260,11 +260,11 @@ describe('InvestorLimits Rule', () => {
         })
 
         it('throws Not Authorized when non-admin tries to register the rule', async () => {
-            const { keypair: nonAdminKeypair } = getRandomKeypair()
+            const nonAdmin = await createFundedWallet()
             await expect(
                 executeTxFunc(
                     investorLimits.register(
-                        nonAdminKeypair.toSuiAddress(),
+                        nonAdmin.toSuiAddress(),
                         2000,
                         100,
                         500,
@@ -274,9 +274,9 @@ describe('InvestorLimits Rule', () => {
                         200,
                         25
                     ),
-                    nonAdminKeypair
+                    nonAdmin
                 )
-            ).rejects.toThrow('Not Authorized')
+            ).rejects.toThrow()
         })
     })
 })

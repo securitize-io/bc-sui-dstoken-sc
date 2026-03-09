@@ -3,6 +3,7 @@ import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {AbilityType, newPTBDetails, PTBDetails, RoleTypes} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
+import {normalizeSuiAddress} from "@mysten/sui/utils";
 
 export class Roles {
     private readonly tokenAddress: string;
@@ -76,7 +77,7 @@ export class Roles {
         return this.buildSetBytes(ptbDetails.ptb, signer)
     }
 
-    updateRolePTB(owner: string, role: RoleTypes, ptbDetails?: PTBDetails, currentRole: RoleTypes = 'none') {
+    updateRolePTB(owner: string, role: RoleTypes, ptbDetails?: PTBDetails, currentRole: RoleTypes = 'none', upgradeCapId?: string) {
         ptbDetails ??= newPTBDetails()
         const errorMessage = "No direct role-to-role change"
 
@@ -90,19 +91,21 @@ export class Roles {
             transfer_agent: this.removeTransferAgentPTB,
         }
 
-        const ADD_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
-            master: this.setServiceOwnerPTB,
-            issuer: this.setIssuerPTB,
-            exchange: this.setExchangePTB,
-            transfer_agent: this.setTransferAgentPTB,
-        }
-
         if (currentRole in REMOVE_MAPPING) {
             REMOVE_MAPPING[currentRole](owner, ptbDetails)
         }
 
-        if (role in ADD_MAPPING) {
-            ADD_MAPPING[role](owner, ptbDetails)
+        if (role === 'master') {
+            this.setServiceOwnerPTB(owner, ptbDetails, upgradeCapId)
+        } else {
+            const ADD_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
+                issuer: this.setIssuerPTB,
+                exchange: this.setExchangePTB,
+                transfer_agent: this.setTransferAgentPTB,
+            }
+            if (role in ADD_MAPPING) {
+                ADD_MAPPING[role](owner, ptbDetails)
+            }
         }
 
         return ptbDetails
@@ -142,11 +145,48 @@ export class Roles {
 
     // ==== Service Owner (Master) ====
 
-    setServiceOwnerPTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('set_service_owner', owner, ptbDetails)
+    setServiceOwnerPTB = (owner: string, ptbDetails?: PTBDetails, upgradeCapId?: string) => {
+        const ptb = this.buildRolePTB('set_service_owner', owner, ptbDetails)
+        if (upgradeCapId) {
+            ptb.transferObjects([ptb.object(upgradeCapId)], owner)
+        }
+        return ptb
+    }
 
     async setServiceOwner(owner: string, signer: string) {
-        return this.buildSetBytes(this.setServiceOwnerPTB(owner), signer)
+        const upgradeCapId = await this.findUpgradeCapId(signer)
+        if (!upgradeCapId) {
+            throw new Error(
+                `UpgradeCap not found for package ${this.tokenAddress.split('::')[0]} owned by ${signer}`
+            )
+        }
+        return this.buildSetBytes(this.setServiceOwnerPTB(owner, undefined, upgradeCapId), signer)
+    }
+
+    private async findUpgradeCapId(owner: string): Promise<string | undefined> {
+        const tokenPackageId = normalizeSuiAddress(this.tokenAddress.split('::')[0])
+        let cursor: string | null | undefined = undefined
+        let hasNextPage = true
+
+        while (hasNextPage) {
+            const response = await SuiClient.client.getOwnedObjects({
+                owner,
+                filter: { StructType: '0x2::package::UpgradeCap' },
+                options: { showContent: true },
+                ...(cursor ? { cursor } : {}),
+            })
+            const match = response.data.find((o) => {
+                const content = o.data?.content as any
+                return normalizeSuiAddress(content?.fields?.package) === tokenPackageId
+            })
+            if (match) {
+                return match.data?.objectId
+            }
+            hasNextPage = response.hasNextPage
+            cursor = response.nextCursor
+        }
+
+        return undefined
     }
 
     // ==== Exchange ====

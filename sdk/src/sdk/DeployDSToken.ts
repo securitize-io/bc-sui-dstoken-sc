@@ -126,15 +126,10 @@ export async function createDSToken(request: DeploymentRequest) {
             })
         }
 
-        // Transfer service ownership LAST (after all other role operations)
+        // Transfer service ownership + upgrade cap LAST (after all other role operations)
         // This must be last because it transfers Master role away from signer
         if (request.owners && request.owners.tokenOwner !== ADMIN_KEYPAIR!.toSuiAddress()) {
-            roles.setServiceOwnerPTB(request.owners.tokenOwner, ptbDetails)
-        }
-
-        // Transfer upgrade cap to token owner
-        if (request.owners) {
-            ptb.transferObjects([ptb.object(upgradeCapId)], request.owners.tokenOwner)
+            roles.setServiceOwnerPTB(request.owners.tokenOwner, ptbDetails, upgradeCapId)
         }
 
         ptb.moveCall({
