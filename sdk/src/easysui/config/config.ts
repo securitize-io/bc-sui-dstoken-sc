@@ -87,9 +87,9 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
         }
     }
 
-    static write<T extends BaseConfigVars>(config: T): string {
+    static write<T extends BaseConfigVars>(config: T, envSuffix?: string): string {
         const instance = this.getInstance()
-        const env = instance.env
+        const env = envSuffix ?? instance.env
         const envFile = path.join(process.cwd(), `.env${env ? `.${env}` : ''}`)
 
         const envVariables = Object.entries(config)

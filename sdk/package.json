@@ -23,7 +23,7 @@
         "version": "changeset version",
         "deploy_localnet": "rm -f ./Pub.localnet.toml && sui client switch --env localnet && cross-env NETWORK=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
         "deploy_devnet": "rm -f ./Pub.devnet.toml && sui client switch --env devnet && cross-env NETWORK=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
-        "deploy_testnet": "rm -f ./Pub.testnet.toml && sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
+        "deploy_testnet": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts --",
         "deploy_mainnet": "sui client switch --env mainnet && cross-env NETWORK=mainnet pnpm exec ts-node ./src/scripts/deploy.ts",
         "deploy_test_token": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
         "deploy_test_token_alpha": "SECURITIZE_TESTNET_ENV=testnet_alpha sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
