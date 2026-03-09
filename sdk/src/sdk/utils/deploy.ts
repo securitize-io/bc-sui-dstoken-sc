@@ -116,6 +116,16 @@ async function setupPas(artifacts: DependencyArtifacts) {
     })
 }
 
+function getEnvFileSuffix(network: string): string {
+    if (network === 'testnet') {
+        const env = process.env.SECURITIZE_TESTNET_ENV
+        if (env && ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(env)) {
+            return env
+        }
+    }
+    return network
+}
+
 function patchEnvFile(network: string, artifacts: DependencyArtifacts) {
     const { pasPackageId, pasNamespace, ptbPackageId } = artifacts
 
@@ -123,7 +133,8 @@ function patchEnvFile(network: string, artifacts: DependencyArtifacts) {
         return
     }
 
-    const envFile = path.join(process.cwd(), `.env.${network}`)
+    const envSuffix = getEnvFileSuffix(network)
+    const envFile = path.join(process.cwd(), `.env.${envSuffix}`)
     if (!fs.existsSync(envFile)) {
         throw new Error(`Missing env file: ${envFile}`)
     }

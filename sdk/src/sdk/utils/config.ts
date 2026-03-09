@@ -1,3 +1,4 @@
+import dotenv from 'dotenv'
 import { Config as BaseConfig, BaseConfigVars, ExtraVarsMap } from '../../easysui'
 
 interface ConfigVars extends BaseConfigVars {
@@ -12,6 +13,14 @@ interface ConfigVars extends BaseConfigVars {
 
 export class Config extends BaseConfig<ConfigVars> {
     static override get vars(): ConfigVars {
+        const network = process.env.NETWORK || 'localnet'
+        const securitizeEnv = process.env.SECURITIZE_TESTNET_ENV
+
+        // Load from testnet_alpha/beta/gamma env file when explicitly specified
+        if (network === 'testnet' && securitizeEnv && ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)) {
+            dotenv.config({ path: `.env.${securitizeEnv}`, override: true })
+        }
+
         const baseVars = super.vars
 
         return {

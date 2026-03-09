@@ -53,7 +53,11 @@ export class PublishSingleton {
         return this.findPublishedPackageId(this.publishResponse())
     }
 
-    public static findObjectIdByType(type: string, fail: boolean = true, resp?: SuiTransactionBlockResponse): string {
+    public static findObjectIdByType(
+        type: string,
+        fail: boolean = true,
+        resp?: SuiTransactionBlockResponse
+    ): string {
         resp ??= this.publishResponse()
         const obj = this.findObjectChangeCreatedByType(resp, type)
         if (fail && !obj) {
@@ -77,6 +81,28 @@ export class PublishSingleton {
         )
     }
 
+    /**
+     * Returns the Move environment to use for the -e flag.
+     * For testnet, this comes from SECURITIZE_TESTNET_ENV.
+     * Returns undefined for mainnet or if no specific env is configured.
+     */
+    private static getMoveEnv(): string | undefined {
+        const network = Config.vars.NETWORK
+        if (network !== 'testnet') {
+            return undefined
+        }
+
+        const securitizeEnv = process.env.SECURITIZE_TESTNET_ENV
+        if (
+            securitizeEnv &&
+            ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)
+        ) {
+            return securitizeEnv
+        }
+
+        return undefined
+    }
+
     private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {
         const network = Config.vars.NETWORK
 
@@ -90,7 +116,17 @@ export class PublishSingleton {
         fs.rmSync(`${packagePath}/build`, { recursive: true, force: true })
 
         const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
-        const publishCmd = isEphemeralChain ? `test-publish --build-env testnet --pubfile-path ${this.pubFile}` : 'publish'
+        const moveEnv = this.getMoveEnv()
+
+        let publishCmd: string
+        if (isEphemeralChain) {
+            publishCmd = `test-publish --build-env testnet --pubfile-path ${this.pubFile}`
+        } else if (moveEnv) {
+            // No --pubfile-path for testnet - PAS/PTB resolve from Published.toml in repo
+            publishCmd = `publish -e ${moveEnv}`
+        } else {
+            publishCmd = 'publish'
+        }
 
         let buildCommand = `sui client ${publishCmd} ${packagePath}`
 
@@ -104,7 +140,8 @@ export class PublishSingleton {
     }
 
     static get pubFile() {
-        return `Pub.${Config.vars.NETWORK}.toml`
+        const moveEnv = this.getMoveEnv()
+        return moveEnv ? `Pub.${moveEnv}.toml` : `Pub.${Config.vars.NETWORK}.toml`
     }
 
     static cleanPubFile() {
@@ -118,7 +155,11 @@ export class PublishSingleton {
         const _packagePath = this.getPackagePath(packagePath)
         const cmd = this.getPublishCmd(_packagePath, signer, true)
         try {
-            return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 50 * 1024 * 1024}).trim()
+            return execSync(cmd, {
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe'],
+                maxBuffer: 50 * 1024 * 1024,
+            }).trim()
         } catch (e: any) {
             const stderr = e.stderr?.toString().trim() || ''
             const stdout = e.stdout?.toString().trim() || ''
@@ -134,28 +175,30 @@ export class PublishSingleton {
         const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress())
         let res: string
         try {
-            res = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 50 * 1024 * 1024})
+            res = execSync(cmd, {
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe'],
+                maxBuffer: 50 * 1024 * 1024,
+            })
         } catch (e: any) {
             const stderr = e.stderr?.toString().trim() || ''
             const stdout = e.stdout?.toString().trim() || ''
             const output = [stderr, stdout].filter(Boolean).join('\n') || e.message
             throw new Error(`Publish command failed:\n${output}`)
         }
-        const match = res.match(/\{[\s\S]*\}/);
+        const match = res.match(/\{[\s\S]*\}/)
         if (!match) {
-            throw new Error(`No JSON found in the publish command output: ${res}`);
+            throw new Error(`No JSON found in the publish command output: ${res}`)
         }
         const resp = JSON.parse(match[0])
         return resp
     }
 
-    static findPublishedPackageId(
-        resp: SuiTransactionBlockResponse
-    ): string {
+    static findPublishedPackageId(resp: SuiTransactionBlockResponse): string {
         const packageChng = resp.objectChanges?.find(
             (chng): chng is SuiObjectChangePublished => chng.type === 'published'
         )
-        
+
         if (packageChng) {
             return packageChng.packageId
         }
@@ -223,6 +266,4 @@ export class PublishSingleton {
 
         return normalizeType(fullType) === normalizeType(shortType)
     }
-
-
 }
