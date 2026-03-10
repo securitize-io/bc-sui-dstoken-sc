@@ -121,8 +121,8 @@ export class PublishSingleton {
         let publishCmd: string
         if (isEphemeralChain) {
             publishCmd = `test-publish --build-env testnet --pubfile-path ${this.pubFile}`
-        } else if (moveEnv && !packagePath.includes("temp_tokens")) {
-            // No --pubfile-path for testnet - PAS/PTB resolve from Published.toml in repo
+        } else if (moveEnv && !packagePath.includes("temp_tokens") && !packagePath.includes("mainnet_tokens")) {
+            // No --pubfile-path for testnet and mainnet - PAS/PTB resolve from Published.toml in repo
             publishCmd = `publish -e ${moveEnv}`
         } else {
             publishCmd = 'publish'
