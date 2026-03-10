@@ -1,46 +1,53 @@
-import {ADMIN_KEYPAIR, SuiClient} from '../easysui'
-import {Config} from "./utils/config";
-import {DeploymentRequest, PTBDetails} from "./domains";
-import {Transaction} from "@mysten/sui/transactions";
-import {Rules} from "./rules";
-import {Roles} from "./roles";
-import {Wallets} from "./wallets";
-import {CountryCompliance} from "./CountryCompliance";
-import {TOKEN_TEMPLATE, MOVE_TOML} from "./templates";
-import {PublishSingleton} from "../easysui";
-import fs from 'fs';
-import path from 'path';
-import {COIN_REGISTRY} from "../easysui/config/config";
+import { ADMIN_KEYPAIR, SuiClient } from '../easysui'
+import { Config } from './utils/config'
+import { DeploymentRequest, PTBDetails } from './domains'
+import { Transaction } from '@mysten/sui/transactions'
+import { Rules } from './rules'
+import { Roles } from './roles'
+import { Wallets } from './wallets'
+import { CountryCompliance } from './CountryCompliance'
+import { TOKEN_TEMPLATE, MOVE_TOML } from './templates'
+import { PublishSingleton } from '../easysui'
+import fs from 'fs'
+import path from 'path'
+import { COIN_REGISTRY } from '../easysui/config/config'
 
 async function deployToken(tokenSymbol: string): Promise<string[]> {
     const module = tokenSymbol.toLowerCase()
     const symbol = tokenSymbol.toUpperCase()
 
-    const contract = TOKEN_TEMPLATE
-        .replaceAll('{MODULE}', module)
-        .replaceAll('{SYMBOL}', symbol)
+    const contract = TOKEN_TEMPLATE.replaceAll('{MODULE}', module).replaceAll('{SYMBOL}', symbol)
 
-    // Create a temporary directory for the token package
-    const tempDir = path.join(process.cwd(), Config.vars.TEMP_PATH, module)
-    const sourcesDir = path.join(tempDir, 'sources')
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    // Create a directory for the token package (mainnet uses persistent directory)
+    const isMainnet = Config.vars.NETWORK === 'mainnet'
+    const basePath = isMainnet ? Config.vars.MAINNET_TOKENS_PATH : Config.vars.TEMP_PATH
+    const tokenDir = path.join(process.cwd(), basePath, module)
+    const sourcesDir = path.join(tokenDir, 'sources')
+    if (!isMainnet) {
+        fs.rmSync(tokenDir, { recursive: true, force: true })
+    }
 
     // Create directories
     fs.mkdirSync(sourcesDir, { recursive: true })
 
     // Write the Move.toml file
-    const moveToml = MOVE_TOML
-        .replaceAll('{MODULE}', module)
-        .replaceAll('{TESTNET_ENV}', Config.vars.SECURITIZE_TESTNET_ENV)
-    fs.writeFileSync(path.join(tempDir, 'Move.toml'), moveToml)
+    const moveToml = MOVE_TOML.replaceAll('{MODULE}', module).replaceAll(
+        '{TESTNET_ENV}',
+        Config.vars.SECURITIZE_TESTNET_ENV
+    )
+    fs.writeFileSync(path.join(tokenDir, 'Move.toml'), moveToml)
 
     // Write the contract source file
     fs.writeFileSync(path.join(sourcesDir, `${module}.move`), contract)
 
     // Publish the package
-    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tempDir)
-    // Clean up temporary directory
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tokenDir)
+    // Clean up temporary directory (mainnet preserved for auditing)
+    if (isMainnet) {
+        console.log(`Mainnet deployment: contract preserved at ${tokenDir}`)
+    } else {
+        fs.rmSync(tokenDir, { recursive: true, force: true })
+    }
 
     // Extract and return the package ID
     const packageId = PublishSingleton.findPublishedPackageId(publishResp)
@@ -68,13 +75,7 @@ export async function createDSToken(request: DeploymentRequest) {
         const tokenPackage = `${deployedPackageId}::${tokenSymbol.toLowerCase()}`
         const tokenAddressId = `${tokenPackage}::${tokenSymbol.toUpperCase()}`
 
-        const [
-            auth,
-            treasury,
-            investorInfo,
-            complianceConfig,
-            setupFinalize
-        ] = ptb.moveCall({
+        const [auth, treasury, investorInfo, complianceConfig, setupFinalize] = ptb.moveCall({
             target: `${tokenPackage}::create_ds_token`,
             arguments: [
                 ptb.pure.string(tokenDescription.name),
@@ -94,8 +95,8 @@ export async function createDSToken(request: DeploymentRequest) {
             tokenDetails: {
                 investorInfo,
                 auth,
-                complianceConfig
-            }
+                complianceConfig,
+            },
         }
 
         const roles = new Roles(tokenAddressId)
@@ -121,7 +122,11 @@ export async function createDSToken(request: DeploymentRequest) {
         if (request.countriesComplianceStatuses) {
             const countryCompliance = new CountryCompliance(tokenAddressId)
             request.countriesComplianceStatuses.forEach((c) => {
-                countryCompliance.setCountryCompliancePTB(c.countryName, c.complianceStatus, ptbDetails)
+                countryCompliance.setCountryCompliancePTB(
+                    c.countryName,
+                    c.complianceStatus,
+                    ptbDetails
+                )
             })
         }
 
@@ -140,14 +145,18 @@ export async function createDSToken(request: DeploymentRequest) {
                 treasury,
                 investorInfo,
                 complianceConfig,
-                ptb.object(Config.vars.VERSION)
-            ]
+                ptb.object(Config.vars.VERSION),
+            ],
         })
 
         const result = await SuiClient.signAndExecute(ptb, ADMIN_KEYPAIR!)
 
-        const currencyObj: any = result.objectChanges?.find((o: any) => o.objectType.startsWith("0x2::coin_registry::Currency<"))
-        const tokenAddress = currencyObj.objectType.replaceAll("0x2::coin_registry::Currency<", "").slice(0, -1)
+        const currencyObj: any = result.objectChanges?.find((o: any) =>
+            o.objectType.startsWith('0x2::coin_registry::Currency<')
+        )
+        const tokenAddress = currencyObj.objectType
+            .replaceAll('0x2::coin_registry::Currency<', '')
+            .slice(0, -1)
 
         return {
             id: tokenAddress,
@@ -158,13 +167,13 @@ export async function createDSToken(request: DeploymentRequest) {
 }
 
 function handleError(e: any, tokenSymbol: string) {
-    const abortError = e?.cause?.effects.abortError;
+    const abortError = e?.cause?.effects.abortError
     const error = abortError?.error_code || -1
 
     let message = `Token ${tokenSymbol} failed to deploy with error: ${e}`
 
     if (
-        abortError?.module_id.endsWith("coin_registry") &&
+        abortError?.module_id.endsWith('coin_registry') &&
         abortError?.function === 'new_currency' &&
         abortError?.error_code === 2
     ) {
