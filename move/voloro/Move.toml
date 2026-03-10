@@ -3,5 +3,5 @@ name = "voloro"
 edition = "2024"
 
 [dependencies]
-securitize = { git = "git@github.com:securitize-io/bc-sui-dstoken-sc.git", subdir = "move/securitize", rev = "develiopment-main" }
+securitize = { git = "git@github.com:securitize-io/bc-sui-dstoken-sc.git", subdir = "move/securitize", rev = "deployment-tests"  }
 pas = { git = "git@github.com:chariskms/pas-test.git", subdir = "packages/pas", rev = "main" }
