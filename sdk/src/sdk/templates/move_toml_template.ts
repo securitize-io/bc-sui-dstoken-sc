@@ -7,10 +7,6 @@ edition = "2024"
 securitize = { git = "git@github.com:securitize-io/bc-sui-dstoken-sc.git", subdir = "move/securitize", rev = "deployment-tests"  }
 pas = { git = "git@github.com:chariskms/pas-test.git", subdir = "packages/pas", rev = "main" }
 
-[environments]
-{TESTNET_ENV} = "4c78adac"
-
-[dep-replacements.{TESTNET_ENV}]
+[dep-replacements.testnet]
 securitize = { use-environment = "{TESTNET_ENV}" }
-pas = { use-environment = "testnet" }
 `
