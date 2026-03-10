@@ -18,25 +18,33 @@ async function deployToken(tokenSymbol: string): Promise<string[]> {
 
     const contract = TOKEN_TEMPLATE.replaceAll('{MODULE}', module).replaceAll('{SYMBOL}', symbol)
 
-    // Create a temporary directory for the token package
-    const tempDir = path.join(process.cwd(), Config.vars.TEMP_PATH, module)
-    const sourcesDir = path.join(tempDir, 'sources')
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    // Create a directory for the token package (mainnet uses persistent directory)
+    const isMainnet = Config.vars.NETWORK === 'mainnet'
+    const basePath = isMainnet ? Config.vars.MAINNET_TOKENS_PATH : Config.vars.TEMP_PATH
+    const tokenDir = path.join(process.cwd(), basePath, module)
+    const sourcesDir = path.join(tokenDir, 'sources')
+    if (!isMainnet) {
+        fs.rmSync(tokenDir, { recursive: true, force: true })
+    }
 
     // Create directories
     fs.mkdirSync(sourcesDir, { recursive: true })
 
     // Write the Move.toml file
     const moveToml = MOVE_TOML.replaceAll('{MODULE}', module)
-    fs.writeFileSync(path.join(tempDir, 'Move.toml'), moveToml)
+    fs.writeFileSync(path.join(tokenDir, 'Move.toml'), moveToml)
 
     // Write the contract source file
     fs.writeFileSync(path.join(sourcesDir, `${module}.move`), contract)
 
     // Publish the package
-    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tempDir)
-    // Clean up temporary directory
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tokenDir)
+    // Clean up temporary directory (mainnet preserved for auditing)
+    if (isMainnet) {
+        console.log(`Mainnet deployment: contract preserved at ${tokenDir}`)
+    } else {
+        fs.rmSync(tokenDir, { recursive: true, force: true })
+    }
 
     // Extract and return the package ID
     const packageId = PublishSingleton.findPublishedPackageId(publishResp)
