@@ -117,8 +117,8 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    getPASChest(address: string) {
-        const key = 'ChestKey'
+    getPASAccount(address: string) {
+        const key = 'AccountKey'
         const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
         return deriveObjectId(
             Config.vars.PAS_NAMESPACE,
@@ -132,29 +132,29 @@ export class DSToken {
 
     initiateClawbackFundsPTB(from: string, value: bigint, ptb?: Transaction) {
         ptb ??= new Transaction()
-        const pasChest = this.getPASChest(from)
+        const pasAccount = this.getPASAccount(from)
         const clawbackRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::clawback_balance`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::account::clawback_balance`,
             typeArguments: [this.tokenAddress],
-            arguments: [ptb.object(pasChest), ptb.pure.u64(value)],
+            arguments: [ptb.object(pasAccount), ptb.pure.u64(value)],
         })
         return { ptb, clawbackRequest }
     }
 
     initiateSendFundsPTB(from: string, to: string, amount: bigint, ptb?: Transaction) {
         ptb ??= new Transaction()
-        const fromRwaChest = this.getPASChest(from)
-        const toRwaChest = this.getPASChest(to)
+        const fromRwaAccount = this.getPASAccount(from)
+        const toRwaAccount = this.getPASAccount(to)
         const auth = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::new_auth`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::account::new_auth`,
         })
         const transferRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::chest::send_balance`,
+            target: `${Config.vars.PAS_PACKAGE_ID}::account::send_balance`,
             typeArguments: [this.tokenAddress],
             arguments: [
-                ptb.object(fromRwaChest),
+                ptb.object(fromRwaAccount),
                 auth,
-                ptb.object(toRwaChest),
+                ptb.object(toRwaAccount),
                 ptb.pure.u64(amount),
             ],
         })
@@ -184,13 +184,13 @@ export class DSToken {
         ptb?: Transaction
     ) {
         ptb ??= new Transaction()
-        const pasChest = this.getPASChest(to)
+        const pasAccount = this.getPASAccount(to)
         const args = [
             this.tokenDetails.treasury,
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.complianceConfig,
-            pasChest,
+            pasAccount,
             to,
             value,
             reasonCode,
@@ -242,7 +242,7 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    issueNoChestPTB(
+    issueNoAccountPTB(
         to: string,
         value: bigint,
         reasonCode: number,
@@ -285,10 +285,10 @@ export class DSToken {
             MoveType.u64,
             MoveType.object,
         ]
-        return this.buildSetPTB('issue_tokens_no_chest', args, ptb, argsTypes)
+        return this.buildSetPTB('issue_tokens_no_account', args, ptb, argsTypes)
     }
 
-    async issueNoChest(
+    async issueNoAccount(
         signer: string,
         to: string,
         value: bigint,
@@ -298,7 +298,7 @@ export class DSToken {
         releaseTimes: number[],
         issuanceTimeMS: number
     ) {
-        const ptb = this.issueNoChestPTB(
+        const ptb = this.issueNoAccountPTB(
             to,
             value,
             reasonCode,
@@ -365,13 +365,13 @@ export class DSToken {
         } else {
             ptb ??= new Transaction()
         }
-        const toChest = this.getPASChest(to)
+        const toAccount = this.getPASAccount(to)
         const args = [
             this.tokenDetails.auth,
             this.tokenDetails.investorInfo,
             this.tokenDetails.pasPolicy,
             clawbackRequest,
-            toChest,
+            toAccount,
             to,
             reason,
             Config.vars.VERSION,
@@ -520,6 +520,7 @@ export class DSToken {
 
         const requestArg = ptb.moveCall({
             target: `${ptbPkg}::ptb::ext_input`,
+            typeArguments: [`${Config.vars.PAS_PACKAGE_ID}::templates::PAS`],
             arguments: [ptb.pure.string('request')],
         })
 

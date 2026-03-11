@@ -5,7 +5,7 @@
 /// special privileges in the token ecosystem and are not associated with regular investors.
 module securitize::wallet_manager;
 
-use pas::{chest, namespace::Namespace};
+use pas::{account, namespace::Namespace};
 use securitize::{
     abilities::{SetIssuerWallet, SetPlatformWallet, RemoveSpecialWallet},
     events::{emit_special_wallet_added_event, emit_special_wallet_removed_event},
@@ -121,8 +121,8 @@ fun set_special_wallet<T>(
 ) {
     assert!(!investor_info.is_wallet(wallet), EWalletBelongsToInvestor);
     assert!(!investor_info.is_special_wallet(wallet), EDirectWalletChange);
-    if (!namespace.chest_exists(wallet)) {
-        chest::create_and_share(namespace, wallet);
+    if (!namespace.account_exists(wallet)) {
+        account::create_and_share(namespace, wallet);
     };
     investor_info.set_special_wallet(wallet, wallet_type);
     emit_special_wallet_added_event<T>(wallet, wallet_type, ctx.sender());

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The transfer flow moves tokens between two chests (wallets) and is the most compliance-intensive operation. It uses a PAS `Request<SendFunds<Balance<T>>>` that must be created, approved, and resolved within a single PTB.
+The transfer flow moves tokens between two accounts (wallets) and is the most compliance-intensive operation. It uses a PAS `Request<SendFunds<Balance<T>>>` that must be created, approved, and resolved within a single PTB.
 
 No transfer can bypass `compliance_service::validate_transfer`.
 
@@ -21,9 +21,9 @@ public fun transfer<T>(
 
 ## PAS Request/Approval Pattern
 
-1. **Create** - `from_chest.send_balance(auth, to_chest, amount, ctx)` withdraws `Balance<T>` from the sender's chest and wraps it into a `Request<SendFunds<Balance<T>>>` with an empty approvals set. Requires the sender's `Auth` proof.
+1. **Create** - `from_account.send_balance(auth, to_account, amount, ctx)` withdraws `Balance<T>` from the sender's account and wraps it into a `Request<SendFunds<Balance<T>>>` with an empty approvals set. Requires the sender's `Auth` proof.
 2. **Approve** - Inside `ds_token::transfer`, after all compliance checks pass, the request is stamped: `request.approve(TransferApproval<T>())`.
-3. **Resolve** - The caller must call `send_funds::resolve_balance(request, policy)` as a separate move call in the same PTB. This verifies the collected approvals match the `Policy<Balance<T>>` requirements (configured during setup to require `TransferApproval<T>`), then sends the `Balance<T>` to the recipient's chest.
+3. **Resolve** - The caller must call `send_funds::resolve_balance(request, policy)` as a separate move call in the same PTB. This verifies the collected approvals match the `Policy<Balance<T>>` requirements (configured during setup to require `TransferApproval<T>`), then sends the `Balance<T>` to the recipient's account.
 
 An unresolved request aborts the transaction (hot potato).
 
@@ -79,14 +79,14 @@ After validation passes:
 ## Full PTB Call Sequence
 
 ```
-1. from_chest.send_balance(auth, to_chest, amount, ctx)
+1. from_account.send_balance(auth, to_account, amount, ctx)
       -> Request<SendFunds<Balance<T>>>
 
 2. ds_token::transfer(treasury, investors, compliance_config, &mut request, version, clock)
       -> compliance checks + balance updates + TransferApproval<T> stamp
 
 3. send_funds::resolve_balance(request, policy)
-      -> verify approvals, send Balance<T> to recipient chest
+      -> verify approvals, send Balance<T> to recipient account
 ```
 
 ## Sequence Diagram
@@ -100,7 +100,7 @@ sequenceDiagram
     participant Compliance as Compliance Service
     participant Registry as InvestorInfo
 
-    User->>PAS: from_chest.send_balance(auth, to_chest, amount)
+    User->>PAS: from_account.send_balance(auth, to_account, amount)
     PAS-->>User: Request SendFunds Balance (hot potato)
 
     User->>DS: transfer(request, ...)
@@ -121,7 +121,7 @@ sequenceDiagram
 
         User->>PAS: send_funds::resolve_balance(request, policy)
         Note over PAS: Verify approvals match<br/>Policy Balance requirements
-        PAS-->>User: Balance sent to recipient chest
+        PAS-->>User: Balance sent to recipient account
     else Any rule fails
         Compliance-->>DS: Validation failed
         DS-->>User: Transfer rejected (abort)

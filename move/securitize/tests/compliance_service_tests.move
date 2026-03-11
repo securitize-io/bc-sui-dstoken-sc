@@ -1,7 +1,7 @@
 #[test_only]
 module securitize::compliance_service_tests;
 
-use pas::{chest::{Self, Chest}, policy::Policy, send_funds};
+use pas::{account::{Self, Account}, policy::Policy, send_funds};
 use securitize::{
     accredited_only::{Self, AccreditedOnly},
     authorized_securities::{Self, AuthorizedSecurities},
@@ -1145,7 +1145,7 @@ fun test_validate_issue_with_investor_limits_max_total() {
     ts::return_shared(auth);
     ts::return_shared(version);
 
-    // Register and issue to INVESTOR1 (1 chest only at this point)
+    // Register and issue to INVESTOR1 (1 account only at this point)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
@@ -1212,7 +1212,7 @@ fun test_issue_to_special_wallet_with_authorized_securities_exceeded() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -1220,7 +1220,7 @@ fun test_issue_to_special_wallet_with_authorized_securities_exceeded() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         ISSUER_WALLET,
         600,
         0,
@@ -1239,7 +1239,7 @@ fun test_issue_to_special_wallet_with_authorized_securities_exceeded() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
     ts.end();
 }
 
@@ -1258,7 +1258,7 @@ fun test_issue_zero_amount() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -1266,7 +1266,7 @@ fun test_issue_zero_amount() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         INVESTOR1,
         0,
         0,
@@ -1285,7 +1285,7 @@ fun test_issue_zero_amount() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
     ts.end();
 }
 
@@ -1414,15 +1414,15 @@ fun test_validate_seize_lifecycle() {
     setup_for_testing(&mut ts);
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
-    // Issue 500 to investor (only 1 chest in shared state)
+    // Issue 500 to investor (only 1 account in shared state)
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
-    // Add issuer wallet (creates 2nd chest)
+    // Add issuer wallet (creates 2nd account)
     test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
     ts.next_tx(ADMIN);
-    let issuer_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let issuer_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     ts.next_tx(ADMIN);
     let registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -1430,7 +1430,7 @@ fun test_validate_seize_lifecycle() {
     ts::return_shared(registry);
 
     // Partial seize: 200 out of 500 — not an exit, count stays 1
-    seize_from_to(&mut ts, inv1_chest_id, ISSUER_WALLET, issuer_chest_id, 200);
+    seize_from_to(&mut ts, inv1_account_id, ISSUER_WALLET, issuer_account_id, 200);
 
     ts.next_tx(ADMIN);
     let registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -1438,7 +1438,7 @@ fun test_validate_seize_lifecycle() {
     ts::return_shared(registry);
 
     // Full seize: 300 out of 300 — exit investor, count decrements to 0
-    seize_from_to(&mut ts, inv1_chest_id, ISSUER_WALLET, issuer_chest_id, 300);
+    seize_from_to(&mut ts, inv1_account_id, ISSUER_WALLET, issuer_account_id, 300);
 
     ts.next_tx(ADMIN);
     let registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -1455,7 +1455,7 @@ fun test_validate_seize_not_issuer_wallet() {
     setup_for_testing(&mut ts);
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
 
-    // Issue tokens while only 1 chest exists
+    // Issue tokens while only 1 account exists
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"US");
@@ -1478,7 +1478,7 @@ fun test_validate_seize_not_issuer_wallet() {
 // ==================== Transfer Validation Tests ====================
 
 /// Helper: issue tokens to an investor. Must be called when only that
-/// investor's chest exists (i.e., before registering other investors).
+/// investor's account exists (i.e., before registering other investors).
 fun issue_to_investor(ts: &mut Scenario, wallet: address, amount: u64) {
     ts.next_tx(ADMIN);
     let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
@@ -1486,7 +1486,7 @@ fun issue_to_investor(ts: &mut Scenario, wallet: address, amount: u64) {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -1494,7 +1494,7 @@ fun issue_to_investor(ts: &mut Scenario, wallet: address, amount: u64) {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         wallet,
         amount,
         0,
@@ -1513,11 +1513,11 @@ fun issue_to_investor(ts: &mut Scenario, wallet: address, amount: u64) {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 }
 
-/// Helper: burn tokens from an investor's chest. Must be called when only that
-/// investor's chest exists (i.e., the only Chest in shared state).
+/// Helper: burn tokens from an investor's account. Must be called when only that
+/// investor's account exists (i.e., the only Account in shared state).
 fun burn_from_investor(ts: &mut Scenario, amount: u64) {
     ts.next_tx(ADMIN);
     let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
@@ -1525,9 +1525,9 @@ fun burn_from_investor(ts: &mut Scenario, amount: u64) {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
-    let mut chest = ts.take_shared<Chest>();
+    let mut account = ts.take_shared<Account>();
 
-    let request = chest.clawback_balance<TEST_VOLORO>(amount, ts.ctx());
+    let request = account.clawback_balance<TEST_VOLORO>(amount, ts.ctx());
     ds_token::burn(
         &mut treasury,
         &auth,
@@ -1544,15 +1544,15 @@ fun burn_from_investor(ts: &mut Scenario, amount: u64) {
     ts::return_shared(investor_info);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 }
 
-/// Helper: seize tokens from one chest to another using chest IDs.
+/// Helper: seize tokens from one account to another using account IDs.
 fun seize_from_to(
     ts: &mut Scenario,
-    from_chest_id: ID,
+    from_account_id: ID,
     to_wallet: address,
-    to_chest_id: ID,
+    to_account_id: ID,
     amount: u64,
 ) {
     ts.next_tx(ADMIN);
@@ -1560,16 +1560,16 @@ fun seize_from_to(
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
     let version = ts.take_shared<Version>();
-    let mut from_chest = ts.take_shared_by_id<Chest>(from_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(to_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(from_account_id);
+    let to_account = ts.take_shared_by_id<Account>(to_account_id);
 
-    let request = from_chest.clawback_balance<TEST_VOLORO>(amount, ts.ctx());
+    let request = from_account.clawback_balance<TEST_VOLORO>(amount, ts.ctx());
     ds_token::seize(
         &auth,
         &mut investor_info,
         &policy,
         request,
-        &to_chest,
+        &to_account,
         to_wallet,
         b"".to_string(),
         &version,
@@ -1580,8 +1580,8 @@ fun seize_from_to(
     ts::return_shared(investor_info);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 }
 
 /// Happy path: transfer between two registered investors
@@ -1592,11 +1592,11 @@ fun test_validate_transfer_basic() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     ts.next_tx(INVESTOR1);
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
@@ -1606,13 +1606,13 @@ fun test_validate_transfer_basic() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -1634,8 +1634,8 @@ fun test_validate_transfer_basic() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     // Verify balances
     ts.next_tx(ADMIN);
@@ -1662,13 +1662,13 @@ fun test_validate_transfer_to_forbidden_region() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     // Register INVESTOR2 in a forbidden country
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"TEST");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     test_helpers::set_country_compliance(&mut ts, b"TEST", 4); // FORBIDDEN = 4
 
     ts.next_tx(INVESTOR1);
@@ -1679,13 +1679,13 @@ fun test_validate_transfer_to_forbidden_region() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -1707,8 +1707,8 @@ fun test_validate_transfer_to_forbidden_region() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -1722,7 +1722,7 @@ fun test_validate_transfer_sender_fully_locked() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     // Fully lock INVESTOR1
@@ -1743,7 +1743,7 @@ fun test_validate_transfer_sender_fully_locked() {
 
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     ts.next_tx(INVESTOR1);
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
@@ -1753,13 +1753,13 @@ fun test_validate_transfer_sender_fully_locked() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -1781,8 +1781,8 @@ fun test_validate_transfer_sender_fully_locked() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -1796,12 +1796,12 @@ fun test_validate_transfer_to_liquidate_only() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Set INVESTOR2 to liquidate-only
     ts.next_tx(ADMIN);
@@ -1828,13 +1828,13 @@ fun test_validate_transfer_to_liquidate_only() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -1856,14 +1856,14 @@ fun test_validate_transfer_to_liquidate_only() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
 
 /// Transfer to a non-whitelisted address → ENotWhitelisted
-/// Register INVESTOR2 with wallet, then remove wallet so chest remains but wallet is unregistered.
+/// Register INVESTOR2 with wallet, then remove wallet so account remains but wallet is unregistered.
 #[test]
 #[expected_failure(abort_code = compliance_service::ENotWhitelisted)]
 fun test_validate_transfer_not_whitelisted() {
@@ -1872,15 +1872,15 @@ fun test_validate_transfer_not_whitelisted() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
-    // Register INVESTOR2 to create the chest, then remove wallet
+    // Register INVESTOR2 to create the account, then remove wallet
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
-    // Remove INVESTOR2's wallet from registry (chest still exists as shared object)
+    // Remove INVESTOR2's wallet from registry (account still exists as shared object)
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
@@ -1906,13 +1906,13 @@ fun test_validate_transfer_not_whitelisted() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -1934,8 +1934,8 @@ fun test_validate_transfer_not_whitelisted() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
     ts.end();
 }
 
@@ -1948,16 +1948,16 @@ fun test_validate_transfer_from_not_whitelisted() {
     // Register INVESTOR1 and issue tokens
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     // Register INVESTOR2
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Zero out INVESTOR1's wallet balance in registry and remove wallet
-    // The PAS chest still holds the tokens, but the registry no longer recognizes the wallet
+    // The PAS account still holds the tokens, but the registry no longer recognizes the wallet
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
@@ -1975,7 +1975,7 @@ fun test_validate_transfer_from_not_whitelisted() {
     ts::return_shared(auth);
     ts::return_shared(version);
 
-    // INVESTOR1 tries to transfer — chest still has PAS tokens but wallet is unregistered
+    // INVESTOR1 tries to transfer — account still has PAS tokens but wallet is unregistered
     ts.next_tx(INVESTOR1);
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -1984,13 +1984,13 @@ fun test_validate_transfer_from_not_whitelisted() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         100,
         ts.ctx(),
     );
@@ -2012,8 +2012,8 @@ fun test_validate_transfer_from_not_whitelisted() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
     ts.end();
 }
 
@@ -2025,11 +2025,11 @@ fun test_validate_transfer_investor_count_tracking() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Verify count before: 1 (only INVESTOR1 has tokens)
     ts.next_tx(ADMIN);
@@ -2046,13 +2046,13 @@ fun test_validate_transfer_investor_count_tracking() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         500,
         ts.ctx(),
     );
@@ -2074,8 +2074,8 @@ fun test_validate_transfer_investor_count_tracking() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     // Verify count after: still 1 (one exited, one entered)
     ts.next_tx(ADMIN);
@@ -2104,11 +2104,11 @@ fun test_exit_investor_decrements_count() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR2, 300);
 
     // Both have tokens → count = 2
@@ -2128,13 +2128,13 @@ fun test_exit_investor_decrements_count() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         500,
         ts.ctx(),
     );
@@ -2156,8 +2156,8 @@ fun test_exit_investor_decrements_count() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     // Count should be 1 (only INVESTOR2 remains)
     ts.next_tx(ADMIN);
@@ -2184,11 +2184,11 @@ fun test_validate_transfer_to_special_wallet() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
     ts.next_tx(ADMIN);
-    let issuer_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let issuer_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer to issuer wallet
     ts.next_tx(INVESTOR1);
@@ -2199,13 +2199,13 @@ fun test_validate_transfer_to_special_wallet() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
-    let mut investor_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
+    let issuer_account = ts.take_shared_by_id<Account>(issuer_account_id);
+    let mut investor_account = ts.take_shared_by_id<Account>(inv1_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = investor_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = investor_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &issuer_chest,
+        &issuer_account,
         200,
         ts.ctx(),
     );
@@ -2233,8 +2233,8 @@ fun test_validate_transfer_to_special_wallet() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(issuer_chest);
-    ts::return_shared(investor_chest);
+    ts::return_shared(issuer_account);
+    ts::return_shared(investor_account);
     ts.end();
 }
 
@@ -2245,10 +2245,10 @@ fun test_validate_transfer_from_special_wallet() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
 
-    // Add issuer wallet (creates issuer's chest)
+    // Add issuer wallet (creates issuer's account)
     test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
     ts.next_tx(ADMIN);
-    let issuer_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let issuer_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Issue tokens to the issuer wallet
     ts.next_tx(ADMIN);
@@ -2257,7 +2257,7 @@ fun test_validate_transfer_from_special_wallet() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>(); // only issuer chest exists
+    let account = ts.take_shared<Account>(); // only issuer account exists
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -2265,7 +2265,7 @@ fun test_validate_transfer_from_special_wallet() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         ISSUER_WALLET,
         1000,
         0,
@@ -2284,12 +2284,12 @@ fun test_validate_transfer_from_special_wallet() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 
-    // Register a regular investor (creates investor's chest)
+    // Register a regular investor (creates investor's account)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer from issuer wallet to INVESTOR1
     ts.next_tx(ISSUER_WALLET);
@@ -2300,13 +2300,13 @@ fun test_validate_transfer_from_special_wallet() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let to_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let mut from_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
+    let to_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let mut from_account = ts.take_shared_by_id<Account>(issuer_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         300,
         ts.ctx(),
     );
@@ -2333,8 +2333,8 @@ fun test_validate_transfer_from_special_wallet() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
     ts.end();
 }
 
@@ -2369,13 +2369,13 @@ fun test_validate_transfer_same_investor() {
     // Register INVESTOR1 with first wallet and issue tokens
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
 
     // Add a second wallet to the SAME investor
     test_helpers::add_investor_wallet(&mut ts, b"INV001", INVESTOR1_WALLET2);
     ts.next_tx(ADMIN);
-    let wallet2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let wallet2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Partial transfer between same investor's wallets → should succeed
     // despite ForceFullTransfer rule (same investor exit skips all rules)
@@ -2387,13 +2387,13 @@ fun test_validate_transfer_same_investor() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(wallet2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(wallet2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -2425,8 +2425,8 @@ fun test_validate_transfer_same_investor() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
     ts.end();
 }
 
@@ -2440,7 +2440,7 @@ fun test_validate_transfer_with_time_lock() {
     // Issue 500 tokens with 400 locked (release far in the future)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     ts.next_tx(ADMIN);
     let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
@@ -2448,7 +2448,7 @@ fun test_validate_transfer_with_time_lock() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -2456,7 +2456,7 @@ fun test_validate_transfer_with_time_lock() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         INVESTOR1,
         500,
         0,
@@ -2475,11 +2475,11 @@ fun test_validate_transfer_with_time_lock() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Try to transfer 200 but only 100 is unlocked (500 - 400 = 100)
     ts.next_tx(INVESTOR1);
@@ -2490,13 +2490,13 @@ fun test_validate_transfer_with_time_lock() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -2518,8 +2518,8 @@ fun test_validate_transfer_with_time_lock() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -2555,11 +2555,11 @@ fun test_validate_transfer_with_lockup_restriction() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer at time 0 → all 500 tokens locked (issuance at time 0, lock = 1 year)
     ts.next_tx(INVESTOR1);
@@ -2570,13 +2570,13 @@ fun test_validate_transfer_with_lockup_restriction() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -2598,8 +2598,8 @@ fun test_validate_transfer_with_lockup_restriction() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -2637,11 +2637,11 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer 400 → recipient would have 400 > max 300
     ts.next_tx(INVESTOR1);
@@ -2652,13 +2652,13 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         400,
         ts.ctx(),
     );
@@ -2680,8 +2680,8 @@ fun test_validate_transfer_with_holding_limits_exceeds_max() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -2717,11 +2717,11 @@ fun test_validate_transfer_with_force_full_transfer() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Partial transfer (200 of 500) should fail
     ts.next_tx(INVESTOR1);
@@ -2732,13 +2732,13 @@ fun test_validate_transfer_with_force_full_transfer() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -2760,8 +2760,8 @@ fun test_validate_transfer_with_force_full_transfer() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -2797,11 +2797,11 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
     ts.next_tx(ADMIN);
-    let issuer_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let issuer_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Partial transfer (200 of 500) to issuer wallet → EPartialTransferNotAllowed
     ts.next_tx(INVESTOR1);
@@ -2812,13 +2812,13 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
-    let mut investor_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
+    let issuer_account = ts.take_shared_by_id<Account>(issuer_account_id);
+    let mut investor_account = ts.take_shared_by_id<Account>(inv1_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = investor_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = investor_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &issuer_chest,
+        &issuer_account,
         200,
         ts.ctx(),
     );
@@ -2840,8 +2840,8 @@ fun test_transfer_to_special_wallet_with_force_full_transfer() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(issuer_chest);
-    ts::return_shared(investor_chest);
+    ts::return_shared(issuer_account);
+    ts::return_shared(investor_account);
     ts.end();
 }
 
@@ -2880,11 +2880,11 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
     // INVESTOR1 = FR (non-US sender), INVESTOR2 = US (US recipient)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"FR");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"US");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer at time 0 → within 90-day restriction → blocked
     ts.next_tx(INVESTOR1);
@@ -2895,13 +2895,13 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -2923,8 +2923,8 @@ fun test_validate_transfer_with_flowback_restriction_blocked() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -2963,11 +2963,11 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
     // INVESTOR1 = FR (non-US sender), INVESTOR2 = US (US recipient)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"FR");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"US");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer at time 91 days → past the 90-day restriction → allowed
     ts.next_tx(INVESTOR1);
@@ -2980,13 +2980,13 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
     let ninety_one_days_ms: u64 = 91 * 24 * 60 * 60 * 1000;
     clock::set_for_testing(&mut clock, ninety_one_days_ms);
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3017,8 +3017,8 @@ fun test_validate_transfer_with_flowback_restriction_expired() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
     ts.end();
 }
 
@@ -3054,7 +3054,7 @@ fun test_validate_transfer_with_accredited_only() {
     // INVESTOR1 is accredited, INVESTOR2 is NOT
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -3077,7 +3077,7 @@ fun test_validate_transfer_with_accredited_only() {
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     // Transfer to non-accredited INVESTOR2 should fail
     ts.next_tx(INVESTOR1);
     let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
@@ -3087,13 +3087,13 @@ fun test_validate_transfer_with_accredited_only() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3115,8 +3115,8 @@ fun test_validate_transfer_with_accredited_only() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -3158,11 +3158,11 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500);
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Partial transfer: INVESTOR1 stays (count=1), INVESTOR2 would be new (count→2 > limit=1)
     ts.next_tx(INVESTOR1);
@@ -3173,13 +3173,13 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3201,8 +3201,8 @@ fun test_validate_transfer_with_investor_limits_exceeded() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -3248,11 +3248,11 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
     // INVESTOR1 in DE, INVESTOR2 in FR (different EU countries)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"DE");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500); // DE retail count → 1
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer to INVESTOR2 (FR): FR retail count = 0 < limit 1 → succeeds
     ts.next_tx(INVESTOR1);
@@ -3263,13 +3263,13 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3291,8 +3291,8 @@ fun test_investor_limits_eu_retail_different_country_succeeds() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.next_tx(ADMIN);
     let investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
@@ -3350,11 +3350,11 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
     // INVESTOR1 and INVESTOR2 both in DE (same EU country)
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"DE");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500); // DE retail count → 1
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"DE");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Partial transfer (200 of 500): INVESTOR1 stays (not exiting), INVESTOR2 enters
     // DE retail count = 1 >= limit 1 → EMaxEURetailExceeded
@@ -3366,13 +3366,13 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
     let version = ts.take_shared<Version>();
     let clock = clock::create_for_testing(ts.ctx());
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3394,8 +3394,8 @@ fun test_investor_limits_eu_retail_same_country_exceeded() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(from_chest);
-    ts::return_shared(to_chest);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
 
     ts.end();
 }
@@ -3445,7 +3445,7 @@ fun test_backdating_issuance_allowed() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Issue at clock time 20,000 but with backdated issuance_time = 5,000
     // Since backdating is allowed, issuance records time 5,000
@@ -3456,7 +3456,7 @@ fun test_backdating_issuance_allowed() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>(); // only 1 chest at this point
+    let account = ts.take_shared<Account>(); // only 1 account at this point
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
 
@@ -3465,7 +3465,7 @@ fun test_backdating_issuance_allowed() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         INVESTOR1,
         500,
         0,
@@ -3484,11 +3484,11 @@ fun test_backdating_issuance_allowed() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer at clock time 20,000 → issuance at 5,000 + lock 10,000 = 15,000 < 20,000
     // Tokens are unlocked because backdating placed issuance in the past → succeeds
@@ -3501,13 +3501,13 @@ fun test_backdating_issuance_allowed() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3538,8 +3538,8 @@ fun test_backdating_issuance_allowed() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
     ts.end();
 }
 
@@ -3573,11 +3573,11 @@ fun test_cleanup_party_issuances() {
 
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     issue_to_investor(&mut ts, INVESTOR1, 500); // issuance recorded at time 0
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Transfer at time 10,001 → issuance expired, cleanup removes it, transfer succeeds
     ts.next_tx(INVESTOR1);
@@ -3589,13 +3589,13 @@ fun test_cleanup_party_issuances() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 10_001);
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3626,8 +3626,8 @@ fun test_cleanup_party_issuances() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
     ts.end();
 }
 
@@ -3738,10 +3738,10 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(auth);
     ts::return_shared(version);
 
-    // Register INVESTOR1 (US, accredited) and capture chest ID
+    // Register INVESTOR1 (US, accredited) and capture account ID
     setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
     ts.next_tx(ADMIN);
-    let inv1_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
@@ -3762,10 +3762,10 @@ fun test_full_lifecycle_with_all_rules() {
     // Issue 1000 to INVESTOR1
     issue_to_investor(&mut ts, INVESTOR1, 1000);
 
-    // Register INVESTOR2 (FR/EU, accredited + qualified) and capture chest ID
+    // Register INVESTOR2 (FR/EU, accredited + qualified) and capture account ID
     setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
     ts.next_tx(ADMIN);
-    let inv2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
@@ -3815,13 +3815,13 @@ fun test_full_lifecycle_with_all_rules() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
 
-    let mut from_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let to_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = from_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &to_chest,
+        &to_account,
         200,
         ts.ctx(),
     );
@@ -3841,15 +3841,15 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(to_chest);
-    ts::return_shared(from_chest);
+    ts::return_shared(to_account);
+    ts::return_shared(from_account);
 
     // After transfer 1: INV1=800, INV2=1000
 
-    // Add ISSUER_WALLET (special wallet) and capture chest ID
+    // Add ISSUER_WALLET (special wallet) and capture account ID
     test_helpers::add_issuer_wallet(&mut ts, ISSUER_WALLET);
     ts.next_tx(ADMIN);
-    let issuer_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let issuer_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // Issue 200 to ISSUER_WALLET (special wallet: only AuthorizedSecurities checked)
     ts.next_tx(ADMIN);
@@ -3858,7 +3858,7 @@ fun test_full_lifecycle_with_all_rules() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
+    let issuer_account = ts.take_shared_by_id<Account>(issuer_account_id);
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -3866,7 +3866,7 @@ fun test_full_lifecycle_with_all_rules() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &issuer_chest,
+        &issuer_account,
         ISSUER_WALLET,
         200,
         0,
@@ -3885,7 +3885,7 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(issuer_chest);
+    ts::return_shared(issuer_account);
 
     // === Transfer 2: INVESTOR1 → ISSUER_WALLET (800 tokens, full exit) ===
     // TO special wallet → only ForceFullTransfer checked (disabled) → passes
@@ -3899,13 +3899,13 @@ fun test_full_lifecycle_with_all_rules() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
 
-    let mut inv1_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let issuer_chest = ts.take_shared_by_id<Chest>(issuer_chest_id);
+    let mut inv1_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let issuer_account = ts.take_shared_by_id<Account>(issuer_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = inv1_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = inv1_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &issuer_chest,
+        &issuer_account,
         800,
         ts.ctx(),
     );
@@ -3925,8 +3925,8 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(issuer_chest);
-    ts::return_shared(inv1_chest);
+    ts::return_shared(issuer_account);
+    ts::return_shared(inv1_account);
 
     // After transfer 2: INV1=0, INV2=1000
     // Verify counters: total=1, us=0, accredited=1
@@ -3949,13 +3949,13 @@ fun test_full_lifecycle_with_all_rules() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
 
-    let mut inv2_chest = ts.take_shared_by_id<Chest>(inv2_chest_id);
-    let inv1_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
+    let mut inv2_account = ts.take_shared_by_id<Account>(inv2_account_id);
+    let inv1_account = ts.take_shared_by_id<Account>(inv1_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = inv2_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = inv2_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &inv1_chest,
+        &inv1_account,
         300,
         ts.ctx(),
     );
@@ -3975,15 +3975,15 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(inv2_chest);
-    ts::return_shared(inv1_chest);
+    ts::return_shared(inv2_account);
+    ts::return_shared(inv1_account);
 
     // After transfer 3: INV1(INVESTOR1)=300, INV2=700
 
-    // Add INVESTOR1_WALLET2 (second wallet for INV001) and capture chest ID
+    // Add INVESTOR1_WALLET2 (second wallet for INV001) and capture account ID
     test_helpers::add_investor_wallet(&mut ts, b"INV001", INVESTOR1_WALLET2);
     ts.next_tx(ADMIN);
-    let wallet2_chest_id = ts::most_recent_id_shared<Chest>().destroy_some();
+    let wallet2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
 
     // === Transfer 4: INVESTOR1 → INVESTOR1_WALLET2 (100 tokens, same investor) ===
     // Same investor → skip all compliance rules
@@ -3996,13 +3996,13 @@ fun test_full_lifecycle_with_all_rules() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock::set_for_testing(&mut clock, 20_000);
 
-    let mut inv1_chest = ts.take_shared_by_id<Chest>(inv1_chest_id);
-    let wallet2_chest = ts.take_shared_by_id<Chest>(wallet2_chest_id);
+    let mut inv1_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let wallet2_account = ts.take_shared_by_id<Account>(wallet2_account_id);
 
-    let pas_auth = chest::new_auth(ts.ctx());
-    let mut request = inv1_chest.send_balance<TEST_VOLORO>(
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = inv1_account.send_balance<TEST_VOLORO>(
         &pas_auth,
-        &wallet2_chest,
+        &wallet2_account,
         100,
         ts.ctx(),
     );
@@ -4022,8 +4022,8 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(compliance);
     ts::return_shared(policy);
     ts::return_shared(version);
-    ts::return_shared(wallet2_chest);
-    ts::return_shared(inv1_chest);
+    ts::return_shared(wallet2_account);
+    ts::return_shared(inv1_account);
 
     // ==================== Final Verification ====================
 
