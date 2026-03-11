@@ -1,7 +1,7 @@
 #[test_only]
 module securitize::registry_service_tests;
 
-use pas::{chest::Chest, namespace::Namespace};
+use pas::{account::Account, namespace::Namespace};
 use securitize::{
     compliance_service::{Self, ComplianceConfig},
     ds_token::{Self, Treasury},
@@ -1541,7 +1541,7 @@ fun test_remove_wallet_not_empty() {
     setup_for_testing(&mut ts);
     test_helpers::init_namespace_for_testing(&mut ts);
 
-    // Register investor and add wallet (creates PAS chest)
+    // Register investor and add wallet (creates PAS account)
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
@@ -1578,7 +1578,7 @@ fun test_remove_wallet_not_empty() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -1586,7 +1586,7 @@ fun test_remove_wallet_not_empty() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         WALLET1,
         100,
         0,
@@ -1605,7 +1605,7 @@ fun test_remove_wallet_not_empty() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 
     // Try to remove wallet with non-zero balance — should fail
     ts.next_tx(ADMIN);
@@ -3065,10 +3065,10 @@ fun test_lock_accessors() {
     ts.end();
 }
 
-// ==================== Group 16: add_wallet Chest Condition ====================
+// ==================== Group 16: add_wallet Account Condition ====================
 
 #[test]
-fun test_add_wallet_creates_chest_when_not_exists() {
+fun test_add_wallet_creates_account_when_not_exists() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
     test_helpers::init_namespace_for_testing(&mut ts);
@@ -3088,7 +3088,7 @@ fun test_add_wallet_creates_chest_when_not_exists() {
         ts.ctx(),
     );
 
-    // Chest doesn't exist for WALLET1 initially - add_wallet should create it
+    // Account doesn't exist for WALLET1 initially - add_wallet should create it
     registry_service::add_wallet<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -3110,7 +3110,7 @@ fun test_add_wallet_creates_chest_when_not_exists() {
 }
 
 #[test]
-fun test_add_wallet_when_chest_already_exists() {
+fun test_add_wallet_when_account_already_exists() {
     let mut ts = ts::begin(ADMIN);
     setup_for_testing(&mut ts);
     test_helpers::init_namespace_for_testing(&mut ts);
@@ -3137,7 +3137,7 @@ fun test_add_wallet_when_chest_already_exists() {
         ts.ctx(),
     );
 
-    // Add wallet to first investor (creates chest)
+    // Add wallet to first investor (creates account)
     registry_service::add_wallet<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -3158,7 +3158,7 @@ fun test_add_wallet_when_chest_already_exists() {
         ts.ctx(),
     );
 
-    // Now add the same wallet to second investor - chest already exists
+    // Now add the same wallet to second investor - account already exists
     registry_service::add_wallet<TEST_VOLORO>(
         &mut registry,
         &auth,
@@ -3771,7 +3771,7 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
     test_helpers::set_country_compliance(&mut ts, b"USA", COMPLIANCE_US);
     test_helpers::set_country_compliance(&mut ts, b"JPN", COMPLIANCE_JP);
 
-    // Register investor with wallet (creates PAS chest)
+    // Register investor with wallet (creates PAS account)
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let auth = ts.take_shared<Auth<TEST_VOLORO>>();
@@ -3808,7 +3808,7 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -3816,7 +3816,7 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         WALLET1,
         1000,
         0,
@@ -3835,7 +3835,7 @@ fun test_adjust_investor_counts_after_country_change_with_balance() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 
     // Set initial country to USA and verify counts
     ts.next_tx(ADMIN);

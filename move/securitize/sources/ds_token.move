@@ -6,7 +6,7 @@
 module securitize::ds_token;
 
 use pas::{
-    chest::Chest,
+    account::Account,
     clawback_funds::ClawbackFunds,
     keys::{send_funds_action, clawback_funds_action},
     namespace::Namespace,
@@ -64,7 +64,7 @@ const ENotAuthorized: vector<u8> = b"Caller is not authorized to perform this ac
 #[error(code = 3)]
 const ETreasuryPaused: vector<u8> = b"Token transfers are paused";
 #[error(code = 4)]
-const EChestOwnerMismatch: vector<u8> = b"Chest owner does not match the expected address";
+const EAccountOwnerMismatch: vector<u8> = b"Account owner does not match the expected address";
 #[error(code = 5)]
 const EValueZero: vector<u8> = b"Value to issue or transfer cannot be zero";
 #[error(code = 6)]
@@ -153,18 +153,18 @@ public(package) fun share<T>(treasury: Treasury<T>) {
 
 // ==== Public Functions ====
 
-/// Issues new tokens and deposits them into the specified chest.
+/// Issues new tokens and deposits them into the specified account.
 /// Only authorized addresses with the IssueTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
-/// * `EChestOwnerMismatch` - If the chest owner does not match to_address
+/// * `EAccountOwnerMismatch` - If the account owner does not match to_address
 public fun issue_tokens<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    to: &Chest,
+    to: &Account,
     to_address: address,
     value: u64,
     reason_code: u64,
@@ -178,7 +178,7 @@ public fun issue_tokens<T>(
 ) {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, IssueTokens>(ctx.sender()), ENotAuthorized);
-    assert!(to.owner() == to_address, EChestOwnerMismatch);
+    assert!(to.owner() == to_address, EAccountOwnerMismatch);
     let treasury_cap = dof::borrow_mut<TreasuryCapKey, TreasuryCap<T>>(
         &mut treasury.id,
         TreasuryCapKey(),
@@ -199,19 +199,19 @@ public fun issue_tokens<T>(
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
-    // Deposit to the investor's chest
+    // Deposit to the investor's account
     to.deposit_balance(
         balance,
     );
 }
 
-/// Issues new tokens and deposits them to the chest derived by the provided address.
-/// Meant to be used in combination with the investor registration when investors' chest is not yet created.
+/// Issues new tokens and deposits them to the account derived by the provided address.
+/// Meant to be used in combination with the investor registration when investors' account is not yet created.
 /// Only authorized addresses with the IssueTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the IssueTokens ability
-public fun issue_tokens_no_chest<T>(
+public fun issue_tokens_no_account<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
@@ -250,7 +250,7 @@ public fun issue_tokens_no_chest<T>(
         clock,
     );
     let balance = treasury_cap.mint_balance(value);
-    balance.send_funds(namespace.chest_address(to));
+    balance.send_funds(namespace.account_address(to));
 }
 
 fun issue_tokens_internal<T>(
@@ -322,12 +322,12 @@ fun issue_tokens_internal<T>(
     emit_transfer_event<T>(@0x0, to, value);
 }
 
-/// Burns tokens from the specified chest, reducing the total supply.
+/// Burns tokens from the specified account, reducing the total supply.
 /// Only authorized addresses with the BurnTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the BurnTokens ability
-/// * `EChestOwnerMismatch` - If the chest owner does not match from_address
+/// * `EAccountOwnerMismatch` - If the account owner does not match from_address
 public fun burn<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
@@ -378,18 +378,18 @@ public fun burn<T>(
     emit_transfer_event<T>(from_address, @0x0, value);
 }
 
-/// Seizes tokens from one chest and transfers them to another chest.
+/// Seizes tokens from one account and transfers them to another account.
 /// Only authorized addresses with the SeizeTokens ability can call this function.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If the sender does not have the SeizeTokens ability
-/// * `EChestOwnerMismatch` - If the chest owner does not match the expected address
+/// * `EAccountOwnerMismatch` - If the account owner does not match the expected address
 public fun seize<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     policy: &Policy<Balance<T>>,
     mut request: Request<ClawbackFunds<Balance<T>>>,
-    to: &Chest,
+    to: &Account,
     to_address: address,
     reason: String,
     version: &Version,
@@ -401,10 +401,10 @@ public fun seize<T>(
     let value = request.data().funds().value();
 
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
-    assert!(to.owner() == to_address, EChestOwnerMismatch);
+    assert!(to.owner() == to_address, EAccountOwnerMismatch);
 
     compliance_service::validate_seize(investors, from_address, to_address, value);
-    // Withdraw from the investor's chest and deposit to the treasury's chest
+    // Withdraw from the investor's account and deposit to the treasury's account
     request.approve(ClawbackApproval<T>());
     let balance = pas::clawback_funds::resolve(request, policy);
     to.deposit_balance(balance);
@@ -450,7 +450,7 @@ public fun seize<T>(
     emit_transfer_event<T>(from_address, to_address, value);
 }
 
-/// Processes a token transfer request between chests.
+/// Processes a token transfer request between accounts.
 /// The treasury must not be paused for the transfer to succeed.
 ///
 /// # Aborts

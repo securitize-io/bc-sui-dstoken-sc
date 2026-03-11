@@ -99,7 +99,7 @@ The DS Protocol is a factory contract for DS Tokens. It uses the Permissioned As
     - **Compliance Service**: Validates all operations against configurable rules (AccreditedOnly, HoldingLimits, InvestorLimits, etc.)
     - **Treasury**: Manages the TreasuryCap for minting and burning tokens, their Metadata, and stores the PAS `PolicyCap<Balance<T>>`
     - **InvestorInfo Registry**: Tracks investor and special wallet balances and metadata across all their wallets
-- **Permissioned Asset Standard (PAS)**: Manages token custody via Chests and enforces a request/approval pattern using `Policy<Balance<T>>` for transfers and clawbacks
+- **Permissioned Asset Standard (PAS)**: Manages token custody via Accounts and enforces a request/approval pattern using `Policy<Balance<T>>` for transfers and clawbacks
 
 ## Token Operation Flows
 
@@ -107,9 +107,9 @@ The protocol supports four main token operations, each with compliance validatio
 
 | Operation | Description | PAS Pattern | Documentation |
 |-----------|-------------|-------------|---------------|
-| **Transfer** | Move tokens between chests with compliance checks | `Request<SendFunds<Balance<T>>>` with `TransferApproval<T>`, resolved externally in PTB | [Transfer Flow](docs/transfer-flow.md) |
-| **Issue** | Mint new tokens to a chest | No PAS request, direct mint via `TreasuryCap` | [Issue Flow](docs/issue-flow.md) |
-| **Burn** | Destroy tokens from a chest | `Request<ClawbackFunds<Balance<T>>>` with `ClawbackApproval<T>`, resolved internally | [Burn Flow](docs/burn-flow.md) |
+| **Transfer** | Move tokens between accounts with compliance checks | `Request<SendFunds<Balance<T>>>` with `TransferApproval<T>`, resolved externally in PTB | [Transfer Flow](docs/transfer-flow.md) |
+| **Issue** | Mint new tokens to a account | No PAS request, direct mint via `TreasuryCap` | [Issue Flow](docs/issue-flow.md) |
+| **Burn** | Destroy tokens from a account | `Request<ClawbackFunds<Balance<T>>>` with `ClawbackApproval<T>`, resolved internally | [Burn Flow](docs/burn-flow.md) |
 | **Seize** | Force transfer tokens to issuer wallet | `Request<ClawbackFunds<Balance<T>>>` with `ClawbackApproval<T>`, resolved internally | [Seize Flow](docs/seize-flow.md) |
 
 All operations follow a similar pattern:

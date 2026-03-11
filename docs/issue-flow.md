@@ -2,13 +2,13 @@
 
 ## Overview
 
-The issue flow mints new tokens and deposits them into an investor's or special wallet's chest. Unlike transfer/burn/seize, the issue flow does **not** use PAS requests. Tokens are minted directly via `TreasuryCap::mint_balance` and deposited into the recipient's chest.
+The issue flow mints new tokens and deposits them into an investor's or special wallet's account. Unlike transfer/burn/seize, the issue flow does **not** use PAS requests. Tokens are minted directly via `TreasuryCap::mint_balance` and deposited into the recipient's account.
 
 Enforced via capability-based authorization (`IssueTokens` ability).
 
 ## Function Signatures
 
-### `issue_tokens` (recipient has an existing chest)
+### `issue_tokens` (recipient has an existing account)
 
 ```move
 public fun issue_tokens<T>(
@@ -16,7 +16,7 @@ public fun issue_tokens<T>(
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
     compliance_config: &mut ComplianceConfig<T>,
-    to: &Chest,
+    to: &Account,
     to_address: address,
     value: u64,
     reason_code: u64,
@@ -30,10 +30,10 @@ public fun issue_tokens<T>(
 )
 ```
 
-### `issue_tokens_no_chest` (pre-chest issuance)
+### `issue_tokens_no_account` (pre-account issuance)
 
 ```move
-public fun issue_tokens_no_chest<T>(
+public fun issue_tokens_no_account<T>(
     treasury: &mut Treasury<T>,
     auth: &Auth<T>,
     investors: &mut InvestorInfo<T>,
@@ -54,12 +54,12 @@ public fun issue_tokens_no_chest<T>(
 
 ### Difference
 
-| Aspect | `issue_tokens` | `issue_tokens_no_chest` |
+| Aspect | `issue_tokens` | `issue_tokens_no_account` |
 |---|---|---|
-| Recipient param | `to: &Chest` + `to_address: address` | `namespace: &Namespace` + `to: address` |
-| Chest ownership | `assert!(to.owner() == to_address)` | No chest ownership check |
-| Balance delivery | `to.deposit_balance(balance)` | `balance.send_funds(namespace.chest_address(to))` |
-| Use case | Investor already has a Chest on-chain | Used during investor registration before Chest creation |
+| Recipient param | `to: &Account` + `to_address: address` | `namespace: &Namespace` + `to: address` |
+| Account ownership | `assert!(to.owner() == to_address)` | No account ownership check |
+| Balance delivery | `to.deposit_balance(balance)` | `balance.send_funds(namespace.account_address(to))` |
+| Use case | Investor already has a Account on-chain | Used during investor registration before Account creation |
 
 Both delegate to the same internal function for validation and balance tracking.
 
@@ -67,7 +67,7 @@ Both delegate to the same internal function for validation and balance tracking.
 
 1. **Version check** - `version.check_is_valid()`
 2. **Authorization check** - caller must have `IssueTokens` ability (roles: `Master`, `Issuer`)
-3. **Chest ownership check** (only `issue_tokens`) - `assert!(to.owner() == to_address)`
+3. **Account ownership check** (only `issue_tokens`) - `assert!(to.owner() == to_address)`
 4. **Read total supply** - from `TreasuryCap<T>` stored on Treasury
 5. **Input validation** - `assert!(value > 0)` and `assert!(values_locked.length() == release_times.length())`
 6. **Compliance validation** - `compliance_service::validate_issue(...)` (see below)
@@ -77,7 +77,7 @@ Both delegate to the same internal function for validation and balance tracking.
 8. **Create locks** (regular wallets only) - iterates over `values_locked`/`release_times` to create time-based locks via `lock_manager::add_lock_internal`. Asserts `total_locked <= value`.
 9. **Emit events** - `Issue<T>` and `Transfer<T>` (from `@0x0`)
 10. **Mint tokens** - `treasury_cap.mint_balance(value)` creates new `Balance<T>`
-11. **Deposit** - balance sent to recipient's chest
+11. **Deposit** - balance sent to recipient's account
 
 ## Compliance Validation (`validate_issue`)
 
@@ -118,15 +118,15 @@ After validation passes:
 ## Full PTB Call Sequence
 
 ```
-1. ds_token::issue_tokens(treasury, auth, investors, compliance_config, chest, to_address, value, ...)
+1. ds_token::issue_tokens(treasury, auth, investors, compliance_config, account, to_address, value, ...)
       -> compliance check + balance updates + lock creation + events + mint + deposit
 ```
 
-Or for pre-chest issuance:
+Or for pre-account issuance:
 
 ```
-1. ds_token::issue_tokens_no_chest(treasury, auth, investors, compliance_config, namespace, to, value, ...)
-      -> compliance check + balance updates + lock creation + events + mint + send to derived chest address
+1. ds_token::issue_tokens_no_account(treasury, auth, investors, compliance_config, namespace, to, value, ...)
+      -> compliance check + balance updates + lock creation + events + mint + send to derived account address
 ```
 
 ## Sequence Diagram
@@ -140,7 +140,7 @@ sequenceDiagram
     participant Treasury as Treasury
     participant Registry as InvestorInfo
 
-    Issuer->>DS: issue_tokens(chest, amount, locks, ...)
+    Issuer->>DS: issue_tokens(account, amount, locks, ...)
 
     DS->>DS: Assert IssueTokens ability
 
@@ -159,7 +159,7 @@ sequenceDiagram
             DS->>Treasury: Mint Balance via TreasuryCap
             Treasury-->>DS: Balance
 
-            DS->>DS: Deposit balance into chest
+            DS->>DS: Deposit balance into account
 
             DS-->>Issuer: Tokens issued
         else Validation fails

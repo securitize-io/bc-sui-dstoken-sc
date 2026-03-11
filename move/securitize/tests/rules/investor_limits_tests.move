@@ -1,7 +1,7 @@
 #[test_only]
 module securitize::investor_limits_tests;
 
-use pas::chest::Chest;
+use pas::account::Account;
 use securitize::{
     compliance_service::ComplianceConfig,
     ds_token::{Self, Treasury},
@@ -1129,7 +1129,7 @@ fun test_validate_investor_limits_for_transfer_to_eu_passes() {
     let country = b"Greece".to_string();
     let investor_id = b"investor_123".to_string();
 
-    // Register investor with wallet (creates PAS chest)
+    // Register investor with wallet (creates PAS account)
     test_helpers::register_investor_with_wallet(&mut ts, b"investor_123", WALLET1);
 
     // Set attributes and country
@@ -1154,7 +1154,7 @@ fun test_validate_investor_limits_for_transfer_to_eu_passes() {
     let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
     let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
     let version = ts.take_shared<Version>();
-    let chest = ts.take_shared<Chest>();
+    let account = ts.take_shared<Account>();
     let clock = clock::create_for_testing(ts.ctx());
 
     ds_token::issue_tokens(
@@ -1162,7 +1162,7 @@ fun test_validate_investor_limits_for_transfer_to_eu_passes() {
         &auth,
         &mut investor_info,
         &mut compliance,
-        &chest,
+        &account,
         WALLET1,
         1000,
         0,
@@ -1181,7 +1181,7 @@ fun test_validate_investor_limits_for_transfer_to_eu_passes() {
     ts::return_shared(investor_info);
     ts::return_shared(compliance);
     ts::return_shared(version);
-    ts::return_shared(chest);
+    ts::return_shared(account);
 
     // Validate investor limits for transfer
     ts.next_tx(ADMIN);

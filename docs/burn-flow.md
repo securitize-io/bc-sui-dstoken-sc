@@ -23,7 +23,7 @@ public fun burn<T>(
 
 ## PAS Request/Approval Pattern
 
-1. **Create** - `from_chest.clawback_balance(amount, ctx)` withdraws `Balance<T>` from the target chest and wraps it into a `Request<ClawbackFunds<Balance<T>>>` with an empty approvals set. No `Auth` proof required (admin action).
+1. **Create** - `from_account.clawback_balance(amount, ctx)` withdraws `Balance<T>` from the target account and wraps it into a `Request<ClawbackFunds<Balance<T>>>` with an empty approvals set. No `Auth` proof required (admin action).
 2. **Approve** - Inside `ds_token::burn`, the request is stamped: `request.approve(ClawbackApproval<T>())`.
 3. **Resolve** - Also inside `ds_token::burn`, the request is resolved: `clawback_funds::resolve(request, policy)` verifies the collected approvals match the `Policy<Balance<T>>` requirements and returns the `Balance<T>`, which is then burned via `TreasuryCap`.
 
@@ -61,7 +61,7 @@ No dynamic compliance rules are checked for burn.
 ## Full PTB Call Sequence
 
 ```
-1. from_chest.clawback_balance(amount, ctx)
+1. from_account.clawback_balance(amount, ctx)
       -> Request<ClawbackFunds<Balance<T>>>
 
 2. ds_token::burn(treasury, auth, investors, policy, request, reason, version, ctx)
@@ -80,7 +80,7 @@ sequenceDiagram
     participant Treasury as Treasury
     participant Registry as InvestorInfo
 
-    Burner->>PAS: from_chest.clawback_balance(amount)
+    Burner->>PAS: from_account.clawback_balance(amount)
     PAS-->>Burner: Request ClawbackFunds Balance (hot potato)
 
     Burner->>DS: burn(treasury, request, reason, ...)

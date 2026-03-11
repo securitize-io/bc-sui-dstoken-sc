@@ -25,7 +25,7 @@ export class CombinedIssuance {
             ptb
         )
         const lock = investor.lock;
-        this.dsToken.issueNoChestPTB(
+        this.dsToken.issueNoAccountPTB(
             investor.wallet,
             BigInt(investor.value),
             investor.reasonCode,

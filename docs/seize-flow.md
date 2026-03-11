@@ -2,7 +2,7 @@
 
 ## Overview
 
-The seize flow forcibly transfers tokens from one wallet to an issuer wallet. It uses a PAS `Request<ClawbackFunds<Balance<T>>>` that is created externally, then approved and resolved **internally** within `ds_token::seize`. The extracted balance is deposited into the destination chest.
+The seize flow forcibly transfers tokens from one wallet to an issuer wallet. It uses a PAS `Request<ClawbackFunds<Balance<T>>>` that is created externally, then approved and resolved **internally** within `ds_token::seize`. The extracted balance is deposited into the destination account.
 
 Enforced via capability-based authorization (`SeizeTokens` ability). Destination must be an issuer wallet.
 
@@ -14,7 +14,7 @@ public fun seize<T>(
     investors: &mut InvestorInfo<T>,
     policy: &Policy<Balance<T>>,
     mut request: Request<ClawbackFunds<Balance<T>>>,
-    to: &Chest,
+    to: &Account,
     to_address: address,
     reason: String,
     version: &Version,
@@ -24,20 +24,20 @@ public fun seize<T>(
 
 ## PAS Request/Approval Pattern
 
-1. **Create** - `from_chest.clawback_balance(amount, ctx)` withdraws `Balance<T>` from the source chest and wraps it into a `Request<ClawbackFunds<Balance<T>>>` with an empty approvals set. No `Auth` proof required (admin action).
+1. **Create** - `from_account.clawback_balance(amount, ctx)` withdraws `Balance<T>` from the source account and wraps it into a `Request<ClawbackFunds<Balance<T>>>` with an empty approvals set. No `Auth` proof required (admin action).
 2. **Approve** - Inside `ds_token::seize`, the request is stamped: `request.approve(ClawbackApproval<T>())`.
-3. **Resolve** - Also inside `ds_token::seize`, the request is resolved: `clawback_funds::resolve(request, policy)` verifies the collected approvals match the `Policy<Balance<T>>` requirements and returns the `Balance<T>`, which is then deposited into the destination chest.
+3. **Resolve** - Also inside `ds_token::seize`, the request is resolved: `clawback_funds::resolve(request, policy)` verifies the collected approvals match the `Policy<Balance<T>>` requirements and returns the `Balance<T>`, which is then deposited into the destination account.
 
 ## Execution Steps
 
 1. **Version check** - `version.check_is_valid()`
 2. **Extract request data** - source owner address and amount from `request.data()`
 3. **Authorization check** - caller must have `SeizeTokens` ability (roles: `Master`, `TransferAgent`)
-4. **Destination chest ownership** - `assert!(to.owner() == to_address)`
+4. **Destination account ownership** - `assert!(to.owner() == to_address)`
 5. **Compliance validation** - `compliance_service::validate_seize(investors, from_address, to_address, value)` (see below)
 6. **Approve request** - `request.approve(ClawbackApproval<T>())`
 7. **Resolve request** - `clawback_funds::resolve(request, policy)` returns `Balance<T>`
-8. **Deposit to destination** - `to.deposit_balance(balance)` into the destination chest
+8. **Deposit to destination** - `to.deposit_balance(balance)` into the destination account
 9. **Update destination balances**:
    - **Regular investor wallet**: adds `value` to investor total + per-wallet balance (u256 safe arithmetic)
    - **Special wallet**: adds `value` to special wallet balance (u256 safe arithmetic)
@@ -66,10 +66,10 @@ No dynamic compliance rules are checked for seize.
 ## Full PTB Call Sequence
 
 ```
-1. from_chest.clawback_balance(amount, ctx)
+1. from_account.clawback_balance(amount, ctx)
       -> Request<ClawbackFunds<Balance<T>>>
 
-2. ds_token::seize(auth, investors, policy, request, to_chest, to_address, reason, version, ctx)
+2. ds_token::seize(auth, investors, policy, request, to_account, to_address, reason, version, ctx)
       -> compliance check + approve + resolve + deposit + balance updates
 ```
 
@@ -84,10 +84,10 @@ sequenceDiagram
     participant Compliance as Compliance Service
     participant Registry as InvestorInfo
 
-    Seizer->>PAS: from_chest.clawback_balance(amount)
+    Seizer->>PAS: from_account.clawback_balance(amount)
     PAS-->>Seizer: Request ClawbackFunds Balance (hot potato)
 
-    Seizer->>DS: seize(request, to_chest, to_address, reason, ...)
+    Seizer->>DS: seize(request, to_account, to_address, reason, ...)
 
     DS->>DS: Assert SeizeTokens ability
 
@@ -103,7 +103,7 @@ sequenceDiagram
             DS->>PAS: clawback_funds::resolve(request, policy)
             PAS-->>DS: Balance returned
 
-            DS->>PAS: Deposit balance into destination chest
+            DS->>PAS: Deposit balance into destination account
 
             DS->>Registry: Update destination balance += amount<br/>(investor or special wallet)
             DS->>Registry: Update source balance -= amount<br/>(investor or special wallet)
