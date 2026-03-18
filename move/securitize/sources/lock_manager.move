@@ -103,7 +103,7 @@ public fun unlock_investor<T>(
 }
 
 /// Sets the liquidate-only restriction for an investor.
-/// When enabled, the investor can only transfer tokens to the issuer wallet.
+/// When enabled, the investor is not allowed to receive tokens.
 ///
 /// # Aborts
 /// * `ENotAuthorized` - If caller lacks SetLiquidateOnly ability
