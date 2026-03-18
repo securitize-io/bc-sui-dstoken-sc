@@ -68,6 +68,9 @@ public struct RemoveInvestor() has drop;
 /// Ability to update investor information
 public struct UpdateInvestor() has drop;
 
+/// Ability to directly set investor count fields
+public struct SetInvestorCounts() has drop;
+
 /// Ability to set investor country
 public struct SetCountry() has drop;
 

@@ -42,7 +42,7 @@ public fun new<T>(
     max_supply: u64,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<AuthorizedSecurities> {
+): RuleInitWrapper<T, AuthorizedSecurities> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_uint_rule_set_event<T>(
@@ -63,7 +63,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks RegisterRule ability
 public fun set_max_supply<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<AuthorizedSecurities>,
+    wrapper: &mut RuleUpdateWrapper<T, AuthorizedSecurities>,
     max_supply: u64,
     version: &Version,
     ctx: &TxContext,

@@ -1814,7 +1814,7 @@ fun test_get_total_investors_count() {
     );
 
     // Test set_total_investors_count to verify getter/setter work together
-    registry_service::set_total_investors_count(&mut registry, 5);
+    registry_service::set_total_investors_count(&mut registry, &auth, 5, &version, ts.ctx());
     assert!(registry_service::get_total_investors_count(&registry) == 5, 1);
 
     ts::return_shared(registry);
@@ -2389,15 +2389,19 @@ fun test_set_us_investors_count() {
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
 
     // Initially 0
     assert!(registry_service::get_us_investor_count(&registry) == 0, 0);
 
     // Set to 10
-    registry_service::set_us_investors_count(&mut registry, 10);
+    registry_service::set_us_investors_count(&mut registry, &auth, 10, &version, ts.ctx());
     assert!(registry_service::get_us_investor_count(&registry) == 10, 1);
 
     ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 
@@ -2408,15 +2412,19 @@ fun test_set_us_accredited_investors_count() {
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
 
     // Initially 0
     assert!(registry_service::get_us_accredited_investor_count(&registry) == 0, 0);
 
     // Set to 5
-    registry_service::set_us_accredited_investors_count(&mut registry, 5);
+    registry_service::set_us_accredited_investors_count(&mut registry, &auth, 5, &version, ts.ctx());
     assert!(registry_service::get_us_accredited_investor_count(&registry) == 5, 1);
 
     ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 
@@ -2427,15 +2435,19 @@ fun test_set_accredited_investors_count() {
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
 
     // Initially 0
     assert!(registry_service::get_accredited_investor_count(&registry) == 0, 0);
 
     // Set to 15
-    registry_service::set_accredited_investors_count(&mut registry, 15);
+    registry_service::set_accredited_investors_count(&mut registry, &auth, 15, &version, ts.ctx());
     assert!(registry_service::get_accredited_investor_count(&registry) == 15, 1);
 
     ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 
@@ -2446,15 +2458,19 @@ fun test_set_jp_investors_count() {
 
     ts.next_tx(ADMIN);
     let mut registry = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
 
     // Initially 0
     assert!(registry_service::get_jp_investor_count(&registry) == 0, 0);
 
     // Set to 8
-    registry_service::set_jp_investors_count(&mut registry, 8);
+    registry_service::set_jp_investors_count(&mut registry, &auth, 8, &version, ts.ctx());
     assert!(registry_service::get_jp_investor_count(&registry) == 8, 1);
 
     ts::return_shared(registry);
+    ts::return_shared(auth);
+    ts::return_shared(version);
     ts.end();
 }
 

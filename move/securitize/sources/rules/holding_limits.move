@@ -56,7 +56,7 @@ public fun new<T>(
     region_mins: vector<u64>,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<HoldingLimits> {
+): RuleInitWrapper<T, HoldingLimits> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     let mut region_min_tokens = vec_map::empty();
@@ -101,7 +101,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_min_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, HoldingLimits>,
     min: u64,
     version: &Version,
     ctx: &TxContext,
@@ -123,7 +123,7 @@ public fun set_min_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, HoldingLimits>,
     max: u64,
     version: &Version,
     ctx: &TxContext,
@@ -145,7 +145,7 @@ public fun set_max_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_region_min_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, HoldingLimits>,
     region: u64,
     min: u64,
     version: &Version,
@@ -181,7 +181,7 @@ public fun set_region_min_holdings<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun remove_region_min_holdings<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<HoldingLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, HoldingLimits>,
     region: u64,
     version: &Version,
     ctx: &TxContext,

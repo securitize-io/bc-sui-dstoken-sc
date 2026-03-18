@@ -4063,3 +4063,142 @@ fun test_full_lifecycle_with_all_rules() {
     ts::return_shared(investor_info);
     ts.end();
 }
+
+/// Regression: holding limits must receive (from.region, to.balance) not
+/// the swapped (to.balance, from.region).
+///
+/// Sender:   US (region 1), balance 1 000
+/// Receiver: FR (region 2), balance 500
+/// region_min[2] = 200 (FR minimum), transfer 100
+///
+/// Correct:  to_balance_after = 500 + 100 = 600 ≥ 200 → passes
+/// Swapped:  to_balance_after = 1 (from.region) + 100 = 101 < 200 → EBelowMinHolding
+#[test]
+fun test_validate_transfer_holding_limits_receiver_balance_with_regions() {
+    let mut ts = ts::begin(ADMIN);
+    setup_for_testing(&mut ts);
+
+    // --- investors & issuances (before the rule exists) ---
+    setup_investor(&mut ts, b"INV001", INVESTOR1, b"US");
+    ts.next_tx(ADMIN);
+    let inv1_account_id = ts::most_recent_id_shared<Account>().destroy_some();
+    issue_to_investor(&mut ts, INVESTOR1, 1000);
+
+    setup_investor(&mut ts, b"INV002", INVESTOR2, b"FR");
+    ts.next_tx(ADMIN);
+    let inv2_account_id = ts::most_recent_id_shared<Account>().destroy_some();
+
+    // Issue 500 to INVESTOR2 (two Accounts exist, so use take_shared_by_id)
+    ts.next_tx(ADMIN);
+    let mut treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let account = ts.take_shared_by_id<Account>(inv2_account_id);
+    let clock = clock::create_for_testing(ts.ctx());
+    ds_token::issue_tokens(
+        &mut treasury,
+        &auth,
+        &mut investor_info,
+        &mut compliance,
+        &account,
+        INVESTOR2,
+        500,
+        0,
+        b"".to_string(),
+        &version,
+        vector[],
+        vector[],
+        clock.timestamp_ms(),
+        &clock,
+        ts.ctx(),
+    );
+    clock.destroy_for_testing();
+    ts::return_shared(treasury);
+    ts::return_shared(auth);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(version);
+    ts::return_shared(account);
+
+    // --- country compliance regions ---
+    test_helpers::set_country_compliance(&mut ts, b"US", 1);
+    test_helpers::set_country_compliance(&mut ts, b"FR", 2);
+
+    // --- register HoldingLimits with region-specific min (after issuances) ---
+    ts.next_tx(ADMIN);
+    let mut compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let auth = ts.take_shared<Auth<TEST_VOLORO>>();
+    let version = ts.take_shared<Version>();
+    let rule = holding_limits::new<TEST_VOLORO>(
+        &auth,
+        0,            // no global min
+        0,            // no max
+        vector[2],    // FR region
+        vector[200],  // min 200 for FR
+        &version,
+        ts.ctx(),
+    );
+    compliance.register_rule<TEST_VOLORO, HoldingLimits>(
+        &auth,
+        rule,
+        &version,
+        ts.ctx(),
+    );
+    ts::return_shared(compliance);
+    ts::return_shared(auth);
+    ts::return_shared(version);
+
+    // --- transfer 100: receiver 500 + 100 = 600 ≥ 200 → passes ---
+    ts.next_tx(INVESTOR1);
+    let treasury = ts.take_shared<Treasury<TEST_VOLORO>>();
+    let mut investor_info = ts.take_shared<InvestorInfo<TEST_VOLORO>>();
+    let compliance = ts.take_shared<ComplianceConfig<TEST_VOLORO>>();
+    let policy = ts.take_shared<Policy<Balance<TEST_VOLORO>>>();
+    let version = ts.take_shared<Version>();
+    let clock = clock::create_for_testing(ts.ctx());
+
+    let mut from_account = ts.take_shared_by_id<Account>(inv1_account_id);
+    let to_account = ts.take_shared_by_id<Account>(inv2_account_id);
+
+    let pas_auth = account::new_auth(ts.ctx());
+    let mut request = from_account.send_balance<TEST_VOLORO>(
+        &pas_auth,
+        &to_account,
+        100,
+        ts.ctx(),
+    );
+
+    ds_token::transfer(
+        &treasury,
+        &mut investor_info,
+        &compliance,
+        &mut request,
+        &version,
+        &clock,
+    );
+
+    send_funds::resolve_balance(request, &policy);
+
+    // Verify balances after transfer
+    assert!(
+        registry_service::investor_wallet_balance<TEST_VOLORO>(&investor_info, INVESTOR1) == 900,
+        0,
+    );
+    assert!(
+        registry_service::investor_wallet_balance<TEST_VOLORO>(&investor_info, INVESTOR2) == 600,
+        1,
+    );
+
+    clock.destroy_for_testing();
+    ts::return_shared(treasury);
+    ts::return_shared(investor_info);
+    ts::return_shared(compliance);
+    ts::return_shared(policy);
+    ts::return_shared(version);
+    ts::return_shared(from_account);
+    ts::return_shared(to_account);
+
+    ts.end();
+}
