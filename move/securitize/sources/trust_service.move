@@ -46,6 +46,9 @@ const EAbilityNotFound: vector<u8> = b"Ability not found for this role";
 const ERoleAlreadyExists: vector<u8> = b"Role type already exists";
 #[error(code = 11)]
 const ERoleHasActiveMembers: vector<u8> = b"Role has active members and cannot be removed";
+#[error(code = 12)]
+const EAbilityReservedForMaster: vector<u8> =
+    b"This ability may only be assigned to the Master role";
 
 public struct TrustServiceKey<phantom T>() has copy, drop, store;
 
@@ -308,6 +311,7 @@ public(package) fun internal_remove_role<T, R: drop>(
 ///
 /// # Aborts
 /// * `ENotEnoughPermissions` - If the sender does not have the SetAbilities ability
+/// * `EAbilityReservedForMaster` - If ability A is SetServiceOwner and R is not Master
 /// * `ERoleNotFound` - If the role type R is not registered
 /// * `ERoleAbilitiesNotFound` - If the role's abilities mapping is not found
 /// * `EAbilityAlreadyExists` - If the ability A is already assigned to role R
@@ -321,6 +325,11 @@ public fun add_role_ability<T, R: drop, A: drop>(
 
     let roles_type = type_name::with_defining_ids<R>();
     let ability_type = type_name::with_defining_ids<A>();
+
+    // SetServiceOwner may only be assigned to the Master role
+    if (ability_type == type_name::with_defining_ids<SetServiceOwner>()) {
+        assert!(roles_type == type_name::with_defining_ids<Master>(), EAbilityReservedForMaster);
+    };
 
     assert!(self.roles.contains(&roles_type), ERoleNotFound);
     assert!(self.roles_abilities.contains(&roles_type), ERoleAbilitiesNotFound);
@@ -420,7 +429,7 @@ public fun add_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx: &m
 
 /// Remove a role type R from the system.
 /// Can only remove if no addresses currently have this role (counter == 0).
-/// Also cleans up the role's abilities and removes it from Master's abilities.
+/// Also cleans up the role's ability set.
 ///
 /// # Aborts
 /// * `ENotEnoughPermissions` - If the sender does not have the SetRoleTypes ability
@@ -428,13 +437,11 @@ public fun add_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx: &m
 /// * `ERoleNotFound` - If the role type R is not registered
 /// * `ERoleHasActiveMembers` - If the role has active members (counter > 0)
 /// * `ERoleAbilitiesNotFound` - If the role's abilities mapping is not found
-/// * `EAbilityNotFound` - If the set ability A is not found in Master's abilities
-public fun remove_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx: &mut TxContext) {
+public fun remove_role_type<T, R>(self: &mut Auth<T>, version: &Version, ctx: &mut TxContext) {
     version.check_is_valid();
     assert!(owner_has_ability<T, SetRoleTypes>(self, ctx.sender()), ENotEnoughPermissions);
 
     let roles_type = type_name::with_defining_ids<R>();
-    let set_ability = type_name::with_defining_ids<A>();
 
     // Prevent removing Master role
     assert!(roles_type != type_name::with_defining_ids<Master>(), ECannotRemoveMaster);
@@ -448,12 +455,6 @@ public fun remove_role_type<T, R, A>(self: &mut Auth<T>, version: &Version, ctx:
     // Clean up: Remove the role's ability set
     assert!(self.roles_abilities.contains(&roles_type), ERoleAbilitiesNotFound);
     self.roles_abilities.remove(&roles_type);
-
-    // Clean up: Remove this role from Master's abilities
-    let master_type = type_name::with_defining_ids<Master>();
-    let master_abilities = self.roles_abilities.get_mut(&master_type);
-    assert!(master_abilities.contains(&set_ability), EAbilityNotFound);
-    master_abilities.remove(&set_ability);
 }
 
 /// Makes the Auth a shared object for public access.
