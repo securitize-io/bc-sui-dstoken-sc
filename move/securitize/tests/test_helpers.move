@@ -92,7 +92,8 @@ public(package) fun create_ds_token(
         url.to_string(),
         ctx,
     );
-    setup::setup(setup_registry, namespace, currency, treasury_cap, version, ctx)
+    let metadata_cap = currency.finalize(ctx);
+    setup::setup(setup_registry, namespace, treasury_cap, metadata_cap, version, ctx)
 }
 
 /// Setup complete DS Token environment with Treasury.

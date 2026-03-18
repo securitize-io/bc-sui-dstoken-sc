@@ -3,5 +3,3 @@ name = "voloro"
 edition = "2024"
 
 [dependencies]
-securitize = { local = "../securitize" }
-pas = { git = "git@github.com:MystenLabs/pas.git", subdir = "packages/pas", rev = "main" }
