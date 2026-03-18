@@ -30,6 +30,7 @@ export type AbilityType =
     | 'RegisterInvestor'
     | 'RemoveInvestor'
     | 'UpdateInvestor'
+    | 'SetInvestorCounts'
     | 'SetCountry'
     | 'SetAttribute'
     | 'AddWallet'
