@@ -3,12 +3,13 @@ import {
     deploy as baseDeploy,
     PublishSingleton,
     SuiClient,
-    MoveType,
 } from '../../easysui'
 
 import fs from 'fs'
 import path from 'path'
 import { Config } from './config'
+import { Transaction } from '@mysten/sui/transactions'
+import { namespaceContract, templatesContract } from '@mysten/pas'
 
 type DependencyArtifacts = {
     pasPackageId?: string
@@ -101,19 +102,21 @@ async function setupPas(artifacts: DependencyArtifacts) {
         return
     }
 
-    await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
-        target: `${pasPackageId}::namespace::setup`,
-        args: [pasNamespace, pasUpgradeCap],
-        argTypes: [MoveType.object, MoveType.object],
-    })
+    // Namespace setup
+    const namespaceTx = new Transaction()
+    namespaceContract.setup({
+        package: pasPackageId,
+        arguments: { namespace: pasNamespace, cap: pasUpgradeCap },
+    })(namespaceTx)
+    await SuiClient.signAndExecute(namespaceTx, ADMIN_KEYPAIR!)
 
-    await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
-        target: `${pasPackageId}::templates::setup`,
-        args: [pasNamespace],
-        argTypes: [MoveType.object],
-    })
+    // Templates setup
+    const templatesTx = new Transaction()
+    templatesContract.setup({
+        package: pasPackageId,
+        arguments: { namespace: pasNamespace },
+    })(templatesTx)
+    await SuiClient.signAndExecute(templatesTx, ADMIN_KEYPAIR!)
 }
 
 function patchEnvFile(network: string, artifacts: DependencyArtifacts) {

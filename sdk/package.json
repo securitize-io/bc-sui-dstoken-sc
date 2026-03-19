@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
+    "@mysten/pas": "file:../pas/sdk/pas",
     "@mysten/sui": "^1.45.2",
     "@types/node": "^24.3.1",
     "cross-env": "^10.0.0",

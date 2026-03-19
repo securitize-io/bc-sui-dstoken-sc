@@ -1,9 +1,15 @@
-import { CLOCK_ID, deriveObjectId, MoveType, SuiClient } from '../easysui'
+import { CLOCK_ID, MoveType, SuiClient } from '../easysui'
 import { Config } from './utils/config'
 import { getTokenDetails, TokenDetails } from './token'
 import { Transaction } from '@mysten/sui/transactions'
 import { TokenMetadata } from './domains'
-import { bcs } from '@mysten/sui/bcs'
+import {
+    deriveAccountAddress,
+    deriveTemplateRegistryAddress,
+    accountContract,
+    sendFundsContract,
+} from '@mysten/pas'
+import { getPASPackageConfig } from './utils/pas-config'
 
 export class DSToken {
     private readonly tokenAddress: string
@@ -117,47 +123,32 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    getPASAccount(address: string) {
-        const key = 'AccountKey'
-        const serializedBcs = bcs.struct(key, { address: bcs.Address }).serialize({ address })
-        return deriveObjectId(
-            Config.vars.PAS_NAMESPACE,
-            'keys',
-            key,
-            Config.vars.PAS_PACKAGE_ID,
-            undefined,
-            serializedBcs
-        )
+    getPASAccount(address: string): string {
+        return deriveAccountAddress(address, getPASPackageConfig())
     }
 
     initiateClawbackFundsPTB(from: string, value: bigint, ptb?: Transaction) {
         ptb ??= new Transaction()
         const pasAccount = this.getPASAccount(from)
-        const clawbackRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::account::clawback_balance`,
+        const clawbackRequest = accountContract.clawbackBalance({
+            package: getPASPackageConfig().packageId,
+            arguments: { from: pasAccount, amount: value },
             typeArguments: [this.tokenAddress],
-            arguments: [ptb.object(pasAccount), ptb.pure.u64(value)],
-        })
+        })(ptb)
         return { ptb, clawbackRequest }
     }
 
     initiateSendFundsPTB(from: string, to: string, amount: bigint, ptb?: Transaction) {
         ptb ??= new Transaction()
+        const cfg = getPASPackageConfig()
         const fromRwaAccount = this.getPASAccount(from)
         const toRwaAccount = this.getPASAccount(to)
-        const auth = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::account::new_auth`,
-        })
-        const transferRequest = ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::account::send_balance`,
+        const auth = accountContract.newAuth({ package: cfg.packageId })(ptb)
+        const transferRequest = accountContract.sendBalance({
+            package: cfg.packageId,
+            arguments: { from: fromRwaAccount, auth, to: toRwaAccount, amount },
             typeArguments: [this.tokenAddress],
-            arguments: [
-                ptb.object(fromRwaAccount),
-                auth,
-                ptb.object(toRwaAccount),
-                ptb.pure.u64(amount),
-            ],
-        })
+        })(ptb)
         return { ptb, transferRequest }
     }
 
@@ -165,11 +156,11 @@ export class DSToken {
         transferRequest: ReturnType<Transaction['moveCall']>,
         ptb: Transaction
     ) {
-        ptb.moveCall({
-            target: `${Config.vars.PAS_PACKAGE_ID}::send_funds::resolve_balance`,
+        sendFundsContract.resolveBalance({
+            package: getPASPackageConfig().packageId,
+            arguments: { request: transferRequest, policy: this.tokenDetails.pasPolicy },
             typeArguments: [this.tokenAddress],
-            arguments: [transferRequest, ptb.object(this.tokenDetails.pasPolicy)],
-        })
+        })(ptb)
         return ptb
     }
 
@@ -457,13 +448,8 @@ export class DSToken {
         return this.buildSetBytes(ptb, signer)
     }
 
-    private getTemplatesObjectId() {
-        return deriveObjectId(
-            Config.vars.PAS_NAMESPACE,
-            'keys',
-            'TemplateKey',
-            Config.vars.PAS_PACKAGE_ID
-        )
+    private getTemplatesObjectId(): string {
+        return deriveTemplateRegistryAddress(getPASPackageConfig())
     }
 
     setTemplateCommandPTB(command: any, ptb?: Transaction) {
