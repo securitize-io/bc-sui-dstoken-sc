@@ -47,7 +47,7 @@ public fun new<T>(
     force_us_accredited: bool,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<AccreditedOnly> {
+): RuleInitWrapper<T, AccreditedOnly> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_bool_rule_set_event<T>(
@@ -74,7 +74,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_accredited<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<AccreditedOnly>,
+    wrapper: &mut RuleUpdateWrapper<T, AccreditedOnly>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
@@ -92,7 +92,7 @@ public fun set_force_accredited<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us_accredited<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<AccreditedOnly>,
+    wrapper: &mut RuleUpdateWrapper<T, AccreditedOnly>,
     force: bool,
     version: &Version,
     ctx: &TxContext,

@@ -29,10 +29,8 @@ async function deployToken(tokenSymbol: string): Promise<string[]> {
     fs.mkdirSync(sourcesDir, { recursive: true })
 
     // Write the Move.toml file
-    const securitizePackagePath = `../../${Config.vars.PACKAGE_PATH}`;
     const moveToml = MOVE_TOML
         .replaceAll('{MODULE}', module)
-        .replaceAll('{SECURITIZE_PACKAGE_PATH}', securitizePackagePath)
     fs.writeFileSync(path.join(tempDir, 'Move.toml'), moveToml)
 
     // Write the contract source file
@@ -69,13 +67,7 @@ export async function createDSToken(request: DeploymentRequest) {
         const tokenPackage = `${deployedPackageId}::${tokenSymbol.toLowerCase()}`
         const tokenAddressId = `${tokenPackage}::${tokenSymbol.toUpperCase()}`
 
-        const [
-            auth,
-            treasury,
-            investorInfo,
-            complianceConfig,
-            setupFinalize
-        ] = ptb.moveCall({
+        const [metadataCap, treasuryCap] = ptb.moveCall({
             target: `${tokenPackage}::create_ds_token`,
             arguments: [
                 ptb.pure.string(tokenDescription.name),
@@ -83,9 +75,24 @@ export async function createDSToken(request: DeploymentRequest) {
                 ptb.pure.string(tokenDescription.iconUri),
                 ptb.pure.string(tokenDescription.description),
                 ptb.pure.u8(tokenDescription.decimals),
+                ptb.object(COIN_REGISTRY),
+            ],
+        })
+
+        const [
+            auth,
+            treasury,
+            investorInfo,
+            complianceConfig,
+            setupFinalize
+        ] = ptb.moveCall({
+            target: `${Config.vars.PACKAGE_ID}::setup::setup`,
+            typeArguments: [tokenAddressId],
+            arguments: [
                 ptb.object(Config.vars.SETUP_REGISTRY),
                 ptb.object(Config.vars.PAS_NAMESPACE),
-                ptb.object(COIN_REGISTRY),
+                treasuryCap,
+                metadataCap,
                 ptb.object(Config.vars.VERSION),
             ],
         })

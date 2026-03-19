@@ -16,7 +16,7 @@ use securitize::{
     version::Version,
     wallet_manager
 };
-use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, vec_set::{Self, VecSet}};
+use sui::{coin::TreasuryCap, coin_registry::MetadataCap, vec_set::{Self, VecSet}};
 
 // ==== Error Codes ====
 
@@ -24,6 +24,8 @@ use sui::{coin::TreasuryCap, coin_registry::CurrencyInitializer, vec_set::{Self,
 const ENotDeployer: vector<u8> = b"Caller is not a registered deployer";
 #[error(code = 1)]
 const ENotAdmin: vector<u8> = b"Caller is not the admin";
+#[error(code = 2)]
+const ENonZeroSupply: vector<u8> = b"TreasuryCap supply must be zero at setup";
 
 // ==== Structs ====
 
@@ -58,17 +60,19 @@ fun init(ctx: &mut TxContext) {
 ///
 /// # Aborts
 /// * `ENotDeployer` - If the caller is not in the authorized deployers list
+/// * `ENonZeroSupply` - If the TreasuryCap already has a non-zero supply
 public fun setup<T: key>(
     setup_registry: &mut SetupRegistry,
     namespace: &mut Namespace,
-    currency: CurrencyInitializer<T>,
     treasury_cap: TreasuryCap<T>,
+    metadata_cap: MetadataCap<T>,
     version: &Version,
     ctx: &mut TxContext,
 ): (Auth<T>, Treasury<T>, InvestorInfo<T>, ComplianceConfig<T>, SetupFinalize) {
     version.check_is_valid();
     assert!(setup_registry.deployers.contains(&ctx.sender()), ENotDeployer);
-    let metadata_cap = currency.finalize(ctx);
+    assert!(treasury_cap.total_supply() == 0, ENonZeroSupply);
+
     let mut auth = trust_service::new<T>(setup_registry.uid_mut(), ctx);
     let treasury = ds_token::new<T>(
         setup_registry.uid_mut(),

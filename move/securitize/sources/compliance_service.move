@@ -296,7 +296,7 @@ public(package) fun validate_seize<T>(
 public fun register_rule<T, R: store>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
-    wrapper: RuleInitWrapper<R>,
+    wrapper: RuleInitWrapper<T, R>,
     version: &Version,
     ctx: &TxContext,
 ) {
@@ -356,7 +356,7 @@ public fun get_rule<T, R: store + drop>(
     auth: &Auth<T>,
     version: &Version,
     ctx: &TxContext,
-): RuleUpdateWrapper<R> {
+): RuleUpdateWrapper<T, R> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, ManageRules>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
@@ -372,7 +372,7 @@ public fun get_rule<T, R: store + drop>(
 public fun return_rule<T, R: store + drop>(
     self: &mut ComplianceConfig<T>,
     auth: &Auth<T>,
-    wrapper: RuleUpdateWrapper<R>,
+    wrapper: RuleUpdateWrapper<T, R>,
     version: &Version,
     ctx: &TxContext,
 ) {
@@ -540,10 +540,10 @@ public(package) fun adjust_total_investors_counts<T>(
     let total = registry.get_total_investors_count();
 
     if (increase) {
-        registry.set_total_investors_count(total + 1);
+        registry.set_total_investors_count_internal(total + 1);
     } else {
         assert!(total > 0, ETotalInvestorsUnderflow);
-        registry.set_total_investors_count(total - 1);
+        registry.set_total_investors_count_internal(total - 1);
     };
 
     // country + accreditation breakdown
@@ -661,8 +661,8 @@ fun validate_transfer_rule<T>(
             transfer.amount,
             from.is_special_wallet,
             from.balance,
-            to.balance,
             from.region,
+            to.balance,
             to.region,
         );
     } else if (rule == type_name::with_defining_ids<InvestorLimits>()) {

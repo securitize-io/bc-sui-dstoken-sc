@@ -258,6 +258,28 @@ export class Investors {
         return SuiClient.devInspectOptionU64(ptb, sender)
     }
 
+    // ==== Investor Count Setters ====
+
+    async setTotalInvestorsCount(count: number, signer: string) {
+        return this.buildSetPTB(signer, 'set_total_investors_count', [count])
+    }
+
+    async setUsInvestorsCount(count: number, signer: string) {
+        return this.buildSetPTB(signer, 'set_us_investors_count', [count])
+    }
+
+    async setUsAccreditedInvestorsCount(count: number, signer: string) {
+        return this.buildSetPTB(signer, 'set_us_accredited_investors_count', [count])
+    }
+
+    async setAccreditedInvestorsCount(count: number, signer: string) {
+        return this.buildSetPTB(signer, 'set_accredited_investors_count', [count])
+    }
+
+    async setJpInvestorsCount(count: number, signer: string) {
+        return this.buildSetPTB(signer, 'set_jp_investors_count', [count])
+    }
+
     // ==== Setters ====
 
     registerInvestorPTB(investorId: string, ptb?: Transaction) {

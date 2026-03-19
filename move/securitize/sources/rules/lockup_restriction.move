@@ -60,7 +60,7 @@ public fun new<T>(
     non_us_lock_period_ms: u64,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<LockupRestriction> {
+): RuleInitWrapper<T, LockupRestriction> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     assert!(us_lock_period_ms <= MAX_LOCK_PERIOD_MS, ELockPeriodTooLong);
@@ -82,7 +82,7 @@ public fun new<T>(
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_us_lock_period<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<LockupRestriction>,
+    wrapper: &mut RuleUpdateWrapper<T, LockupRestriction>,
     period_ms: u64,
     version: &Version,
     ctx: &TxContext,
@@ -106,7 +106,7 @@ public fun set_us_lock_period<T>(
 /// * `ELockPeriodTooLong` - If period exceeds maximum (200 years)
 public fun set_non_us_lock_period<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<LockupRestriction>,
+    wrapper: &mut RuleUpdateWrapper<T, LockupRestriction>,
     period_ms: u64,
     version: &Version,
     ctx: &TxContext,

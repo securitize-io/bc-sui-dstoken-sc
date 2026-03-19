@@ -79,7 +79,7 @@ public fun new<T>(
     max_us_percentage: u64,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<InvestorLimits> {
+): RuleInitWrapper<T, InvestorLimits> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_uint_rule_set_event<T>(b"totalInvestorsLimit".to_string(), 0, total_investors_limit);
@@ -115,7 +115,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_total_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
@@ -137,7 +137,7 @@ public fun set_total_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_minimum_total_investors<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     minimum: u64,
     version: &Version,
     ctx: &TxContext,
@@ -159,7 +159,7 @@ public fun set_minimum_total_investors<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
@@ -177,7 +177,7 @@ public fun set_us_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_us_accredited_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
@@ -199,7 +199,7 @@ public fun set_us_accredited_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_non_accredited_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
@@ -221,7 +221,7 @@ public fun set_non_accredited_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_jp_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
@@ -239,7 +239,7 @@ public fun set_jp_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_eu_retail_limit<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     limit: u64,
     version: &Version,
     ctx: &TxContext,
@@ -257,7 +257,7 @@ public fun set_eu_retail_limit<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_max_us_percentage<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<InvestorLimits>,
+    wrapper: &mut RuleUpdateWrapper<T, InvestorLimits>,
     percentage: u64,
     version: &Version,
     ctx: &TxContext,

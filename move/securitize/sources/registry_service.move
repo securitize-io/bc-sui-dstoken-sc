@@ -11,6 +11,7 @@ use securitize::{
         RegisterInvestor,
         RemoveInvestor,
         UpdateInvestor,
+        SetInvestorCounts,
         SetCountry,
         SetAttribute,
         AddWallet,
@@ -194,6 +195,7 @@ public(package) fun new<T: key>(
     auth.add_role_ability<T, Master, RegisterInvestor>(version, ctx);
     auth.add_role_ability<T, Master, RemoveInvestor>(version, ctx);
     auth.add_role_ability<T, Master, UpdateInvestor>(version, ctx);
+    auth.add_role_ability<T, Master, SetInvestorCounts>(version, ctx);
     auth.add_role_ability<T, Master, SetCountry>(version, ctx);
     auth.add_role_ability<T, Master, SetAttribute>(version, ctx);
     auth.add_role_ability<T, Master, AddWallet>(version, ctx);
@@ -783,17 +785,23 @@ public(package) fun remove_special_wallet<T>(
 }
 
 /// Sets the total count of investors.
-public(package) fun set_total_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
+public(package) fun set_total_investors_count_internal<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
     investor_info.total_investors_count = count;
 }
 
 /// Sets the count of US investors.
-public(package) fun set_us_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
+public(package) fun set_us_investors_count_internal<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
     investor_info.us_investors_count = count;
 }
 
 /// Sets the count of US accredited investors.
-public(package) fun set_us_accredited_investors_count<T>(
+public(package) fun set_us_accredited_investors_count_internal<T>(
     investor_info: &mut InvestorInfo<T>,
     count: u64,
 ) {
@@ -801,7 +809,7 @@ public(package) fun set_us_accredited_investors_count<T>(
 }
 
 /// Sets the count of accredited investors.
-public(package) fun set_accredited_investors_count<T>(
+public(package) fun set_accredited_investors_count_internal<T>(
     investor_info: &mut InvestorInfo<T>,
     count: u64,
 ) {
@@ -809,8 +817,76 @@ public(package) fun set_accredited_investors_count<T>(
 }
 
 /// Sets the count of Japanese investors.
-public(package) fun set_jp_investors_count<T>(investor_info: &mut InvestorInfo<T>, count: u64) {
+public(package) fun set_jp_investors_count_internal<T>(
+    investor_info: &mut InvestorInfo<T>,
+    count: u64,
+) {
     investor_info.jp_investors_count = count;
+}
+
+/// Sets the total count of investors. Requires SetInvestorCounts ability.
+public fun set_total_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    auth: &Auth<T>,
+    count: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetInvestorCounts>(ctx.sender()), ENotAuthorized);
+    set_total_investors_count_internal(investor_info, count);
+}
+
+/// Sets the count of US investors. Requires SetInvestorCounts ability.
+public fun set_us_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    auth: &Auth<T>,
+    count: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetInvestorCounts>(ctx.sender()), ENotAuthorized);
+    set_us_investors_count_internal(investor_info, count);
+}
+
+/// Sets the count of US accredited investors. Requires SetInvestorCounts ability.
+public fun set_us_accredited_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    auth: &Auth<T>,
+    count: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetInvestorCounts>(ctx.sender()), ENotAuthorized);
+    set_us_accredited_investors_count_internal(investor_info, count);
+}
+
+/// Sets the count of accredited investors. Requires SetInvestorCounts ability.
+public fun set_accredited_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    auth: &Auth<T>,
+    count: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetInvestorCounts>(ctx.sender()), ENotAuthorized);
+    set_accredited_investors_count_internal(investor_info, count);
+}
+
+/// Sets the count of Japanese investors. Requires SetInvestorCounts ability.
+public fun set_jp_investors_count<T>(
+    investor_info: &mut InvestorInfo<T>,
+    auth: &Auth<T>,
+    count: u64,
+    version: &Version,
+    ctx: &TxContext,
+) {
+    version.check_is_valid();
+    assert!(auth.owner_has_ability<T, SetInvestorCounts>(ctx.sender()), ENotAuthorized);
+    set_jp_investors_count_internal(investor_info, count);
 }
 
 public(package) fun set_eu_retail_investors_country_if_not_exists<T>(

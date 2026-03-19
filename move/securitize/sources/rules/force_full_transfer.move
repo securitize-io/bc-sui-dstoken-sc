@@ -46,7 +46,7 @@ public fun new<T>(
     force_full_transfer_worldwide: bool,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<ForceFullTransfer> {
+): RuleInitWrapper<T, ForceFullTransfer> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_bool_rule_set_event<T>(
@@ -73,7 +73,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_us<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<ForceFullTransfer>,
+    wrapper: &mut RuleUpdateWrapper<T, ForceFullTransfer>,
     force: bool,
     version: &Version,
     ctx: &TxContext,
@@ -95,7 +95,7 @@ public fun set_force_us<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_force_worldwide<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<ForceFullTransfer>,
+    wrapper: &mut RuleUpdateWrapper<T, ForceFullTransfer>,
     force: bool,
     version: &Version,
     ctx: &TxContext,

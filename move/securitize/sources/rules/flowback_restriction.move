@@ -44,7 +44,7 @@ public fun new<T>(
     block_flowback_end_time_ms: u64,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<FlowbackRestriction> {
+): RuleInitWrapper<T, FlowbackRestriction> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_uint_rule_set_event<T>(
@@ -65,7 +65,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_flowback_end_time<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<FlowbackRestriction>,
+    wrapper: &mut RuleUpdateWrapper<T, FlowbackRestriction>,
     end_time: u64,
     version: &Version,
     ctx: &TxContext,

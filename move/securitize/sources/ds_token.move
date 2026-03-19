@@ -409,20 +409,7 @@ public fun seize<T>(
     let balance = pas::clawback_funds::resolve(request, policy);
     to.deposit_balance(balance);
 
-    if (investors.is_wallet(to_address)) {
-        let id = investors.get_investor_id_by_wallet(to_address);
-        let total_balance = investors.investor_wallet_balance_total(id);
-        investors.update_investor_total_balance(
-            id,
-            try_from_u256_to_u64!((total_balance as u256) + (value as u256)),
-        );
-
-        let wallet_balance = investors.investor_wallet_balance(to_address);
-        investors.update_wallet_balance(
-            to_address,
-            try_from_u256_to_u64!((wallet_balance as u256) + (value as u256)),
-        );
-    } else if (investors.is_special_wallet(to_address)) {
+    if (investors.is_special_wallet(to_address)) {
         let wallet_balance = investors.special_wallet_balance(to_address);
         investors.update_special_wallet_total_balance(
             to_address,

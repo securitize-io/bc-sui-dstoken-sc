@@ -37,7 +37,7 @@ public fun new<T>(
     disallow_backdating: bool,
     version: &Version,
     ctx: &TxContext,
-): RuleInitWrapper<BackdatingIssuance> {
+): RuleInitWrapper<T, BackdatingIssuance> {
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, RegisterRule>(ctx.sender()), ENotAuthorized);
     emit_bool_rule_set_event<T>(
@@ -58,7 +58,7 @@ public fun new<T>(
 /// * `ENotAuthorized` - If caller lacks ManageRules ability
 public fun set_disallow_backdating<T>(
     auth: &Auth<T>,
-    wrapper: &mut RuleUpdateWrapper<BackdatingIssuance>,
+    wrapper: &mut RuleUpdateWrapper<T, BackdatingIssuance>,
     disallow: bool,
     version: &Version,
     ctx: &TxContext,
