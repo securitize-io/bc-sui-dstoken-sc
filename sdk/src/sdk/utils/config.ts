@@ -13,21 +13,30 @@ interface ConfigVars extends BaseConfigVars {
 }
 
 export class Config extends BaseConfig<ConfigVars> {
+    protected static override _cachedVars: ConfigVars | null = null
+
+    static override invalidateCache(): void {
+        super.invalidateCache()
+        this._cachedVars = null
+    }
+
     static override get vars(): ConfigVars {
-        // Load base config first (this loads .env.testnet or .env.devnet based on NETWORK)
-        const baseVars = super.vars
+        if (this._cachedVars) {
+            return this._cachedVars
+        }
 
         const network = process.env.NETWORK || 'localnet'
         const securitizeEnv = process.env.SECURITIZE_TESTNET_ENV
 
-        // Load AFTER super.vars to override with testnet_alpha/beta/gamma specific values
+        // Load securitize-specific env file if on testnet
         if (network === 'testnet' && securitizeEnv && ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)) {
             dotenv.config({ path: `.env.${securitizeEnv}`, override: true })
         }
 
-        return {
+        const baseVars = super.vars
+
+        this._cachedVars = {
             ...baseVars,
-            // Re-read these from process.env after loading testnet_alpha/beta/gamma env file
             PACKAGE_ID: process.env.PACKAGE_ID || baseVars.PACKAGE_ID,
             UPGRADE_CAP_ID: process.env.UPGRADE_CAP_ID || baseVars.UPGRADE_CAP_ID,
             SETUP_REGISTRY: process.env.SETUP_REGISTRY || '',
@@ -39,6 +48,7 @@ export class Config extends BaseConfig<ConfigVars> {
             MAINNET_TOKENS_PATH: process.env.MAINNET_TOKENS_PATH || './mainnet_tokens',
             SECURITIZE_TESTNET_ENV: process.env.SECURITIZE_TESTNET_ENV || 'testnet_alpha',
         }
+        return this._cachedVars
     }
 
     static override get extraVars(): ExtraVarsMap {
