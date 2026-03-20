@@ -93,14 +93,11 @@ export class PublishSingleton {
         }
 
         const securitizeEnv = process.env.SECURITIZE_TESTNET_ENV
-        if (
-            securitizeEnv &&
-            ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)
-        ) {
+        if (securitizeEnv && ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)) {
             return securitizeEnv
         }
 
-        return undefined
+        return undefined // Plain testnet, no -e flag
     }
 
     private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {

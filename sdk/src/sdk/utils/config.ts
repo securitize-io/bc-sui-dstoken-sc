@@ -46,7 +46,7 @@ export class Config extends BaseConfig<ConfigVars> {
             PAS_NAMESPACE: process.env.PAS_NAMESPACE || '',
             TEMP_PATH: process.env.TEMP_PATH || './temp_tokens',
             MAINNET_TOKENS_PATH: process.env.MAINNET_TOKENS_PATH || './mainnet_tokens',
-            SECURITIZE_TESTNET_ENV: process.env.SECURITIZE_TESTNET_ENV || 'testnet_alpha',
+            SECURITIZE_TESTNET_ENV: process.env.SECURITIZE_TESTNET_ENV || '',
         }
         return this._cachedVars
     }
