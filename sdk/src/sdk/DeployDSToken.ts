@@ -11,6 +11,7 @@ import { PublishSingleton } from '../easysui'
 import fs from 'fs'
 import path from 'path'
 import { COIN_REGISTRY } from '../easysui/config/config'
+import { DSToken } from './DSToken'
 
 async function deployToken(tokenSymbol: string): Promise<string[]> {
     const module = tokenSymbol.toLowerCase()
@@ -135,6 +136,10 @@ export async function createDSToken(request: DeploymentRequest) {
                 )
             })
         }
+
+        // Set the transfer approval witness command in templates for <T>
+        const dsToken = new DSToken(tokenAddressId)
+        dsToken.setTransferTemplateCommandPTB(ptbDetails)
 
         // Transfer service ownership + upgrade cap LAST (after all other role operations)
         // This must be last because it transfers Master role away from signer
