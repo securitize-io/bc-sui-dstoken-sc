@@ -37,8 +37,8 @@ async function deployToken(tokenSymbol: string): Promise<string[]> {
     // Write the contract source file
     fs.writeFileSync(path.join(sourcesDir, `${module}.move`), contract)
 
-    // Publish the package
-    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tokenDir)
+    // Publish the package (isTokenPackage=true to skip -e flag)
+    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tokenDir, true)
     // Clean up temporary directory (mainnet preserved for auditing)
     if (isMainnet) {
         console.log(`Mainnet deployment: contract preserved at ${tokenDir}`)

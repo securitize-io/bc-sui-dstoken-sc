@@ -93,14 +93,17 @@ export class PublishSingleton {
         }
 
         const securitizeEnv = process.env.SECURITIZE_TESTNET_ENV
-        if (securitizeEnv && ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)) {
+        if (
+            securitizeEnv &&
+            ['testnet_alpha', 'testnet_beta', 'testnet_gamma'].includes(securitizeEnv)
+        ) {
             return securitizeEnv
         }
 
         return undefined // Plain testnet, no -e flag
     }
 
-    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {
+    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false, isTokenPackage: boolean = false) {
         const network = Config.vars.NETWORK
 
         if (!fs.existsSync(packagePath)) {
@@ -118,8 +121,8 @@ export class PublishSingleton {
         let publishCmd: string
         if (isEphemeralChain) {
             publishCmd = `test-publish --build-env testnet --pubfile-path ${this.pubFile}`
-        } else if (moveEnv && !packagePath.includes("temp_tokens") && !packagePath.includes("mainnet_tokens")) {
-            // No --pubfile-path for testnet and mainnet - PAS/PTB resolve from Published.toml in repo
+        } else if (moveEnv && !isTokenPackage) {
+            // Token packages don't use -e flag - they reference the main package via Published.toml
             publishCmd = `publish -e ${moveEnv}`
         } else {
             publishCmd = 'publish'
@@ -137,7 +140,7 @@ export class PublishSingleton {
     }
 
     static get pubFile() {
-        return`Pub.${Config.vars.NETWORK}.toml`
+        return `Pub.${Config.vars.NETWORK}.toml`
     }
 
     static cleanPubFile() {
@@ -146,10 +149,10 @@ export class PublishSingleton {
         }
     }
 
-    static async getPublishBytes(signer?: string, packagePath?: string): Promise<string> {
+    static async getPublishBytes(signer?: string, packagePath?: string, isTokenPackage: boolean = false): Promise<string> {
         signer ??= ADMIN_KEYPAIR!.toSuiAddress()
         const _packagePath = this.getPackagePath(packagePath)
-        const cmd = this.getPublishCmd(_packagePath, signer, true)
+        const cmd = this.getPublishCmd(_packagePath, signer, true, isTokenPackage)
         try {
             return execSync(cmd, {
                 encoding: 'utf-8',
@@ -166,9 +169,10 @@ export class PublishSingleton {
 
     static async publishPackage(
         signer: Keypair,
-        packagePath: string
+        packagePath: string,
+        isTokenPackage: boolean = false
     ): Promise<SuiTransactionBlockResponse> {
-        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress())
+        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress(), false, isTokenPackage)
         let res: string
         try {
             res = execSync(cmd, {
