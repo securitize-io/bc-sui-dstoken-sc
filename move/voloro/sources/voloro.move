@@ -1,10 +1,9 @@
 module voloro::voloro;
 
 use std::string::String;
-use sui::coin::{TreasuryCap};
-use sui::coin_registry::{Self, CoinRegistry, MetadataCap};
+use sui::{coin::TreasuryCap, coin_registry::{Self, CoinRegistry, MetadataCap}};
 
-public struct VOLORO has key {
+public struct Voloro has key {
     id: UID,
 }
 
@@ -16,8 +15,8 @@ public fun create_ds_token(
     decimals: u8,
     registry: &mut CoinRegistry,
     ctx: &mut TxContext,
-): (MetadataCap<VOLORO>, TreasuryCap<VOLORO>) {
-    let (currency, treasury_cap) = coin_registry::new_currency<VOLORO>(
+): (MetadataCap<Voloro>, TreasuryCap<Voloro>) {
+    let (currency, treasury_cap) = coin_registry::new_currency<Voloro>(
         registry,
         decimals,
         name,

@@ -15,9 +15,13 @@ import { DSToken } from './DSToken'
 
 async function deployToken(tokenSymbol: string): Promise<string[]> {
     const module = tokenSymbol.toLowerCase()
-    const symbol = tokenSymbol.toUpperCase()
+    const symbolCapitalized =
+        tokenSymbol.charAt(0).toUpperCase() + tokenSymbol.slice(1).toLowerCase()
 
-    const contract = TOKEN_TEMPLATE.replaceAll('{MODULE}', module).replaceAll('{SYMBOL}', symbol)
+    const contract = TOKEN_TEMPLATE.replaceAll('{MODULE}', module).replaceAll(
+        '{SYMBOL}',
+        symbolCapitalized
+    )
 
     // Create a directory for the token package (mainnet uses persistent directory)
     const isMainnet = Config.vars.NETWORK === 'mainnet'
