@@ -11,6 +11,7 @@ use securitize::{
     trust_service::Auth,
     version::Version
 };
+use sui::clock::Clock;
 
 // ==== Error Codes ====
 
@@ -114,7 +115,7 @@ public fun flowback_end_time(rule: &FlowbackRestriction): u64 {
     rule.block_flowback_end_time_ms
 }
 
-/// Check if flowback restriction is active
-public fun is_active(rule: &FlowbackRestriction, timestamp_ms: u64): bool {
-    rule.block_flowback_end_time_ms == 0 || timestamp_ms < rule.block_flowback_end_time_ms
+/// Check if flowback restriction is currently active
+public fun is_active(rule: &FlowbackRestriction, clock: &Clock): bool {
+    rule.block_flowback_end_time_ms == 0 || clock.timestamp_ms() < rule.block_flowback_end_time_ms
 }
