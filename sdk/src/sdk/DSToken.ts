@@ -2,7 +2,7 @@ import { CLOCK_ID, deriveObjectId, MoveType, SuiClient } from '../easysui'
 import { Config } from './utils/config'
 import { getTokenDetails, TokenDetails } from './token'
 import { Transaction } from '@mysten/sui/transactions'
-import { TokenMetadata } from './domains'
+import { TokenMetadata, PTBDetails, newPTBDetails } from './domains'
 import { bcs } from '@mysten/sui/bcs'
 
 export class DSToken {
@@ -466,10 +466,10 @@ export class DSToken {
         )
     }
 
-    setTemplateCommandPTB(command: any, ptb?: Transaction) {
+    setTemplateCommandPTB(command: any, ptb?: Transaction, auth?: any) {
         ptb ??= new Transaction()
         const args = [
-            this.tokenDetails.auth,
+            auth ?? this.tokenDetails.auth,
             this.getTemplatesObjectId(),
             command,
             Config.vars.VERSION,
@@ -498,24 +498,18 @@ export class DSToken {
         const pkg = Config.vars.PACKAGE_ID
 
         const treasuryArg = ptb.moveCall({
-            target: `${ptbPkg}::ptb::object_by_type_string`,
-            arguments: [ptb.pure.string(`${pkg}::ds_token::Treasury<${this.tokenAddress}>`)],
+            target: `${ptbPkg}::ptb::object_by_id`,
+            arguments: [ptb.pure.id(this.tokenDetails.treasury)],
         })
 
         const investorsArg = ptb.moveCall({
-            target: `${ptbPkg}::ptb::object_by_type_string`,
-            arguments: [
-                ptb.pure.string(`${pkg}::registry_service::InvestorInfo<${this.tokenAddress}>`),
-            ],
+            target: `${ptbPkg}::ptb::object_by_id`,
+            arguments: [ptb.pure.id(this.tokenDetails.investorInfo)],
         })
 
         const complianceArg = ptb.moveCall({
-            target: `${ptbPkg}::ptb::object_by_type_string`,
-            arguments: [
-                ptb.pure.string(
-                    `${pkg}::compliance_service::ComplianceConfig<${this.tokenAddress}>`
-                ),
-            ],
+            target: `${ptbPkg}::ptb::object_by_id`,
+            arguments: [ptb.pure.id(this.tokenDetails.complianceConfig)],
         })
 
         const requestArg = ptb.moveCall({
@@ -525,8 +519,8 @@ export class DSToken {
         })
 
         const versionArg = ptb.moveCall({
-            target: `${ptbPkg}::ptb::object_by_type_string`,
-            arguments: [ptb.pure.string(`${pkg}::version::Version`)],
+            target: `${ptbPkg}::ptb::object_by_id`,
+            arguments: [ptb.pure.id(Config.vars.VERSION)],
         })
 
         const clockArg = ptb.moveCall({
@@ -555,10 +549,12 @@ export class DSToken {
         })
     }
 
-    setTransferTemplateCommandPTB(ptb?: Transaction) {
-        ptb ??= new Transaction()
+    setTransferTemplateCommandPTB(ptbDetails?: PTBDetails) {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
         const command = this.buildTransferCommand(ptb)
-        return this.setTemplateCommandPTB(command, ptb)
+        const auth = ptbDetails.tokenDetails?.auth
+        return this.setTemplateCommandPTB(command, ptb, auth)
     }
 
     async setTransferTemplateCommand(signer: string) {

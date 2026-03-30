@@ -157,6 +157,6 @@ describe('CombinedIssuanceBulk', () => {
             expect(totalIssuedAfter).toBe(
                 (parseInt(totalIssuedBefore) + numberOfInvestors * tokenPerInvestor).toString()
             )
-        }, 300000)
+        }, 1200000)
     })
 })

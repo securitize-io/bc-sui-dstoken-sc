@@ -1,5 +1,46 @@
 # @securitize/sui-sdk
 
+## 3.0.0
+
+### Major Changes
+
+- Publish latest version to allow publishing to allow testnet alpha, beta and gamma
+
+### Patch Changes
+
+- Fix PAS calls
+- Latest version to publish
+- Fixed SDK to return total balance of a single wallet
+- Fixing issuance function
+- Include console.log errors
+- Fix to avoid derivated addresses in PTB
+- Implement latest version
+- Updated SDK to allow testnet deployment
+- Include console.log on autodeployment feature
+- Use latest main changes
+- fixing roles
+- Use latest main version
+
+## 2.0.0
+
+### Major Changes
+
+- Publish latest version to allow publishing to allow testnet alpha, beta and gamma
+
+### Patch Changes
+
+- Latest version to publish
+- Fixed SDK to return total balance of a single wallet
+- Fixing issuance function
+- Include console.log errors
+- Fix to avoid derivated addresses in PTB
+- Implement latest version
+- Updated SDK to allow testnet deployment
+- Include console.log on autodeployment feature
+- Use latest main changes
+- fixing roles
+- Use latest main version
+
 ## 1.1.0
 
 ### Minor Changes

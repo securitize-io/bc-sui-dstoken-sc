@@ -1,53 +1,54 @@
 {
-  "name": "@securitize/sui-sdk",
-  "version": "1.9.0",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.mjs"
+    "name": "@securitize/sui-sdk",
+    "version": "3.0.0",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "require": "./dist/index.js",
+            "import": "./dist/index.mjs"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "prepare": "pnpm build",
+        "prepublishOnly": "pnpm build",
+        "changeset": "changeset",
+        "version": "changeset version",
+        "deploy_localnet": "rm -f ./Pub.localnet.toml && sui client switch --env localnet && cross-env NETWORK=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
+        "deploy_devnet": "rm -f ./Pub.devnet.toml && sui client switch --env devnet && cross-env NETWORK=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
+        "deploy_testnet": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts --",
+        "deploy_mainnet": "sui client switch --env mainnet && cross-env NETWORK=mainnet pnpm exec ts-node ./src/scripts/deploy.ts",
+        "deploy_devnet_test_token": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
+        "deploy_testnet_test_token": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
+        "exp": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/test_registerInvestor.ts",
+        "test": "jest --runInBand",
+        "lint": "npx prettier -c **/*.ts",
+        "fix": "npx prettier -c **/*.ts --write",
+        "clean": "rm -rf ./node_modules"
+    },
+    "devDependencies": {
+        "@changesets/cli": "^2.29.8",
+        "@jest/types": "^30.2.0",
+        "@types/jest": "^30.0.0",
+        "jest": "^30.1.3",
+        "prettier": "^3.6.2",
+        "ts-jest": "^29.4.1",
+        "tsup": "^8.5.1"
+    },
+    "dependencies": {
+        "@iarna/toml": "^2.2.5",
+        "@mysten/sui": "^1.45.2",
+        "@types/node": "^24.3.1",
+        "cross-env": "^10.0.0",
+        "dotenv": "^17.2.3",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.2"
     }
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "prepare": "pnpm build",
-    "prepublishOnly": "pnpm build",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "deploy_localnet": "rm -f ./Pub.localnet.toml && sui client switch --env localnet && cross-env NETWORK=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
-    "deploy_devnet": "rm -f ./Pub.devnet.toml && sui client switch --env devnet && cross-env NETWORK=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
-    "deploy_testnet": "rm -f ./Pub.testnet.toml && sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
-    "deploy_mainnet": "sui client switch --env mainnet && cross-env NETWORK=mainnet pnpm exec ts-node ./src/scripts/deploy.ts",
-    "deploy_test_token": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
-    "exp": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/test_registerInvestor.ts",
-    "test": "jest --runInBand",
-    "lint": "npx prettier -c **/*.ts",
-    "fix": "npx prettier -c **/*.ts --write",
-    "clean": "rm -rf ./node_modules"
-  },
-  "devDependencies": {
-    "@changesets/cli": "^2.29.8",
-    "@jest/types": "^30.2.0",
-    "@types/jest": "^30.0.0",
-    "jest": "^30.1.3",
-    "prettier": "^3.6.2",
-    "ts-jest": "^29.4.1",
-    "tsup": "^8.5.1"
-  },
-  "dependencies": {
-    "@iarna/toml": "^2.2.5",
-    "@mysten/sui": "^1.45.2",
-    "@types/node": "^24.3.1",
-    "cross-env": "^10.0.0",
-    "dotenv": "^17.2.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
-  }
 }

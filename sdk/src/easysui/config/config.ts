@@ -40,12 +40,17 @@ export type ExtraVarsMap = Record<string, string>
 // Generic Config class that can be extended with custom types
 export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
     private static instance: Config | null = null
+    protected static _cachedVars: BaseConfigVars | null = null
 
     private static getInstance(): Config {
         if (!Config.instance) {
             this.instance = new Config()
         }
         return this.instance!
+    }
+
+    static invalidateCache(): void {
+        this._cachedVars = null
     }
 
     get env(): Network {
@@ -65,8 +70,14 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
     }
 
     static get vars(): BaseConfigVars {
+        if (this._cachedVars) {
+            return this._cachedVars
+        }
+
         const instance = this.getInstance()
         const NETWORK = instance.env
+
+        // Load env file once on first access
         dotenv.config({ path: path.resolve(process.cwd(), `.env.${NETWORK}`), override: true, quiet: true })
 
         const envVars = {
@@ -81,15 +92,16 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
 
         const staticVars = STATIC_CONFIGS[NETWORK] || {}
 
-        return {
+        this._cachedVars = {
             ...staticVars,
             ...envVars,
         }
+        return this._cachedVars
     }
 
-    static write<T extends BaseConfigVars>(config: T): string {
+    static write<T extends BaseConfigVars>(config: T, envSuffix?: string): string {
         const instance = this.getInstance()
-        const env = instance.env
+        const env = envSuffix ?? instance.env
         const envFile = path.join(process.cwd(), `.env${env ? `.${env}` : ''}`)
 
         const envVariables = Object.entries(config)

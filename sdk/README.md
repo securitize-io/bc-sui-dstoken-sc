@@ -41,7 +41,51 @@ pnpm install
 pnpm test publish.test.ts
 ```
 
-4. Then run all other tests 
+4. Then run all other tests
 ```
 pnpm test "**/*.test.ts" -- --testPathIgnorePatterns=publish.test.ts
 ```
+
+## Deploying to Testnet
+
+The SDK supports deploying to testnet with optional isolated environments.
+
+### Environment Files
+
+| Environment | Config files loaded | Publish flag | Use case |
+|-------------|---------------------|--------------|----------|
+| **testnet** (default) | `.env.testnet` | None | Standard testnet deployment |
+| **testnet_alpha** | `.env.testnet` + `.env.testnet_alpha` | `-e testnet_alpha` | Isolated environment for alpha testing |
+| **testnet_beta** | `.env.testnet` + `.env.testnet_beta` | `-e testnet_beta` | Isolated environment for beta testing |
+| **testnet_gamma** | `.env.testnet` + `.env.testnet_gamma` | `-e testnet_gamma` | Isolated environment for gamma testing |
+
+### Using the --env Flag
+
+```bash
+# Deploy to plain testnet (default)
+pnpm deploy_testnet
+
+# Deploy to an isolated environment
+pnpm deploy_testnet --env testnet_alpha
+pnpm deploy_testnet --env testnet_beta
+pnpm deploy_testnet --env testnet_gamma
+```
+
+### How It Works
+
+1. **Plain testnet** (`pnpm deploy_testnet`):
+   - Loads only `.env.testnet`
+   - Publishes without the `-e` flag
+   - Packages are deployed to the shared testnet environment
+
+2. **Isolated environments** (`pnpm deploy_testnet --env testnet_alpha`):
+   - Loads `.env.testnet`, then overrides with `.env.testnet_alpha`
+   - Publishes with `-e testnet_alpha` flag
+   - Creates an isolated Move environment separate from plain testnet
+
+### When to Use Isolated Environments
+
+The Move `-e` flag creates isolated environments on the same network. Use isolated environments when:
+- Multiple teams need separate deployments
+- Testing features in parallel without interference
+- You need a clean environment without affecting shared testnet state

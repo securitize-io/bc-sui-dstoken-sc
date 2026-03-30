@@ -70,12 +70,20 @@ export class Rule {
 
     // ==== View Functions ====
 
-    async exists(sender?: string, ptbDetails?: PTBDetails): Promise<boolean> {
+    async exists(sender?: string, _ptbDetails?: PTBDetails): Promise<boolean> {
         sender ??= ADMIN_KEYPAIR!.toSuiAddress()
-        ptbDetails ??= newPTBDetails()
-        const ptb = this.buildGetPTB('has_rule', [], ptbDetails)
-        const result = await SuiClient.devInspectBool(ptb, sender)
-        return result ?? false
+        try {
+            // Always use a fresh PTB with string object IDs for devInspect.
+            // NestedResult references from a deployment PTB can't be used
+            // in a separate devInspect transaction.
+            const inspectDetails = newPTBDetails()
+            const ptb = this.buildGetPTB('has_rule', [], inspectDetails)
+            const result = await SuiClient.devInspectBool(ptb, sender)
+            return result ?? false
+        } catch {
+            // Object may not exist on-chain yet (e.g. during first deployment)
+            return false
+        }
     }
 
     private getRule(ptbDetails: PTBDetails) {
