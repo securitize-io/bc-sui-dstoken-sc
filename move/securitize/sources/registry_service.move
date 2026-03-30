@@ -64,6 +64,8 @@ const EComplianceUnchanged: vector<u8> = b"Compliance region is already set to t
 const EWalletNotEmpty: vector<u8> = b"Cannot add or remove wallet with non-zero balance";
 #[error(code = 14)]
 const EArithmeticOverflow: vector<u8> = b"Arithmetic overflow occurred";
+#[error(code = 15)]
+const ECounterUnderflow: vector<u8> = b"Counter cannot be decremented below zero";
 
 // ==== Attribute Constants ====
 
@@ -623,7 +625,7 @@ public fun get_country<T>(investor_info: &InvestorInfo<T>, investor_id: String):
 }
 
 /// Returns the value of a specific attribute for an investor.
-/// Returns 0 if the investor or attribute does not exist.
+/// Returns 0 if the attribute does not exist. Aborts if the investor does not exist.
 public fun get_attribute_value<T>(
     investor_info: &InvestorInfo<T>,
     investor_id: String,
@@ -637,7 +639,7 @@ public fun get_attribute_value<T>(
 }
 
 /// Returns the expiration timestamp of a specific attribute for an investor.
-/// Returns 0 if the investor or attribute does not exist.
+/// Returns 0 if the attribute does not exist. Aborts if the investor does not exist.
 public fun get_attribute_expiration<T>(
     investor_info: &InvestorInfo<T>,
     investor_id: String,
@@ -1047,7 +1049,7 @@ public(package) fun apply_change(counter: &mut u64, increase: bool) {
     if (increase) {
         *counter = *counter + 1;
     } else {
-        assert!(*counter > 0, 0);
+        assert!(*counter > 0, ECounterUnderflow);
         *counter = *counter - 1;
     };
 }

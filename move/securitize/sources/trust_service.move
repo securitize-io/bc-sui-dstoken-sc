@@ -49,6 +49,8 @@ const ERoleHasActiveMembers: vector<u8> = b"Role has active members and cannot b
 #[error(code = 12)]
 const EAbilityReservedForMaster: vector<u8> =
     b"This ability may only be assigned to the Master role";
+#[error(code = 13)]
+const EZeroAddressNotAllowed: vector<u8> = b"Zero address is not allowed";
 
 public struct TrustServiceKey<phantom T>() has copy, drop, store;
 
@@ -255,6 +257,7 @@ public fun set_service_owner<T>(
     ctx: &mut TxContext,
 ) {
     version.check_is_valid();
+    assert!(owner != @0x0, EZeroAddressNotAllowed);
     assert!(ctx.sender() != owner, ESelfTransferNotAllowed);
     assert!(owner_has_ability<T, SetServiceOwner>(self, ctx.sender()), ENotEnoughPermissions);
     internal_remove_role<T, Master>(self, ctx.sender(), ctx);

@@ -329,8 +329,8 @@ fun test_is_active_when_end_time_is_zero() {
     let mut clock = clock::create_for_testing(ts.ctx());
     clock.set_for_testing(1000000);
 
-    // is_active returns false when end_time == 0
-    assert!(!flowback_restriction::is_active(&rule, &clock), 0);
+    // is_active returns true when end_time == 0 (always active)
+    assert!(flowback_restriction::is_active(&rule, clock.timestamp_ms()), 0);
 
     clock.destroy_for_testing();
     ts::return_shared(auth);
@@ -361,7 +361,7 @@ fun test_is_active_when_restriction_active() {
     clock.set_for_testing(1000000); // current time < end_time
 
     // is_active returns true when current_time < end_time
-    assert!(flowback_restriction::is_active(&rule, &clock), 0);
+    assert!(flowback_restriction::is_active(&rule, clock.timestamp_ms()), 0);
 
     clock.destroy_for_testing();
     ts::return_shared(auth);
@@ -392,7 +392,7 @@ fun test_is_active_when_restriction_expired() {
     clock.set_for_testing(2000000); // current time > end_time
 
     // is_active returns false when current_time >= end_time
-    assert!(!flowback_restriction::is_active(&rule, &clock), 0);
+    assert!(!flowback_restriction::is_active(&rule, clock.timestamp_ms()), 0);
 
     clock.destroy_for_testing();
     ts::return_shared(auth);
