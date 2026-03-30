@@ -21,8 +21,8 @@ public fun create_ds_token(
     let (currency, treasury_cap) = coin_registry::new_currency<{SYMBOL}>(
         registry,
         decimals,
-        name,
         symbol,
+        name,
         description,
         url,
         ctx,
