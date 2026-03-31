@@ -1,5 +1,11 @@
 # @securitize/sui-sdk
 
+## 4.0.0
+
+### Major Changes
+
+- The coin is seperated from the other pacakges on deploymenbt
+
 ## 3.0.0
 
 ### Major Changes
