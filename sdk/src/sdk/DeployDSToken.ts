@@ -75,7 +75,7 @@ export async function createDSToken(request: DeploymentRequest) {
 
         let ptb = new Transaction()
         const tokenPackage = `${deployedPackageId}::${tokenSymbol.toLowerCase()}`
-        const tokenAddressId = `${tokenPackage}::${tokenSymbol.toUpperCase()}`
+        const tokenAddressId = `${tokenPackage}::${tokenSymbol.charAt(0).toUpperCase() + tokenSymbol.slice(1).toLowerCase()}`
 
         const [metadataCap, treasuryCap] = ptb.moveCall({
             target: `${tokenPackage}::create_ds_token`,
