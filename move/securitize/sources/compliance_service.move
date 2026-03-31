@@ -160,7 +160,7 @@ public(package) fun validate_transfer<T>(
 
     // Get party info for both sides
     let mut from_info = get_party_info(registry, from_address, amount);
-    let to_info = get_party_info(registry, to_address, amount);
+    let to_info = get_party_info(registry, to_address, 0);
 
     // Build transfer context
     let transfer = TransferInfo {
@@ -260,7 +260,7 @@ public(package) fun validate_issue<T>(
         );
     });
 
-    record_issuance(config, registry, &issuance, &to_info);
+    record_issuance(config, registry, &issuance, &to_info, current_time_ms);
 }
 
 /// Validate burn action against all configured rules
@@ -328,8 +328,6 @@ public fun unregister_rule<T, R: store + drop>(
     version.check_is_valid();
     assert!(auth.owner_has_ability<T, UnregisterRule>(ctx.sender()), ENotAuthorized);
     let rule_type = type_name::with_defining_ids<R>();
-    // Check if rule exists
-    assert!(self.rules.contains(&rule_type), ERuleNotFound);
     // Remove the typename from the rules vector
     let (exists, idx) = self.rules.index_of(&rule_type);
     assert!(exists, ERuleNotFound);
@@ -433,6 +431,7 @@ public(package) fun record_issuance<T>(
     registry: &mut InvestorInfo<T>,
     issuance: &IssuanceInfo,
     to: &PartyInfo,
+    current_time_ms: u64,
 ) {
     if (issuance.amount == 0) return;
 
@@ -453,7 +452,7 @@ public(package) fun record_issuance<T>(
         issuances.push_back(new_issuance(issuance.amount, issuance.timestamp_ms));
     };
 
-    cleanup_party_issuances(config, registry, to, issuance.timestamp_ms);
+    cleanup_party_issuances(config, registry, to, current_time_ms);
 
     emit_compliance_issuance_recorded_event<T>(to.addr, issuance.amount);
 }
@@ -825,7 +824,7 @@ fun handle_transfer_to_special_wallet_exit<T>(
     true
 }
 
-/// Handle issuance to special wallet (only validate AuthorizedSecurities and BackDating). Returns true if handled.
+/// Handle issuance to special wallet (only validate AuthorizedSecurities). Returns true if handled.
 fun handle_issuance_to_special_wallet_exit<T>(
     config: &ComplianceConfig<T>,
     issuance: &IssuanceInfo,

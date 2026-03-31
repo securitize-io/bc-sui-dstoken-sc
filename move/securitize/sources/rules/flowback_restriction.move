@@ -117,10 +117,5 @@ public fun flowback_end_time(rule: &FlowbackRestriction): u64 {
 
 /// Check if flowback restriction is currently active
 public fun is_active(rule: &FlowbackRestriction, clock: &Clock): bool {
-    if (rule.block_flowback_end_time_ms == 0) {
-        return false
-    };
-
-    let current_time = clock.timestamp_ms();
-    current_time < rule.block_flowback_end_time_ms
+    rule.block_flowback_end_time_ms == 0 || clock.timestamp_ms() < rule.block_flowback_end_time_ms
 }

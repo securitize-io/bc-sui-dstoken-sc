@@ -181,11 +181,7 @@ public fun compute_transferable_tokens(
         let lock_end_ms = try_from_u256_to_u64!(
             (issuance.issuance_time_ms() as u256) + (lock_period as u256),
         );
-        let locked // Global initial lock window
-         =
-            timestamp_ms < lock_period
-            // Issuance-relative lock window
-            || lock_end_ms > timestamp_ms;
+        let locked = lock_end_ms > timestamp_ms;
 
         if (locked) {
             total_locked = total_locked + issuance.issuance_amount();
@@ -214,7 +210,7 @@ public fun is_issuance_locked(
     let lock_end_ms = try_from_u256_to_u64!(
         (issuance.issuance_time_ms() as u256) + (lock_period as u256),
     );
-    timestamp_ms < lock_period || lock_end_ms > timestamp_ms
+    lock_end_ms > timestamp_ms
 }
 
 // ==================== View Functions ====================

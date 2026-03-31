@@ -342,6 +342,7 @@ public fun burn<T>(
 
     let from_address = request.data().owner();
     let value = request.data().funds().value();
+    assert!(value > 0, EValueZero);
 
     assert!(auth.owner_has_ability<T, BurnTokens>(ctx.sender()), ENotAuthorized);
     compliance_service::validate_burn(investors, from_address, value);
@@ -399,6 +400,7 @@ public fun seize<T>(
 
     let from_address = request.data().owner();
     let value = request.data().funds().value();
+    assert!(value > 0, EValueZero);
 
     assert!(auth.owner_has_ability<T, SeizeTokens>(ctx.sender()), ENotAuthorized);
     assert!(to.owner() == to_address, EAccountOwnerMismatch);

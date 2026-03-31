@@ -269,7 +269,7 @@ public fun validate_min_holdings(rule: &HoldingLimits, balance_after: u64, regio
 /// * `EAboveMaxHolding` - If balance exceeds maximum
 public fun validate_max_holdings(rule: &HoldingLimits, balance_after: u64) {
     if (rule.max_holdings_per_investor > 0) {
-        assert!(balance_after <= rule.max_holdings_per_investor, EAboveMaxHolding);
+        assert!(balance_after < rule.max_holdings_per_investor, EAboveMaxHolding);
     };
 }
 
