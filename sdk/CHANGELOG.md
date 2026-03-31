@@ -1,5 +1,15 @@
 # @securitize/sui-sdk
 
+## 5.0.0
+
+### Major Changes
+
+- The coin is seperated from the other pacakges on deploymenbt
+
+### Patch Changes
+
+- Update the way to create dstoken address
+
 ## 4.0.0
 
 ### Major Changes
