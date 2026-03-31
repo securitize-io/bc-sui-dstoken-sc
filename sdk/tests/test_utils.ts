@@ -91,8 +91,10 @@ export async function createTestToken(
 
 export function assertToken(actual: string, req: DeploymentRequest = testTokenRequest) {
     const tokenDescription = req.tokenDescription
+    const symbolCapitalized =
+        tokenDescription.symbol.charAt(0).toUpperCase() + tokenDescription.symbol.slice(1).toLowerCase()
     const regex = new RegExp(
-        `^0x[0-9a-fA-F]+::${tokenDescription.name.toLowerCase()}::${tokenDescription.symbol}$`
+        `^0x[0-9a-fA-F]+::${tokenDescription.name.toLowerCase()}::${symbolCapitalized}$`
     )
     expect(actual).toMatch(regex)
 }
