@@ -4,8 +4,6 @@
 /// Provides version validation and migration support for package upgrades.
 module securitize::version;
 
-use sui::package::Publisher;
-
 /// Shared object with `version` which updates on every upgrade.
 /// Used as input to force the end-user to use the latest contract version.
 public struct Version has key {
