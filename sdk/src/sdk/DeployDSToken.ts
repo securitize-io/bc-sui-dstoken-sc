@@ -166,11 +166,17 @@ export async function createDSToken(request: DeploymentRequest) {
 
         const result = await SuiClient.signAndExecute(ptb, ADMIN_KEYPAIR!)
 
-        const currencyObj: any = result.objectChanges?.find((o: any) =>
-            o.objectType.startsWith('0x2::coin_registry::Currency<')
+        // In gRPC, object types use full 64-char addresses.
+        // Match by checking the suffix after the address prefix.
+        const objectTypes: Record<string, string> = result.objectTypes ?? {}
+        const currencyEntry = Object.entries(objectTypes).find(([_, type]) =>
+            type.includes('::coin_registry::Currency<')
         )
-        const tokenAddress = currencyObj.objectType
-            .replaceAll('0x2::coin_registry::Currency<', '')
+        if (!currencyEntry) {
+            throw new Error('Currency object not found in transaction result')
+        }
+        const tokenAddress = currencyEntry[1]
+            .replace(/^.*::coin_registry::Currency</, '')
             .slice(0, -1)
 
         return {

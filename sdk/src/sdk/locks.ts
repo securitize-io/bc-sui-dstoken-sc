@@ -4,6 +4,7 @@ import {getTokenDetails} from "./token";
 import {CLOCK_ID} from "../easysui/config/config";
 import {InvestorLockInfo, LockRecord} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
+import {bcs} from "@mysten/sui/bcs";
 
 export class LockService {
     private readonly tokenAddress: string;
@@ -124,17 +125,23 @@ export class LockService {
         const investor = await SuiClient.getObject(this.tokenDetails.investorInfo)
         const fields = (investor.data?.content as any)?.fields
 
-        const locksTableId = fields.investor_locks.fields.id.id
-        const lockData = await SuiClient.client.getDynamicFieldObject({
-            parentId: locksTableId,
-            name: {
-                type: "0x1::string::String",
-                value: investorId,
-            }
-        })
+        const locksTableId = fields.investor_locks.id
+        let lockObject: any
+        try {
+            const { object } = await SuiClient.client.core.getDynamicObjectField({
+                parentId: locksTableId,
+                name: {
+                    type: '0x1::string::String',
+                    bcs: bcs.string().serialize(investorId).toBytes(),
+                },
+                include: { json: true },
+            })
+            lockObject = object
+        } catch {
+            // Dynamic field not found — investor has no locks
+        }
 
-        const lockObjectId = lockData.data?.objectId
-        if (!lockObjectId) {
+        if (!lockObject) {
             return {
                 investorId,
                 fullyLocked: false,
@@ -143,17 +150,16 @@ export class LockService {
             }
         }
 
-        const lockObject = await SuiClient.getObject(lockObjectId)
-        const lockFields = (lockObject.data?.content as any).fields.value.fields
+        const lockFields = (lockObject as any).json
 
         const fullyLocked = lockFields.fully_locked
         const liquidateOnly = lockFields.liquidate_only
 
         const locks: LockRecord[] = lockFields.locks.map((lock: any) => ({
-            value: BigInt(lock.fields.value),
-            reasonCode: BigInt(lock.fields.reason_code),
-            reasonString: lock.fields.reason_string,
-            releaseTimeMs: BigInt(lock.fields.release_time_ms),
+            value: BigInt(lock.value),
+            reasonCode: BigInt(lock.reason_code),
+            reasonString: lock.reason_string,
+            releaseTimeMs: BigInt(lock.release_time_ms),
         }))
 
         return {

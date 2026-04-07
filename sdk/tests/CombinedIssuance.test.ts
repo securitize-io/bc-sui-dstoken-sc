@@ -206,7 +206,7 @@ describe('CombinedIssuance', () => {
 
             const ptb = combinedIssuance.registerPTB(investor)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
 
         it('should create PTB with lock', () => {
@@ -228,7 +228,7 @@ describe('CombinedIssuance', () => {
 
             const ptb = combinedIssuance.registerPTB(investor)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

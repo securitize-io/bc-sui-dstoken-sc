@@ -104,7 +104,7 @@ describe('HoldingLimits Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = holdingLimits.registerPTB(100n, 1000000n, 500n, 300n)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

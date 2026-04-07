@@ -31,11 +31,19 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function waitForNextEpoch(timeoutMs = 5 * 60 * 1000, pollIntervalMs = 2000) {
-    const startEpoch = (await SuiClient.client.getLatestSuiSystemState()).epoch
+    // Use gRPC ledgerService to get current epoch
+    const getEpoch = async () => {
+        const { response } = await SuiClient.client.ledgerService.getEpoch({
+            readMask: { paths: ['epoch'] },
+        })
+        return response.epoch?.epoch?.toString() ?? '0'
+    }
+
+    const startEpoch = await getEpoch()
     const startTime = Date.now()
 
     while (true) {
-        const { epoch } = await SuiClient.client.getLatestSuiSystemState()
+        const epoch = await getEpoch()
         if (Number(epoch) > Number(startEpoch)) {
             return epoch
         }

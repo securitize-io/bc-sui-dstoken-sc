@@ -169,21 +169,20 @@ export class Roles {
         let hasNextPage = true
 
         while (hasNextPage) {
-            const response = await SuiClient.client.getOwnedObjects({
+            const response: any = await SuiClient.client.listOwnedObjects({
                 owner,
-                filter: { StructType: '0x2::package::UpgradeCap' },
-                options: { showContent: true },
-                ...(cursor ? { cursor } : {}),
+                type: '0x2::package::UpgradeCap',
+                include: { json: true },
+                cursor: cursor ?? undefined,
             })
-            const match = response.data.find((o) => {
-                const content = o.data?.content as any
-                return normalizeSuiAddress(content?.fields?.package) === tokenPackageId
+            const match = response.objects.find((o: any) => {
+                return normalizeSuiAddress(o.json?.package) === tokenPackageId
             })
             if (match) {
-                return match.data?.objectId
+                return match.objectId
             }
             hasNextPage = response.hasNextPage
-            cursor = response.nextCursor
+            cursor = response.cursor
         }
 
         return undefined

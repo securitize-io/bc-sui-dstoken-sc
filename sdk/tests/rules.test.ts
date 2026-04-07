@@ -172,7 +172,7 @@ describe('Rules (Compliance)', () => {
 
             const ptb = await rules.updatePTB(complianceRules)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

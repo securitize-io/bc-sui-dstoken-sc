@@ -24,16 +24,16 @@ export class Rules {
     async getRules(): Promise<ComplianceRules> {
         const complianceConfig = getTokenDetails(this.tokenAddress).complianceConfig
         const complianceInfo = await SuiClient.getObject(complianceConfig)
-        const rulesBagId = (complianceInfo.data?.content as any)?.fields.rules_bag.fields.id.id
+        const rulesBagId = (complianceInfo.data?.content as any)?.fields.rules_bag.id
 
-        const rulesBag = await SuiClient.client.getDynamicFields({
+        const rulesBag = await SuiClient.client.listDynamicFields({
             parentId: rulesBagId
         })
 
         let allFields: any = {}
-        for (const rule of rulesBag.data as any[]) {
-            const ruleData = await SuiClient.getObject(rule.objectId)
-            const fields = (ruleData.data?.content as any).fields.value.fields
+        for (const rule of rulesBag.dynamicFields as any[]) {
+            const ruleData = await SuiClient.getObject(rule.fieldId)
+            const fields = (ruleData.data?.content as any).fields.value
             allFields = {...allFields, ...fields}
         }
 
@@ -58,7 +58,7 @@ export class Rules {
             nonUSLockPeriod: allFields.non_us_lock_period_ms && parseInt(allFields.non_us_lock_period_ms)
         }
 
-        const regionMinTokens = allFields?.region_min_tokens?.fields?.contents?.map((c: any) => c.fields)
+        const regionMinTokens = allFields?.region_min_tokens?.contents?.map((c: any) => c)
         if (regionMinTokens) {
             const us = regionMinTokens.find((c: any) => c.key === Regions.US.toString())
             if (us) {

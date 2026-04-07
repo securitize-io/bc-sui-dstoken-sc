@@ -35,6 +35,7 @@ export async function deploy<
     // Use SECURITIZE_TESTNET_ENV for testnet deployments if specified
     const envSuffix = vars.NETWORK === 'testnet' ? process.env.SECURITIZE_TESTNET_ENV : undefined
     ConfigClass.write(newConfig, envSuffix)
+    ConfigClass.invalidateCache()
 
     const envFileName = envSuffix ?? vars.NETWORK
     return `Move contracts deployed successfully on ${vars.NETWORK} contract details have been stored in .env.${envFileName}`

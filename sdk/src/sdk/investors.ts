@@ -10,6 +10,7 @@ import {
 } from './domains'
 import { InvestorDetails } from './domains'
 import { Transaction } from '@mysten/sui/transactions'
+import { bcs } from '@mysten/sui/bcs'
 
 export class Investors {
     private readonly tokenAddress: string
@@ -67,44 +68,43 @@ export class Investors {
         const investor = await SuiClient.getObject(this.tokenDetails.investorInfo)
         const fields = (investor.data?.content as any)?.fields
 
-        const investorsTableId = fields.investors.fields.id.id
-        const investorData = await SuiClient.client.getDynamicFieldObject({
+        const investorsTableId = fields.investors.id
+        const { object: investorObject } = await SuiClient.client.core.getDynamicObjectField({
             parentId: investorsTableId,
             name: {
                 type: '0x1::string::String',
-                value: investorId,
+                bcs: bcs.string().serialize(investorId).toBytes(),
             },
+            include: { json: true },
         })
 
-        const investorObjectId = investorData.data?.objectId
-        if (!investorObjectId) {
+        if (!investorObject) {
             throw `Investor ${investorId} does not exist.`
         }
 
-        const investorObject = await SuiClient.getObject(investorObjectId)
-        let investorFields = (investorObject.data?.content as any).fields.value.fields
+        let investorFields = (investorObject as any).json
         const country = investorFields.country
         const totalBalance = investorFields.total_balance
         const wallets = investorFields.wallets
 
         let attributes: Attribute[] = []
-        const attributesSize = investorFields.attributes.fields.size
+        const attributesSize = investorFields.attributes.size
         if (parseInt(attributesSize) > 0) {
-            const attributesTableId = investorFields.attributes.fields.id.id
-            const attributesObject = await SuiClient.client.getDynamicFields({
+            const attributesTableId = investorFields.attributes.id
+            const attributesResult = await SuiClient.client.listDynamicFields({
                 parentId: attributesTableId,
             })
 
-            const attributeObjectCalls = attributesObject.data.map((o) =>
-                SuiClient.getObject(o.objectId)
+            const attributeObjectCalls = attributesResult.dynamicFields.map((f: any) =>
+                SuiClient.getObject(f.fieldId)
             )
             const attributeObjects = await Promise.all(attributeObjectCalls)
 
-            attributes = attributeObjects.map((a): Attribute => {
+            attributes = attributeObjects.map((a: any): Attribute => {
                 const fields = (a.data?.content as any)?.fields
                 const name = toAttributeType(fields.name)
-                const expiration: string = fields.value.fields.expiration || 0
-                const status = toAttributeStatus(fields.value.fields.value)
+                const expiration: string = fields.value.expiration || 0
+                const status = toAttributeStatus(fields.value.value)
 
                 return {
                     name,

@@ -65,7 +65,7 @@ describe('AuthorizedSecurities Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = authorizedSecurities.registerPTB(BigInt(500000))
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 
