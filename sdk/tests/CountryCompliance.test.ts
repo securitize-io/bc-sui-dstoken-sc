@@ -76,7 +76,7 @@ describe('CountryCompliance', () => {
         it('should create PTB for setting country compliance', async () => {
             const ptb = countryCompliance.setCountryCompliancePTB('US', 'us')
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

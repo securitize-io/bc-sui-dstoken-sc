@@ -76,7 +76,7 @@ describe('FlowbackRestriction Rule', () => {
             const endTime = Date.now() + 365 * 24 * 60 * 60 * 1000
             const ptb = flowbackRestriction.registerPTB(endTime)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

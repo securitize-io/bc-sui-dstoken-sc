@@ -69,7 +69,7 @@ describe('AccreditedOnly Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = accreditedOnly.registerPTB(true, true)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

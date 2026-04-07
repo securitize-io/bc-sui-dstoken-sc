@@ -91,7 +91,7 @@ describe('LockupRestriction Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = lockupRestriction.registerPTB(1000000, 2000000)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

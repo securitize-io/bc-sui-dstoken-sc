@@ -3,7 +3,7 @@ import {
     SuiObjectChangeCreated,
     SuiObjectChangePublished,
     SuiTransactionBlockResponse,
-} from '@mysten/sui/client'
+} from '@mysten/sui/jsonRpc'
 import { Keypair } from '@mysten/sui/cryptography'
 import { ADMIN_KEYPAIR, Config } from '../config/config'
 
@@ -257,7 +257,7 @@ export class PublishSingleton {
         return undefined
     }
 
-    private static typeMatches(fullType: string, shortType: string): boolean {
+    static typeMatches(fullType: string, shortType: string): boolean {
         // Normalize short addresses (0x2) to full addresses (0x000...0002)
         const normalizeType = (t: string) =>
             t.replace(/0x([0-9a-fA-F]{1,63})::/g, (_, addr) => {

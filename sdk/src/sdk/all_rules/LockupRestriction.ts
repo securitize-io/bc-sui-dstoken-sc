@@ -1,16 +1,20 @@
-import {Rule} from "./Rule";
-import {SuiClient} from "../../easysui";
-import {newPTBDetails, PTBDetails} from "../domains";
-import {Config} from "../utils/config";
-import {Transaction} from "@mysten/sui/transactions";
-import {bcs} from "@mysten/sui/bcs";
+import { Rule } from './Rule'
+import { SuiClient } from '../../easysui'
+import { newPTBDetails, PTBDetails } from '../domains'
+import { Config } from '../utils/config'
+import { Transaction } from '@mysten/sui/transactions'
+import { bcs } from '@mysten/sui/bcs'
 
 export class LockupRestriction extends Rule {
     constructor(tokenAddress: string) {
         super(tokenAddress, 'LockupRestriction', 'lockup_restriction')
     }
 
-    async computeTransferableTokens(investorId: string, timestampMs: number, sender: string): Promise<bigint> {
+    async computeTransferableTokens(
+        investorId: string,
+        timestampMs: number,
+        sender: string
+    ): Promise<bigint> {
         const ptb = new Transaction()
         const timestampMsArg = ptb.pure.u64(timestampMs)
         const investorIdArg = ptb.pure.string(investorId)
@@ -67,8 +71,13 @@ export class LockupRestriction extends Rule {
         })
 
         const result = await SuiClient.devInspect(ptb, sender)
+
+        //   return result.commandResults?.[0]?.returnValues?.[0]?.bcs
         const commandCount = result.results?.length ?? 0
         const value = result.results?.[commandCount - 1]?.returnValues?.[0]?.[0]
+
+        // const commandCount = result.commandResults?.length ?? 0
+        // const value = result.commandResults?.[commandCount - 1]?.returnValues?.[0]?.bcs
         if (!value) {
             throw new Error('computeTransferableTokens received empty result')
         }
@@ -78,24 +87,21 @@ export class LockupRestriction extends Rule {
     registerPTB(
         us_lock_period_ms?: number,
         non_us_lock_period_ms?: number,
-        ptbDetails?: PTBDetails,
+        ptbDetails?: PTBDetails
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
-        const rule = this.newRule(ptb, [
-            ptb.pure.u64(us_lock_period_ms || 0),
-            ptb.pure.u64(non_us_lock_period_ms || 0)
-        ], ptbDetails)
+        const rule = this.newRule(
+            ptb,
+            [ptb.pure.u64(us_lock_period_ms || 0), ptb.pure.u64(non_us_lock_period_ms || 0)],
+            ptbDetails
+        )
 
         return this._registerPTB(rule, ptbDetails)
     }
 
-    async register(
-        signer: string,
-        us_lock_period_ms?: number,
-        non_us_lock_period_ms?: number,
-    ) {
+    async register(signer: string, us_lock_period_ms?: number, non_us_lock_period_ms?: number) {
         const ptb = this.registerPTB(us_lock_period_ms, non_us_lock_period_ms)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
@@ -118,7 +124,11 @@ export class LockupRestriction extends Rule {
             return
         }
         ptbDetails ??= newPTBDetails()
-        return this.setRule('set_non_us_lock_period', [ptbDetails.ptb.pure.u64(periodMs)], ptbDetails)
+        return this.setRule(
+            'set_non_us_lock_period',
+            [ptbDetails.ptb.pure.u64(periodMs)],
+            ptbDetails
+        )
     }
 
     setNonUsLockPeriod(periodMs: number, signer: string) {

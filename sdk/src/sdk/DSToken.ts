@@ -54,7 +54,7 @@ export class DSToken {
         }
 
         const res = await SuiClient.getObject(treasuryCap)
-        const value = (res.data?.content as any)?.fields?.total_supply?.fields?.value
+        const value = (res.data?.content as any)?.fields?.total_supply?.value
 
         if (!value) {
             throw new Error(`Unable to find treasury cap ${treasuryCap}.`)

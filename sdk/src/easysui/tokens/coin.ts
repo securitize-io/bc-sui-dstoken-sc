@@ -13,7 +13,7 @@ export class Coin {
             owner,
             coinType: this.coinType,
         })
-        return BigInt(result.totalBalance)
+        return BigInt(result.balance.balance)
     }
 
     public static async getCoin(owner: Keypair, amount?: bigint): Promise<string> {
@@ -27,11 +27,15 @@ export class Coin {
         tx.transferObjects([coinSplit], owner.toSuiAddress())
         const result = await SuiClient.signAndExecute(tx, owner)
 
-        const coin = result.objectChanges?.find(
-            (o) => o.type === 'created' && o.objectType === `0x2::coin::Coin<${this.coinType}>`
+        // In gRPC, find created coin by matching objectTypes.
+        // Types use full 64-char addresses; match by coin type suffix.
+        const objectTypes: Record<string, string> = result.objectTypes ?? {}
+        const changedObjects = result.effects?.changedObjects ?? []
+        const coinObj = changedObjects.find(
+            (c: any) => c.idOperation === 'Created' && (objectTypes[c.objectId] || '').includes(`::coin::Coin<${this.coinType}>`)
         )
 
-        return (coin as any)?.objectId
+        return coinObj?.objectId
     }
 
     public static async _mint(treasuryId: string, amount: bigint, minter: Keypair) {

@@ -2,7 +2,6 @@ import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
 import { Keypair } from '@mysten/sui/cryptography'
-import { getFullnodeUrl } from '@mysten/sui/client'
 import { getKeypair } from '../utils/keypair'
 import { STATIC_CONFIGS, Network } from './static'
 import {SUI_CLOCK_OBJECT_ID, normalizeSuiAddress} from "@mysten/sui/utils";
@@ -15,7 +14,7 @@ export const COIN_REGISTRY = normalizeSuiAddress('0xc')
 // Base configuration that the SDK provides
 export interface BaseConfigVars {
     NETWORK: Network
-    RPC: string
+    GRPC_URL: string
     PACKAGE_PATH: string
     PACKAGE_ID: string
     UPGRADE_CAP_ID: string
@@ -82,7 +81,7 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
 
         const envVars = {
             NETWORK,
-            RPC: getFullnodeUrl(NETWORK),
+            GRPC_URL: process.env.GRPC_URL || '',
             PACKAGE_PATH: process.env.PACKAGE_PATH || '',
             PACKAGE_ID: process.env.PACKAGE_ID || '',
             UPGRADE_CAP_ID: process.env.UPGRADE_CAP_ID || '',
