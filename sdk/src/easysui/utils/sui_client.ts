@@ -1,5 +1,4 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { toBase64, fromBase64, fromHex } from '@mysten/sui/utils'
 import { Config } from '../config/config'
 import { Transaction } from '@mysten/sui/transactions'
@@ -43,21 +42,12 @@ const GRPC_FULLNODE_URLS: Record<string, string> = {
 export class SuiClient {
     private static instance: SuiClient | null = null
     private client: SuiGrpcClient
-    private jsonRpcClient: SuiJsonRpcClient
-
     private constructor() {
         const network = Config.vars.NETWORK
         this.client = new SuiGrpcClient({
             network,
             baseUrl:
                 Config.vars.GRPC_URL || GRPC_FULLNODE_URLS[network] || GRPC_FULLNODE_URLS.localnet,
-        })
-        // JSON-RPC client used for transaction building and execution.
-        // gRPC TransactionExecutionService can fail with "Object not found" on
-        // devnet/testnet for recently-created objects, while JSON-RPC handles this correctly.
-        this.jsonRpcClient = new SuiJsonRpcClient({
-            url: getJsonRpcFullnodeUrl(network),
-            network,
         })
     }
 
@@ -72,10 +62,6 @@ export class SuiClient {
         return this.getInstance().client
     }
 
-    /** JSON-RPC client for transaction build/execute where gRPC has state propagation issues */
-    public static get jsonRpc(): SuiJsonRpcClient {
-        return this.getInstance().jsonRpcClient
-    }
 
     /**
      * Waits for transaction confirmation and returns the result.
@@ -99,9 +85,7 @@ export class SuiClient {
             digest: txResult.digest,
             include: txInclude,
         })
-        // await SuiClient.jsonRpc.waitForTransaction({
-        //     digest: txResult.digest,
-        // })
+
         analyze_cost(ptb, txResult)
         return txResult
     }
@@ -263,15 +247,6 @@ export class SuiClient {
             console.error('[executeMoveCallBytes FAILED]', e?.message?.slice(0, 150) || e)
             throw e
         }
-        // const result = await SuiClient.jsonRpc.executeTransactionBlock({
-        //     transactionBlock: toBase64(transactionBlock),
-        //     signature,
-        //     options: {
-        //         showEffects: true,
-        //         showObjectChanges: true,
-        //         showBalanceChanges: true,
-        //     },
-        // })
         const ptb = Transaction.from(toBase64(transactionBlock))
         return SuiClient.waitForTransaction(ptb, result)
     }
@@ -305,29 +280,23 @@ export class SuiClient {
     }
 
     public static async devInspect(ptb: Transaction, sender: string) {
-        // ptb.setSenderIfNotSet(sender)
-        // try {
-        //     const result = await SuiClient.client.simulateTransaction({
-        //         transaction: ptb,
-        //         checksEnabled: false,
-        //         include: { commandResults: true },
-        //     })
-        //     return result
-        // } catch (e: any) {
-        //     console.error('[devInspect FAILED]', e?.message?.slice(0, 150) || e)
-        //     throw e
-        // }
-
-        return await SuiClient.jsonRpc.devInspectTransactionBlock({
-            transactionBlock: ptb,
-            sender,
-        })
+        ptb.setSenderIfNotSet(sender)
+        try {
+            const result = await SuiClient.client.simulateTransaction({
+                transaction: ptb,
+                checksEnabled: false,
+                include: { commandResults: true },
+            })
+            return result
+        } catch (e: any) {
+            console.error('[devInspect FAILED]', e?.message?.slice(0, 150) || e)
+            throw e
+        }
     }
 
     public static async devInspectRaw(ptb: Transaction, sender: string) {
         const result = await this.devInspect(ptb, sender)
-        // return result.commandResults?.[0]?.returnValues?.[0]?.bcs
-        return result.results?.[0]?.returnValues?.[0]?.[0]
+        return result.commandResults?.[0]?.returnValues?.[0]?.bcs
     }
 
     public static async devInspectBool(ptb: Transaction, sender: string) {

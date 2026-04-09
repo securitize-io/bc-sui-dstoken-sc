@@ -1,48 +1,32 @@
-# Steps to execute the integration tests
+# Securitize Sui SDK
 
-## First setup the sui local environment and test address
-1. Run a localnet with 
+## RPC Transport
+
+The SDK uses **gRPC** exclusively for all Sui network communication (`@mysten/sui/grpc`). JSON-RPC is not used.
+
+Key details:
+- Transaction building and execution use `SuiGrpcClient`
+- Read-only view functions use `simulateTransaction` (gRPC equivalent of `devInspectTransactionBlock`)
+- The `simulateTransaction` resolution plugin resolves all `ptb.object()` inputs server-side. Addresses and strings must be passed as pure values (`ptb.pure.address()`, `ptb.pure.string()`), not as object references
+
+## Running Integration Tests
+
+Integration tests should only be run on **devnet** or **localnet**. Do not run `.ts` tests on testnet — testnet deployments are persistent and shared across environments. Running tests on testnet would deploy new packages on every run, polluting the shared state and wasting gas.
+
+### Running tests on devnet
+
+On devnet (and localnet), `deploy()` publishes fresh securitize packages each run. The `Pub.devnet.toml` ephemeral publish file is automatically cleaned before each deploy to avoid stale entries.
+
+Set `.env`:
 ```
-sui start --with-faucet --force-regenesis
-```
-2. Switch to the localnet environment with 
-```
-sui client switch --env localnet
-```
-**If localnet is not defined, create it and then switch to localnet.**
-```
-sui client new-env --alias localnet --rpc http://127.0.0.1:9000
-sui client switch --env localnet
-```
-3. Import an address that is created for testing purposes and is used within the contracts with 
-```
-sui keytool import --alias admin suiprivkey1qpq4r2l7kr3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q ed25519
-```
-4. Switch to that address and get some sui tokens to publish the contracts and run the transactions 
-```
-sui client switch --address admin
-sui client faucet
+NETWORK=devnet
+ADMIN_PRIVATE_KEY=<your-key>
 ```
 
-## Lastly create the env file and run the integration tests
-1. Create the initial .env file with required variables
-```
-    touch .env
-    echo "NETWORK=localnet" >> .env
-    echo "ADMIN_PRIVATE_KEY=suiprivkey1qpq4r2l7kr3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q" >> .env
-    echo "FULLNODE_URL=http://127.0.0.1:9000" >> .env
-```
-2. Install the dependencies with 
+Run tests:
 ```
 pnpm install
-```
-3. Run publish test first 
-```
 pnpm test publish.test.ts
-```
-
-4. Then run all other tests
-```
 pnpm test "**/*.test.ts" -- --testPathIgnorePatterns=publish.test.ts
 ```
 
@@ -89,3 +73,17 @@ The Move `-e` flag creates isolated environments on the same network. Use isolat
 - Multiple teams need separate deployments
 - Testing features in parallel without interference
 - You need a clean environment without affecting shared testnet state
+
+## Adding View Functions
+
+When adding new view functions that use `buildGetPTB`, you **must** specify explicit `argTypes` for all arguments. The `argTypes` parameter is required to prevent addresses from being misinterpreted as object references by the gRPC transport.
+
+```typescript
+// Correct - explicit arg types
+const ptb = this.buildGetPTB('get_role', [owner], [MoveType.address])
+
+Common type mappings:
+- Wallet/owner addresses: `MoveType.address`
+- Investor IDs, country codes: `MoveType.string`
+- Numeric values: `MoveType.u64`
+- On-chain objects (auth, treasury, etc.): `MoveType.object`

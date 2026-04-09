@@ -1,4 +1,4 @@
-import {SuiClient} from "../easysui";
+import {SuiClient, MoveType} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {AbilityType, newPTBDetails, PTBDetails, RoleTypes} from "./domains";
@@ -18,11 +18,12 @@ export class Roles {
         return `${Config.vars.PACKAGE_ID}::trust_service::${func}`
     }
 
-    private buildGetPTB(func: string, args: any[]) {
+    private buildGetPTB(func: string, args: any[], argTypes: MoveType[]) {
         return SuiClient.getPTB(
             this.getTarget(func),
             [this.tokenAddress],
             [this.tokenDetails.auth, ...args],
+            [MoveType.object, ...argTypes],
         )
     }
 
@@ -52,7 +53,7 @@ export class Roles {
     // ==== View Functions ====
 
     async getRole(owner: string): Promise<RoleTypes> {
-        const ptb = this.buildGetPTB('get_role', [owner])
+        const ptb = this.buildGetPTB('get_role', [owner], [MoveType.address])
         const chainRoleRaw = await SuiClient.devInspectString(ptb, owner)
         let chainRole = chainRoleRaw.split("::").pop()
         chainRole = chainRole ? chainRole : "none"

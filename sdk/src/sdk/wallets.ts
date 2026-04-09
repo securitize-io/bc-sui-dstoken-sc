@@ -1,4 +1,4 @@
-import {SuiClient} from "../easysui";
+import {SuiClient, MoveType} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {newPTBDetails, PTBDetails} from "./domains";
@@ -17,11 +17,12 @@ export class Wallets {
         return `${Config.vars.PACKAGE_ID}::wallet_manager::${func}`
     }
 
-    private buildGetPTB(func: string, args: any[]) {
+    private buildGetPTB(func: string, args: any[], argTypes: MoveType[]) {
         return SuiClient.getPTB(
             this.getTarget(func),
             [this.tokenAddress],
             [this.tokenDetails.investorInfo, ...args],
+            [MoveType.object, ...argTypes],
         )
     }
 
@@ -62,12 +63,12 @@ export class Wallets {
     // ==== View Functions ====
 
     async isPlatformWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_platform_wallet', [wallet])
+        const ptb = this.buildGetPTB('is_platform_wallet', [wallet], [MoveType.address])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
     async isIssuerWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_issuer_wallet', [wallet])
+        const ptb = this.buildGetPTB('is_issuer_wallet', [wallet], [MoveType.address])
         return SuiClient.devInspectBool(ptb, sender)
     }
 
