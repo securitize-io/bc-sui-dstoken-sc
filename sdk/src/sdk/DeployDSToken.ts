@@ -2,59 +2,49 @@ import { ADMIN_KEYPAIR, SuiClient } from '../easysui'
 import { Config } from './utils/config'
 import { DeploymentRequest, PTBDetails } from './domains'
 import { Transaction } from '@mysten/sui/transactions'
+import { normalizeSuiObjectId } from '@mysten/sui/utils'
 import { Rules } from './rules'
 import { Roles } from './roles'
 import { Wallets } from './wallets'
 import { CountryCompliance } from './CountryCompliance'
-import { TOKEN_TEMPLATE, MOVE_TOML } from './templates'
+import { getTokenTemplateBytecode, patchTokenTemplate } from './tokenTemplate'
 import { PublishSingleton } from '../easysui'
-import fs from 'fs'
-import path from 'path'
 import { COIN_REGISTRY } from '../easysui/config/config'
 import { DSToken } from './DSToken'
 
-async function deployToken(tokenSymbol: string): Promise<string[]> {
-    const module = tokenSymbol.toLowerCase()
-    const symbolCapitalized =
-        tokenSymbol.charAt(0).toUpperCase() + tokenSymbol.slice(1).toLowerCase()
+type DeployedToken = {
+    packageId: string
+    upgradeCapId: string
+    moduleName: string
+    structName: string
+}
 
-    const contract = TOKEN_TEMPLATE.replaceAll('{MODULE}', module).replaceAll(
-        '{SYMBOL}',
-        symbolCapitalized
+async function deployToken(tokenSymbol: string): Promise<DeployedToken> {
+    // Patch the placeholder identifiers in the pre-compiled token_template
+    // bytecode so each deploy publishes a unique module + struct.
+    const { bytecode, moduleName, structName } = patchTokenTemplate(
+        getTokenTemplateBytecode(),
+        tokenSymbol
     )
 
-    // Create a directory for the token package (mainnet uses persistent directory)
-    const isMainnet = Config.vars.NETWORK === 'mainnet'
-    const basePath = isMainnet ? Config.vars.MAINNET_TOKENS_PATH : Config.vars.TEMP_PATH
-    const tokenDir = path.join(process.cwd(), basePath, module)
-    const sourcesDir = path.join(tokenDir, 'sources')
-    if (!isMainnet) {
-        fs.rmSync(tokenDir, { recursive: true, force: true })
+    const tx = new Transaction()
+    const [upgradeCap] = tx.publish({
+        modules: [Array.from(bytecode)],
+        dependencies: [
+            normalizeSuiObjectId('0x1'),
+            normalizeSuiObjectId('0x2'),
+        ],
+    })
+    tx.transferObjects([upgradeCap], ADMIN_KEYPAIR!.toSuiAddress())
+
+    const publishResp = await SuiClient.signAndExecute(tx, ADMIN_KEYPAIR!)
+
+    return {
+        packageId: PublishSingleton.findPublishedPackageId(publishResp),
+        upgradeCapId: PublishSingleton.findUpgradeCapId(publishResp),
+        moduleName,
+        structName,
     }
-
-    // Create directories
-    fs.mkdirSync(sourcesDir, { recursive: true })
-
-    // Write the Move.toml file
-    const moveToml = MOVE_TOML.replaceAll('{MODULE}', module)
-    fs.writeFileSync(path.join(tokenDir, 'Move.toml'), moveToml)
-
-    // Write the contract source file
-    fs.writeFileSync(path.join(sourcesDir, `${module}.move`), contract)
-
-    // Publish the package (isTokenPackage=true to skip -e flag)
-    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tokenDir, true)
-    // Clean up temporary directory (mainnet preserved for auditing)
-    if (isMainnet) {
-        console.log(`Mainnet deployment: contract preserved at ${tokenDir}`)
-    } else {
-        fs.rmSync(tokenDir, { recursive: true, force: true })
-    }
-
-    // Extract and return the package ID
-    const packageId = PublishSingleton.findPublishedPackageId(publishResp)
-    const upgradeCap = PublishSingleton.findUpgradeCapId(publishResp)
-    return [packageId, upgradeCap]
 }
 
 export async function createDSToken(request: DeploymentRequest) {
@@ -71,11 +61,12 @@ export async function createDSToken(request: DeploymentRequest) {
         }
 
         // Deploy the token contract
-        const [deployedPackageId, upgradeCapId] = await deployToken(tokenSymbol)
+        const { packageId, upgradeCapId, moduleName, structName } =
+            await deployToken(tokenSymbol)
 
         let ptb = new Transaction()
-        const tokenPackage = `${deployedPackageId}::${tokenSymbol.toLowerCase()}`
-        const tokenAddressId = `${tokenPackage}::${tokenSymbol.charAt(0).toUpperCase() + tokenSymbol.slice(1).toLowerCase()}`
+        const tokenPackage = `${packageId}::${moduleName}`
+        const tokenAddressId = `${tokenPackage}::${structName}`
 
         const [metadataCap, treasuryCap] = ptb.moveCall({
             target: `${tokenPackage}::create_ds_token`,

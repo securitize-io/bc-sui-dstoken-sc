@@ -103,7 +103,7 @@ export class PublishSingleton {
         return undefined // Plain testnet, no -e flag
     }
 
-    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false, isTokenPackage: boolean = false) {
+    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {
         const network = Config.vars.NETWORK
 
         if (!fs.existsSync(packagePath)) {
@@ -121,8 +121,7 @@ export class PublishSingleton {
         let publishCmd: string
         if (isEphemeralChain) {
             publishCmd = `test-publish --build-env testnet --pubfile-path ${this.pubFile}`
-        } else if (moveEnv && !isTokenPackage) {
-            // Token packages don't use -e flag - they reference the main package via Published.toml
+        } else if (moveEnv) {
             publishCmd = `publish -e ${moveEnv}`
         } else {
             publishCmd = 'publish'
@@ -149,10 +148,10 @@ export class PublishSingleton {
         }
     }
 
-    static async getPublishBytes(signer?: string, packagePath?: string, isTokenPackage: boolean = false): Promise<string> {
+    static async getPublishBytes(signer?: string, packagePath?: string): Promise<string> {
         signer ??= ADMIN_KEYPAIR!.toSuiAddress()
         const _packagePath = this.getPackagePath(packagePath)
-        const cmd = this.getPublishCmd(_packagePath, signer, true, isTokenPackage)
+        const cmd = this.getPublishCmd(_packagePath, signer, true)
         try {
             return execSync(cmd, {
                 encoding: 'utf-8',
@@ -169,10 +168,9 @@ export class PublishSingleton {
 
     static async publishPackage(
         signer: Keypair,
-        packagePath: string,
-        isTokenPackage: boolean = false
+        packagePath: string
     ): Promise<SuiTransactionBlockResponse> {
-        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress(), false, isTokenPackage)
+        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress(), false)
         let res: string
         try {
             res = execSync(cmd, {
