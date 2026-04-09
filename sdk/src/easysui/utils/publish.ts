@@ -1,9 +1,4 @@
 import fs from 'fs'
-import {
-    SuiObjectChangeCreated,
-    SuiObjectChangePublished,
-    SuiTransactionBlockResponse,
-} from '@mysten/sui/jsonRpc'
 import { Keypair } from '@mysten/sui/cryptography'
 import { ADMIN_KEYPAIR, Config } from '../config/config'
 
@@ -12,7 +7,7 @@ import { execSync } from 'child_process'
 export class PublishSingleton {
     private static instance: PublishSingleton | null = null
 
-    private constructor(private readonly publishResp: SuiTransactionBlockResponse) {}
+    private constructor(private readonly publishResp: any) {}
 
     private static getPackagePath(packagePath?: string): string {
         packagePath ??= Config.vars.PACKAGE_PATH
@@ -45,7 +40,7 @@ export class PublishSingleton {
     }
 
     /** Returns the main (last) publish response */
-    public static publishResponse(): SuiTransactionBlockResponse {
+    public static publishResponse(): any {
         return this.getInstance().publishResp
     }
 
@@ -56,7 +51,7 @@ export class PublishSingleton {
     public static findObjectIdByType(
         type: string,
         fail: boolean = true,
-        resp?: SuiTransactionBlockResponse
+        resp?: any
     ): string {
         resp ??= this.publishResponse()
         const obj = this.findObjectChangeCreatedByType(resp, type)
@@ -66,7 +61,7 @@ export class PublishSingleton {
         return obj?.objectId || ''
     }
 
-    public static findUpgradeCapId(resp: SuiTransactionBlockResponse): string {
+    public static findUpgradeCapId(resp: any): string {
         return this.findObjectIdByType('0x2::package::UpgradeCap', true, resp)
     }
 
@@ -117,6 +112,10 @@ export class PublishSingleton {
 
         const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
         const moveEnv = this.getMoveEnv()
+
+        if (isEphemeralChain && !isTokenPackage) {
+            this.cleanPubFile()
+        }
 
         let publishCmd: string
         if (isEphemeralChain) {
@@ -171,7 +170,7 @@ export class PublishSingleton {
         signer: Keypair,
         packagePath: string,
         isTokenPackage: boolean = false
-    ): Promise<SuiTransactionBlockResponse> {
+    ): Promise<any> {
         const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress(), false, isTokenPackage)
         let res: string
         try {
@@ -194,9 +193,9 @@ export class PublishSingleton {
         return resp
     }
 
-    static findPublishedPackageId(resp: SuiTransactionBlockResponse): string {
+    static findPublishedPackageId(resp: any): string {
         const packageChng = resp.objectChanges?.find(
-            (chng): chng is SuiObjectChangePublished => chng.type === 'published'
+            (chng: any) => chng.type === 'published'
         )
 
         if (packageChng) {
@@ -220,12 +219,12 @@ export class PublishSingleton {
     }
 
     static findObjectChangeCreatedByType(
-        resp: SuiTransactionBlockResponse,
+        resp: any,
         type: string
-    ): SuiObjectChangeCreated | undefined {
+    ): any | undefined {
         // Try standard objectChanges format first
         const found = resp.objectChanges?.find(
-            (chng): chng is SuiObjectChangeCreated =>
+            (chng: any) =>
                 chng.type === 'created' && chng.objectType === type
         )
 
@@ -251,7 +250,7 @@ export class PublishSingleton {
                 owner: {} as any,
                 digest: '',
                 version: '',
-            } as SuiObjectChangeCreated
+            } as any
         }
 
         return undefined

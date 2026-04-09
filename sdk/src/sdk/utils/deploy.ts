@@ -18,14 +18,15 @@ type DependencyArtifacts = {
 }
 
 export async function deploy() {
-    const result = await baseDeploy(Config)
-
     const network = process.env.NETWORK ?? 'localnet'
-    const isTestChain = network !== 'mainnet'
 
-    if (!isTestChain) {
-        return result
+    // On testnet/mainnet, skip publishing — use already deployed packages from .env
+    if (network === 'testnet' || network === 'mainnet') {
+        Config.invalidateCache()
+        return `Using existing deployment on ${network}`
     }
+
+    const result = await baseDeploy(Config)
 
     const artifacts = await resolveDependencyArtifacts()
     await setupPas(artifacts)

@@ -19,12 +19,12 @@ export class LockService {
         return `${Config.vars.PACKAGE_ID}::lock_manager::${func}`
     }
 
-    private buildGetPTB(func: string, args: any[], argTypes?: MoveType[]) {
+    private buildGetPTB(func: string, args: any[], argTypes: MoveType[]) {
         return SuiClient.getPTB(
             this.getTarget(func),
             [this.tokenAddress],
             [this.tokenDetails.investorInfo, ...args],
-            argTypes
+            [MoveType.object, ...argTypes],
         )
     }
 
@@ -81,7 +81,7 @@ export class LockService {
      * Checks if an investor is fully locked.
      */
     async isInvestorLocked(investorId: string, sender: string): Promise<boolean> {
-        const ptb = this.buildGetPTB('is_investor_locked', [investorId])
+        const ptb = this.buildGetPTB('is_investor_locked', [investorId], [MoveType.string])
         return (await SuiClient.devInspectBool(ptb, sender)) ?? false
     }
 
@@ -104,7 +104,7 @@ export class LockService {
      * Checks if an investor has liquidate-only restriction.
      */
     async isLiquidateOnly(investorId: string, sender: string): Promise<boolean> {
-        const ptb = this.buildGetPTB('is_liquidate_only', [investorId])
+        const ptb = this.buildGetPTB('is_liquidate_only', [investorId], [MoveType.string])
         return (await SuiClient.devInspectBool(ptb, sender)) ?? false
     }
 
@@ -114,7 +114,7 @@ export class LockService {
      * Returns the number of lock records for an investor.
      */
     async lockCountForInvestor(investorId: string, sender: string): Promise<bigint> {
-        const ptb = this.buildGetPTB('lock_count', [investorId])
+        const ptb = this.buildGetPTB('lock_count', [investorId], [MoveType.string])
         return SuiClient.devInspectU64(ptb, sender)
     }
 
@@ -185,7 +185,7 @@ export class LockService {
         const ptb = this.buildGetPTB(
             'compute_transferable',
             [investorId, balance, timestampMs],
-            [MoveType.object, MoveType.string, MoveType.u64, MoveType.u64]
+            [MoveType.string, MoveType.u64, MoveType.u64]
         )
         return SuiClient.devInspectU64(ptb, sender)
     }

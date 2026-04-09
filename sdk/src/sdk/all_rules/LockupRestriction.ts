@@ -72,12 +72,8 @@ export class LockupRestriction extends Rule {
 
         const result = await SuiClient.devInspect(ptb, sender)
 
-        //   return result.commandResults?.[0]?.returnValues?.[0]?.bcs
-        const commandCount = result.results?.length ?? 0
-        const value = result.results?.[commandCount - 1]?.returnValues?.[0]?.[0]
-
-        // const commandCount = result.commandResults?.length ?? 0
-        // const value = result.commandResults?.[commandCount - 1]?.returnValues?.[0]?.bcs
+        const commandCount = result.commandResults?.length ?? 0
+        const value = result.commandResults?.[commandCount - 1]?.returnValues?.[0]?.bcs
         if (!value) {
             throw new Error('computeTransferableTokens received empty result')
         }
