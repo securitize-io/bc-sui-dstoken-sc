@@ -16,7 +16,11 @@ use securitize::{
     version::Version,
     wallet_manager
 };
-use sui::{coin::TreasuryCap, coin_registry::MetadataCap, vec_set::{Self, VecSet}};
+use sui::{
+    coin::TreasuryCap,
+    coin_registry::MetadataCap,
+    vec_set::{Self, VecSet}
+};
 
 // ==== Error Codes ====
 
@@ -157,6 +161,16 @@ public fun switch_admin(
     assert!(registry.admin == ctx.sender(), ENotAdmin);
     registry.admin = new_admin;
     emit_admin_switched_event(ctx.sender(), new_admin);
+}
+
+/// Migrates the version object to the latest package version.
+/// Only the admin can call this.
+///
+/// # Aborts
+/// * `ENotAdmin` - If the caller is not the admin
+public fun migrate_version(registry: &SetupRegistry, version: &mut Version, ctx: &TxContext) {
+    assert!(registry.admin == ctx.sender(), ENotAdmin);
+    version.migrate();
 }
 
 // ==== View Functions ====

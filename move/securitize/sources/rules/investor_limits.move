@@ -670,14 +670,20 @@ public fun validate_transfer_minimum_total_investors(
 /// - If both are zero, returns 0 (unlimited).
 /// Percentage limit uses floor(total * percentage / 100)
 public fun effective_us_limit(absolute_limit: u64, max_percentage: u64, total: u64): u64 {
-    let percentage_limit = if (max_percentage == 0) 0
-    else (((total as u128) * (max_percentage as u128)) / 100) as u64;
+    // If percentage is not configured, return absolute
+    if (max_percentage == 0) {
+        return absolute_limit
+    };
 
+    let percentage_limit = (((total as u128) * (max_percentage as u128)) / 100) as u64;
+
+    // If absolute is not configured, return percentage
     if (absolute_limit == 0) {
-        percentage_limit
-    } else if (percentage_limit == 0) {
-        absolute_limit
-    } else if (absolute_limit < percentage_limit) {
+        return percentage_limit
+    };
+
+    // Both set, return min
+    if (absolute_limit < percentage_limit) {
         absolute_limit
     } else {
         percentage_limit

@@ -4,8 +4,6 @@
 /// Provides version validation and migration support for package upgrades.
 module securitize::version;
 
-use sui::package::Publisher;
-
 /// Shared object with `version` which updates on every upgrade.
 /// Used as input to force the end-user to use the latest contract version.
 public struct Version has key {
@@ -16,8 +14,6 @@ public struct Version has key {
 #[error(code = 0)]
 const EInvalidPackageVersion: vector<u8> =
     b"Invalid package version - please use the latest version";
-#[error(code = 1)]
-const EInvalidPublisher: vector<u8> = b"Invalid publisher - package ID mismatch";
 
 const VERSION: u64 = 1;
 
@@ -33,8 +29,7 @@ public fun check_is_valid(self: &Version) {
     assert!(self.version == VERSION, EInvalidPackageVersion);
 }
 
-public fun migrate(pub: &Publisher, version: &mut Version) {
-    assert!(pub.from_package<Version>(), EInvalidPublisher);
+public(package) fun migrate(version: &mut Version) {
     version.version = VERSION;
 }
 

@@ -1,16 +1,12 @@
 #[test_only]
 module securitize::version_tests;
 
+use securitize::setup::{Self, SetupRegistry};
 use securitize::version::{Self, Version};
-use sui::{package, test_scenario as ts};
+use sui::test_scenario as ts;
 
 const ADMIN: address = @0x001;
 
-/// Test OTW for creating a valid Publisher (same package)
-public struct VERSION_TESTS has drop {}
-
-/// Different package OTW for invalid publisher test
-/// Note: We use a test module from sui framework that provides a test publisher
 #[test]
 fun test_version_initialization() {
     let mut ts = ts::begin(ADMIN);
@@ -48,25 +44,24 @@ fun test_check_is_valid_invalid_version() {
 }
 
 #[test]
-#[expected_failure(abort_code = version::EInvalidPublisher)]
-fun test_migrate_invalid_publisher() {
+#[expected_failure(abort_code = setup::ENotAdmin)]
+fun test_migrate_not_admin() {
     let mut ts = ts::begin(ADMIN);
 
     ts.next_tx(ADMIN);
+    setup::init_for_testing(ts.ctx());
     version::init_for_testing(ts.ctx());
 
-    ts.next_tx(ADMIN);
+    // Call migrate from a non-admin address
+    let non_admin: address = @0x999;
+    ts.next_tx(non_admin);
+    let registry = ts.take_shared<SetupRegistry>();
     let mut version = ts.take_shared<Version>();
 
-    // Create Publisher from a different package (sui framework)
-    // SUI type is from sui::sui module, so its Publisher won't match securitize package
-    let sui_otw = sui::test_utils::create_one_time_witness<sui::sui::SUI>();
-    let invalid_publisher = package::test_claim(sui_otw, ts.ctx());
+    // Should fail - caller is not admin
+    setup::migrate_version(&registry, &mut version, ts.ctx());
 
-    // Should fail - Publisher is from sui framework, not securitize package
-    version::migrate(&invalid_publisher, &mut version);
-
-    package::burn_publisher(invalid_publisher);
+    ts::return_shared(registry);
     ts::return_shared(version);
     ts.end();
 }
@@ -76,26 +71,23 @@ fun test_migrate_success() {
     let mut ts = ts::begin(ADMIN);
 
     ts.next_tx(ADMIN);
+    setup::init_for_testing(ts.ctx());
     version::init_for_testing(ts.ctx());
 
     ts.next_tx(ADMIN);
+    let registry = ts.take_shared<SetupRegistry>();
     let mut version = ts.take_shared<Version>();
 
     // Set version to a different value to verify migrate resets it
     version.set_version_for_testing(0);
 
-    // Create valid Publisher from the same package (securitize)
-    // VERSION_TESTS is in the same package as Version, so from_package<Version>() returns true
-    let otw = sui::test_utils::create_one_time_witness<VERSION_TESTS>();
-    let publisher = package::test_claim(otw, ts.ctx());
-
-    // Migrate should succeed and reset version
-    version::migrate(&publisher, &mut version);
+    // Migrate should succeed - ADMIN is the registry admin
+    setup::migrate_version(&registry, &mut version, ts.ctx());
 
     // Version should now be valid
     version.check_is_valid();
 
-    package::burn_publisher(publisher);
+    ts::return_shared(registry);
     ts::return_shared(version);
     ts.end();
 }
