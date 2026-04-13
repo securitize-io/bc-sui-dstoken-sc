@@ -9,7 +9,7 @@ describe('InvestorLimits Rule', () => {
     let investorLimits: InvestorLimits
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         investorLimits = new InvestorLimits(tokenAddress)
     })

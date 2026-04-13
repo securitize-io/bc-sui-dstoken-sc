@@ -34,7 +34,9 @@ gas_cost_estimation.csv
 
 **/.changeset/*.md
 
-temp_tokens/
 Pub.*.toml
 
 pas
+
+# codegen intermediate artifacts
+**/package_summaries

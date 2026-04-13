@@ -9,7 +9,7 @@ describe('AuthorizedSecurities Rule', () => {
     let authorizedSecurities: AuthorizedSecurities
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         authorizedSecurities = new AuthorizedSecurities(tokenAddress)
     })

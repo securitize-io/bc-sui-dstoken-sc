@@ -12,13 +12,21 @@ export class CombinedIssuanceBulk extends Bulk {
         this.combinedIssuance = new CombinedIssuance(tokenAddress)
     }
 
+    // ==== Register ====
+
     async register(investors: Investor[], signer: string) {
         return this.bulkCall(investors, signer, this.getBuildOperation())
+    }
+
+    async registerBulkBytes(investors: Investor[], signer: string) {
+        return this.bulkBytes(investors, signer, this.getBuildOperation())
     }
 
     async registerExecution(investors: Investor[], signer: Keypair) {
         return this.bulkExecution(investors, signer, this.getBuildOperation())
     }
+
+    // ==== Private Helpers ====
 
     private getBuildOperation() {
         return (investor: Investor, ptb: Transaction) => this.combinedIssuance.registerPTB(investor, ptb)

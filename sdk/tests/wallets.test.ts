@@ -12,7 +12,7 @@ describe('Wallets', () => {
     let testPlatformWallet: string
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         wallets = new Wallets(tokenAddress)
         investors = new Investors(tokenAddress)

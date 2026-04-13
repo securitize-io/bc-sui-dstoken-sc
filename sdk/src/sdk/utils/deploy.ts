@@ -1,10 +1,10 @@
 import {
-    ADMIN_KEYPAIR,
     deploy as baseDeploy,
     PublishSingleton,
     SuiClient,
     MoveType,
 } from '../../easysui'
+import { Keypair } from '@mysten/sui/cryptography'
 
 import fs from 'fs'
 import path from 'path'
@@ -17,7 +17,7 @@ type DependencyArtifacts = {
     ptbPackageId?: string
 }
 
-export async function deploy() {
+export async function deploy(signer: Keypair) {
     const network = process.env.NETWORK ?? 'localnet'
 
     // On testnet/mainnet, skip publishing — use already deployed packages from .env
@@ -26,10 +26,10 @@ export async function deploy() {
         return `Using existing deployment on ${network}`
     }
 
-    const result = await baseDeploy(Config)
+    const result = await baseDeploy(Config, undefined, signer)
 
     const artifacts = await resolveDependencyArtifacts()
-    await setupPas(artifacts)
+    await setupPas(artifacts, signer)
     patchEnvFile(network, artifacts)
     Config.invalidateCache()
 
@@ -46,8 +46,12 @@ async function resolveDependencyArtifacts(): Promise<DependencyArtifacts> {
     const pasPackageId = extractPackageId(content, 'packages/pas')
     const ptbPackageId = extractPackageId(content, 'packages/ptb')
 
+    if (!pasPackageId) {
+        return { ptbPackageId }
+    }
+
     const { pasNamespace, pasUpgradeCap } =
-        await resolvePasObjectsFromRpc(pasPackageId!)
+        await resolvePasObjectsFromRpc(pasPackageId)
 
     return {
         pasPackageId,
@@ -100,7 +104,7 @@ async function resolvePasObjectsFromRpc(pasPackageId: string) {
     }
 }
 
-async function setupPas(artifacts: DependencyArtifacts) {
+async function setupPas(artifacts: DependencyArtifacts, signer: Keypair) {
     const { pasPackageId, pasNamespace, pasUpgradeCap } = artifacts
 
     if (!pasPackageId || !pasNamespace || !pasUpgradeCap) {
@@ -108,14 +112,14 @@ async function setupPas(artifacts: DependencyArtifacts) {
     }
 
     await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
+        signer,
         target: `${pasPackageId}::namespace::setup`,
         args: [pasNamespace, pasUpgradeCap],
         argTypes: [MoveType.object, MoveType.object],
     })
 
     await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
+        signer,
         target: `${pasPackageId}::templates::setup`,
         args: [pasNamespace],
         argTypes: [MoveType.object],

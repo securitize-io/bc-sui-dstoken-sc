@@ -7,29 +7,31 @@ export class InvestorLimits extends Rule {
         super(tokenAddress, 'InvestorLimits', 'investor_limits')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        total_investors_limit?: number, // totalInvestorsLimit
-        minimum_total_investors?: number, // minimumTotalInvestors
-        us_investors_limit?: number, // usInvestorsLimit
-        us_accredited_limit?: number, // usAccreditedInvestorsLimit
-        non_accredited_limit?: number, // nonAccreditedInvestorsLimit
-        jp_investors_limit?: number, // jpInvestorsLimit
-        eu_retail_limit?: number, // euRetailInvestorsLimit
-        max_us_percentage?: number, //maxUSInvestorsPercentage
+        totalInvestorsLimit?: number,
+        minimumTotalInvestors?: number,
+        usInvestorsLimit?: number,
+        usAccreditedLimit?: number,
+        nonAccreditedLimit?: number,
+        jpInvestorsLimit?: number,
+        euRetailLimit?: number,
+        maxUsPercentage?: number,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.u64(total_investors_limit || 0),
-            ptb.pure.u64(minimum_total_investors || 0),
-            ptb.pure.u64(us_investors_limit || 0),
-            ptb.pure.u64(us_accredited_limit || 0),
-            ptb.pure.u64(non_accredited_limit || 0),
-            ptb.pure.u64(jp_investors_limit || 0),
-            ptb.pure.u64(eu_retail_limit || 0),
-            ptb.pure.u64(max_us_percentage || 0),
+            ptb.pure.u64(totalInvestorsLimit || 0),
+            ptb.pure.u64(minimumTotalInvestors || 0),
+            ptb.pure.u64(usInvestorsLimit || 0),
+            ptb.pure.u64(usAccreditedLimit || 0),
+            ptb.pure.u64(nonAccreditedLimit || 0),
+            ptb.pure.u64(jpInvestorsLimit || 0),
+            ptb.pure.u64(euRetailLimit || 0),
+            ptb.pure.u64(maxUsPercentage || 0),
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -37,27 +39,29 @@ export class InvestorLimits extends Rule {
 
     async register(
         signer: string,
-        total_investors_limit?: number, // totalInvestorsLimit
-        minimum_total_investors?: number, // minimumTotalInvestors
-        us_investors_limit?: number, // usInvestorsLimit
-        us_accredited_limit?: number, // usAccreditedInvestorsLimit
-        non_accredited_limit?: number, // nonAccreditedInvestorsLimit
-        jp_investors_limit?: number, // jpInvestorsLimit
-        eu_retail_limit?: number, // euRetailInvestorsLimit
-        max_us_percentage?: number, //maxUSInvestorsPercentage
+        totalInvestorsLimit?: number,
+        minimumTotalInvestors?: number,
+        usInvestorsLimit?: number,
+        usAccreditedLimit?: number,
+        nonAccreditedLimit?: number,
+        jpInvestorsLimit?: number,
+        euRetailLimit?: number,
+        maxUsPercentage?: number,
     ) {
         const ptb = this.registerPTB(
-            total_investors_limit,
-            minimum_total_investors,
-            us_investors_limit,
-            us_accredited_limit,
-            non_accredited_limit,
-            jp_investors_limit,
-            eu_retail_limit,
-            max_us_percentage,
+            totalInvestorsLimit,
+            minimumTotalInvestors,
+            usInvestorsLimit,
+            usAccreditedLimit,
+            nonAccreditedLimit,
+            jpInvestorsLimit,
+            euRetailLimit,
+            maxUsPercentage,
         )
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setTotalLimitPTB(limit?: number, ptbDetails?: PTBDetails) {
         if (limit === undefined) {

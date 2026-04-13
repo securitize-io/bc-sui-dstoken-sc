@@ -7,11 +7,53 @@ The SDK uses **gRPC** exclusively for all Sui network communication (`@mysten/su
 Key details:
 - Transaction building and execution use `SuiGrpcClient`
 - Read-only view functions use `simulateTransaction` (gRPC equivalent of `devInspectTransactionBlock`)
-- The `simulateTransaction` resolution plugin resolves all `ptb.object()` inputs server-side. Addresses and strings must be passed as pure values (`ptb.pure.address()`, `ptb.pure.string()`), not as object references
+- The `GRPC_URL` environment variable is required (e.g. `https://fullnode.devnet.sui.io:443`)
+
+## Code Generation
+
+The SDK uses `@mysten/codegen` to generate type-safe TypeScript wrappers for Move function calls. The generated code lives in `src/generated/` and handles argument type serialization automatically (addresses as `ptb.pure.address()`, objects as `ptb.object()`, strings as `ptb.pure.string()`, Clock auto-injected, etc.).
+
+### Regenerating
+
+When the Move contracts change, regenerate the wrappers:
+
+```bash
+cd sdk
+npx sui-ts-codegen generate
+```
+
+This reads `sui-codegen.config.ts`, runs `sui move summary` on the Move package, and outputs typed TypeScript files to `src/generated/`.
+
+### How it's used
+
+Service classes import generated functions and call them with named arguments:
+
+```typescript
+import * as dsToken from '../generated/securitize/ds_token'
+
+dsToken.issueTokens({
+    package: Config.vars.PACKAGE_ID,
+    arguments: { treasury, auth, investors, to, value, ... },
+    typeArguments: [tokenAddress],
+})(ptb)
+```
+
+The generated code replaces manual `ptb.moveCall()` with `MoveType` annotations, eliminating the address-vs-object type bugs that affected gRPC.
+
+## Token Template
+
+Token deployment uses pre-compiled Move bytecode with WASM-based identifier patching. No `sui` CLI or `sui move build` is needed at deploy time.
+
+The flow:
+1. Load pre-compiled bytecode from `src/sdk/tokenTemplate/getBytecode.ts`
+2. Patch `token_template` (module) and `TOKEN_TEMPLATE` (struct) identifiers with the token symbol using `@mysten/move-bytecode-template`
+3. Publish the patched bytecode via `tx.publish()`
+
+The Move source lives in `move/token_template/`. See its [README](../move/token_template/README.md) for instructions on regenerating the embedded bytecode.
 
 ## Running Integration Tests
 
-Integration tests should only be run on **devnet** or **localnet**. Do not run `.ts` tests on testnet — testnet deployments are persistent and shared across environments. Running tests on testnet would deploy new packages on every run, polluting the shared state and wasting gas.
+Integration tests should only be run on **devnet** or **localnet**. Do not run `.ts` tests on testnet — testnet deployments are persistent and shared across environments.
 
 ### Running tests on devnet
 
@@ -73,17 +115,3 @@ The Move `-e` flag creates isolated environments on the same network. Use isolat
 - Multiple teams need separate deployments
 - Testing features in parallel without interference
 - You need a clean environment without affecting shared testnet state
-
-## Adding View Functions
-
-When adding new view functions that use `buildGetPTB`, you **must** specify explicit `argTypes` for all arguments. The `argTypes` parameter is required to prevent addresses from being misinterpreted as object references by the gRPC transport.
-
-```typescript
-// Correct - explicit arg types
-const ptb = this.buildGetPTB('get_role', [owner], [MoveType.address])
-
-Common type mappings:
-- Wallet/owner addresses: `MoveType.address`
-- Investor IDs, country codes: `MoveType.string`
-- Numeric values: `MoveType.u64`
-- On-chain objects (auth, treasury, etc.): `MoveType.object`

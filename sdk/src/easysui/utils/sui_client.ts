@@ -31,23 +31,17 @@ const txInclude = {
     balanceChanges: true,
 } as const
 
-/** gRPC fullnode URLs per network */
-const GRPC_FULLNODE_URLS: Record<string, string> = {
-    mainnet: 'https://fullnode.mainnet.sui.io:443',
-    testnet: 'https://fullnode.testnet.sui.io:443',
-    devnet: 'https://fullnode.devnet.sui.io:443',
-    localnet: 'http://127.0.0.1:9000',
-}
-
 export class SuiClient {
     private static instance: SuiClient | null = null
     private client: SuiGrpcClient
     private constructor() {
         const network = Config.vars.NETWORK
+        if (!Config.vars.GRPC_URL) {
+            throw new Error('GRPC_URL is not set. Add it to your .env file.')
+        }
         this.client = new SuiGrpcClient({
             network,
-            baseUrl:
-                Config.vars.GRPC_URL || GRPC_FULLNODE_URLS[network] || GRPC_FULLNODE_URLS.localnet,
+            baseUrl: Config.vars.GRPC_URL,
         })
     }
 
@@ -359,6 +353,29 @@ export class SuiClient {
                 content: object.json != null ? { fields: object.json } : undefined,
             },
         }
+    }
+
+    /**
+     * Reads a value from a Table/Bag dynamic field (not dynamic_object_field).
+     * Table uses dynamic_field internally, so getDynamicObjectField (which wraps
+     * the type as Wrapper<T>) derives the wrong field ID. Instead, we use
+     * getDynamicField to get the fieldId, then getObject with JSON to read
+     * the field content, and return the `value` portion.
+     */
+    public static async getDynamicFieldValue(
+        parentId: string,
+        nameType: string,
+        nameBcs: Uint8Array,
+    ): Promise<any> {
+        const { dynamicField } = await SuiClient.client.core.getDynamicField({
+            parentId,
+            name: { type: nameType, bcs: nameBcs },
+        })
+        const { object } = await SuiClient.client.getObject({
+            objectId: dynamicField.fieldId,
+            include: { json: true },
+        })
+        return (object as any).json?.value
     }
 
     public static async getObjectsByType(owner: string, type: string) {

@@ -7,17 +7,19 @@ export class AccreditedOnly extends Rule {
         super(tokenAddress, 'AccreditedOnly', 'accredited_only')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        force_accredited?: boolean, // forceAccredited
-        force_us_accredited?: boolean, // forceAccreditedUS
+        forceAccredited?: boolean,
+        forceUsAccredited?: boolean,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.bool(!!force_accredited),
-            ptb.pure.bool(!!force_us_accredited)
+            ptb.pure.bool(!!forceAccredited),
+            ptb.pure.bool(!!forceUsAccredited)
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -25,12 +27,14 @@ export class AccreditedOnly extends Rule {
 
     async register(
         signer: string,
-        force_accredited?: boolean, // forceAccredited
-        force_us_accredited?: boolean, // forceAccreditedUS
+        forceAccredited?: boolean,
+        forceUsAccredited?: boolean,
     ) {
-        const ptb = this.registerPTB(force_accredited, force_us_accredited)
+        const ptb = this.registerPTB(forceAccredited, forceUsAccredited)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setForceAccreditedPTB(force?: boolean, ptbDetails?: PTBDetails) {
         if (force === undefined) {
@@ -54,7 +58,7 @@ export class AccreditedOnly extends Rule {
     }
 
     setForceUsAccredited(force: boolean, signer: string) {
-        const ptb = this.setForceAccreditedPTB(force)!
+        const ptb = this.setForceUsAccreditedPTB(force)!
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 }

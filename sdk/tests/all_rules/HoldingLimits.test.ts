@@ -9,7 +9,7 @@ describe('HoldingLimits Rule', () => {
     let holdingLimits: HoldingLimits
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         holdingLimits = new HoldingLimits(tokenAddress)
     })

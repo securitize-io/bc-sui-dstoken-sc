@@ -1,4 +1,4 @@
-import {ADMIN_KEYPAIR, SuiClient} from "../easysui";
+import {ADMIN_ADDRESS, SuiClient} from "../easysui";
 import {ComplianceRules, Regions, newPTBDetails, PTBDetails} from "./domains";
 import {
     AccreditedOnly,
@@ -21,6 +21,7 @@ export class Rules {
 
     // ==== View Functions ====
 
+    /** Returns the current compliance rules configuration from the chain. */
     async getRules(): Promise<ComplianceRules> {
         const complianceConfig = getTokenDetails(this.tokenAddress).complianceConfig
         const complianceInfo = await SuiClient.getObject(complianceConfig)
@@ -73,14 +74,14 @@ export class Rules {
         return rules
     }
 
-    // ==== Rule Management Functions ====
+    // ==== Rule Management ====
 
     async updatePTB(
         rules: ComplianceRules,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
-        const sender = ADMIN_KEYPAIR!.toSuiAddress()
+        const sender = ADMIN_ADDRESS
 
         if ('forceAccredited' in rules || 'forceAccreditedUS' in rules) {
             const accreditedOnly = new AccreditedOnly(this.tokenAddress)
@@ -204,6 +205,7 @@ export class Rules {
         return ptbDetails.ptb
     }
 
+    /** Updates compliance rules. Registers new rules or updates existing ones as needed. */
     async update(
         signer: string,
         rules: ComplianceRules,

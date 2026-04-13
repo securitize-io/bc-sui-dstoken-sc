@@ -7,15 +7,17 @@ export class AuthorizedSecurities extends Rule {
         super(tokenAddress, 'AuthorizedSecurities', 'authorized_securities')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        max_supply?: bigint,
+        maxSupply?: bigint,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.u64(max_supply || 0)
+            ptb.pure.u64(maxSupply || 0)
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -23,11 +25,13 @@ export class AuthorizedSecurities extends Rule {
 
     async register(
         signer: string,
-        max_supply?: bigint,
+        maxSupply?: bigint,
     ) {
-        const ptb = this.registerPTB(max_supply)
+        const ptb = this.registerPTB(maxSupply)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setMaxSupplyPTB(maxSupply?: bigint, ptbDetails?: PTBDetails) {
         if (maxSupply === undefined) {

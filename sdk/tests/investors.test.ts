@@ -13,7 +13,7 @@ describe('Investors', () => {
     let investors: Investors
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         investors = new Investors(tokenAddress)
     })
@@ -228,7 +228,7 @@ describe('Investors', () => {
         await expect(investors.isInvestor(testInvestor1, sender)).resolves.toBe(false)
         await expect(investors.getTotalInvestorsCount(sender)).resolves.toBe(0n)
 
-        await expect(investors.getInvestorDetails(testInvestor1)).rejects.toBe(
+        await expect(investors.getInvestorDetails(testInvestor1)).rejects.toThrow(
             `Investor ${testInvestor1} does not exist.`
         )
     })

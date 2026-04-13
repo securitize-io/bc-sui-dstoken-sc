@@ -9,7 +9,7 @@ describe('AccreditedOnly Rule', () => {
     let accreditedOnly: AccreditedOnly
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         accreditedOnly = new AccreditedOnly(tokenAddress)
     })

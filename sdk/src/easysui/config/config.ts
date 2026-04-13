@@ -3,7 +3,7 @@ import fs from 'fs'
 import dotenv from 'dotenv'
 import { Keypair } from '@mysten/sui/cryptography'
 import { getKeypair } from '../utils/keypair'
-import { STATIC_CONFIGS, Network } from './static'
+import { Network } from './static'
 import {SUI_CLOCK_OBJECT_ID, normalizeSuiAddress} from "@mysten/sui/utils";
 dotenv.config({ path: path.resolve(process.cwd(), '.env'), quiet: true })
 
@@ -18,14 +18,13 @@ export interface BaseConfigVars {
     PACKAGE_PATH: string
     PACKAGE_ID: string
     UPGRADE_CAP_ID: string
-    USDC_PACKAGE_ID?: string
-    USDC_TREASURY_CAP?: string
 }
 
 // Default ConfigVars is just the base, but projects can extend it
 export type ConfigVars = BaseConfigVars
 
 export const ADMIN_KEYPAIR: Keypair | undefined = process.env.ADMIN_PRIVATE_KEY ? getKeypair(process.env.ADMIN_PRIVATE_KEY) : undefined
+export const ADMIN_ADDRESS: string = process.env.ADMIN_ADDRESS || ADMIN_KEYPAIR?.toSuiAddress() || ''
 
 /**
  * Map of config keys to Move type patterns for finding object IDs during deployment
@@ -85,16 +84,9 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
             PACKAGE_PATH: process.env.PACKAGE_PATH || '',
             PACKAGE_ID: process.env.PACKAGE_ID || '',
             UPGRADE_CAP_ID: process.env.UPGRADE_CAP_ID || '',
-            USDC_TREASURY_CAP: process.env.USDC_TREASURY_CAP,
-            USDC_PACKAGE_ID: process.env.USDC_PACKAGE_ID,
         }
 
-        const staticVars = STATIC_CONFIGS[NETWORK] || {}
-
-        this._cachedVars = {
-            ...staticVars,
-            ...envVars,
-        }
+        this._cachedVars = envVars
         return this._cachedVars
     }
 

@@ -1,9 +1,10 @@
-import {SuiClient, MoveType} from "../easysui";
+import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {AbilityType, newPTBDetails, PTBDetails, RoleTypes} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import {normalizeSuiAddress} from "@mysten/sui/utils";
+import * as trustService from "../generated/securitize/trust_service";
 
 export class Roles {
     private readonly tokenAddress: string;
@@ -14,46 +15,16 @@ export class Roles {
         this.tokenDetails = getTokenDetails(tokenAddress);
     }
 
-    private getTarget(func: string) {
-        return `${Config.vars.PACKAGE_ID}::trust_service::${func}`
-    }
-
-    private buildGetPTB(func: string, args: any[], argTypes: MoveType[]) {
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            [this.tokenDetails.auth, ...args],
-            [MoveType.object, ...argTypes],
-        )
-    }
-
-    private buildSetBytes(ptb: Transaction, signer: string) {
-        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
-    }
-
-    /**
-     * Helper function to build role PTB calls
-     * Handles both deployment (using ptbDetails.tokenDetails) and post-deployment (using derived IDs)
-     */
-    private buildRolePTB(func: string, owner: string, ptbDetails?: PTBDetails) {
-        ptbDetails ??= newPTBDetails()
-        const ptb = ptbDetails.ptb
-        ptb.moveCall({
-            target: this.getTarget(func),
-            typeArguments: [this.tokenAddress],
-            arguments: [
-                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
-                ptb.pure.address(owner),
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-        return ptb
-    }
-
     // ==== View Functions ====
 
+    /** Returns the role assigned to an address (master, issuer, exchange, transfer_agent, or none). */
     async getRole(owner: string): Promise<RoleTypes> {
-        const ptb = this.buildGetPTB('get_role', [owner], [MoveType.address])
+        const ptb = new Transaction()
+        trustService.getRole({
+            package: this.pkg,
+            arguments: { self: this.tokenDetails.auth, owner },
+            typeArguments: this.typeArgs,
+        })(ptb)
         const chainRoleRaw = await SuiClient.devInspectString(ptb, owner)
         let chainRole = chainRoleRaw.split("::").pop()
         chainRole = chainRole ? chainRole : "none"
@@ -70,13 +41,7 @@ export class Roles {
         return MAPPING[chainRole] as RoleTypes
     }
 
-    // ==== Role Management Functions ====
-
-    async updateRole(owner: string, role: RoleTypes, signer: string) {
-        const currentRole = await this.getRole(owner)
-        const ptbDetails = this.updateRolePTB(owner, role, undefined, currentRole)
-        return this.buildSetBytes(ptbDetails.ptb, signer)
-    }
+    // ==== Role Management ====
 
     updateRolePTB(owner: string, role: RoleTypes, ptbDetails?: PTBDetails, currentRole: RoleTypes = 'none', upgradeCapId?: string) {
         ptbDetails ??= newPTBDetails()
@@ -112,42 +77,17 @@ export class Roles {
         return ptbDetails
     }
 
-    // ==== Transfer Agent ====
-
-    setTransferAgentPTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('set_transfer_agent', owner, ptbDetails)
-
-    async setTransferAgent(owner: string, signer: string) {
-        return this.buildSetBytes(this.setTransferAgentPTB(owner), signer)
-    }
-
-    removeTransferAgentPTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('remove_transfer_agent', owner, ptbDetails)
-
-    async removeTransferAgent(owner: string, signer: string) {
-        return this.buildSetBytes(this.removeTransferAgentPTB(owner), signer)
-    }
-
-    // ==== Issuer ====
-
-    setIssuerPTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('set_issuer', owner, ptbDetails)
-
-    async setIssuer(owner: string, signer: string) {
-        return this.buildSetBytes(this.setIssuerPTB(owner), signer)
-    }
-
-    removeIssuerPTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('remove_issuer', owner, ptbDetails)
-
-    async removeIssuer(owner: string, signer: string) {
-        return this.buildSetBytes(this.removeIssuerPTB(owner), signer)
+    /** Assigns a role to an address. Removes the previous role first if one exists. */
+    async updateRole(owner: string, role: RoleTypes, signer: string) {
+        const currentRole = await this.getRole(owner)
+        const ptbDetails = this.updateRolePTB(owner, role, undefined, currentRole)
+        return this.buildSetBytes(ptbDetails.ptb, signer)
     }
 
     // ==== Service Owner (Master) ====
 
     setServiceOwnerPTB = (owner: string, ptbDetails?: PTBDetails, upgradeCapId?: string) => {
-        const ptb = this.buildRolePTB('set_service_owner', owner, ptbDetails)
+        const ptb = this.buildRolePTB('setServiceOwner', owner, ptbDetails)
         if (upgradeCapId) {
             ptb.transferObjects([ptb.object(upgradeCapId)], owner)
         }
@@ -162,6 +102,138 @@ export class Roles {
             )
         }
         return this.buildSetBytes(this.setServiceOwnerPTB(owner, undefined, upgradeCapId), signer)
+    }
+
+    // ==== Issuer ====
+
+    setIssuerPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('setIssuer', owner, ptbDetails)
+
+    async setIssuer(owner: string, signer: string) {
+        return this.buildSetBytes(this.setIssuerPTB(owner), signer)
+    }
+
+    removeIssuerPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('removeIssuer', owner, ptbDetails)
+
+    async removeIssuer(owner: string, signer: string) {
+        return this.buildSetBytes(this.removeIssuerPTB(owner), signer)
+    }
+
+    // ==== Transfer Agent ====
+
+    setTransferAgentPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('setTransferAgent', owner, ptbDetails)
+
+    async setTransferAgent(owner: string, signer: string) {
+        return this.buildSetBytes(this.setTransferAgentPTB(owner), signer)
+    }
+
+    removeTransferAgentPTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('removeTransferAgent', owner, ptbDetails)
+
+    async removeTransferAgent(owner: string, signer: string) {
+        return this.buildSetBytes(this.removeTransferAgentPTB(owner), signer)
+    }
+
+    // ==== Exchange ====
+
+    setExchangePTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('setExchange', owner, ptbDetails)
+
+    async setExchange(owner: string, signer: string) {
+        return this.buildSetBytes(this.setExchangePTB(owner), signer)
+    }
+
+    removeExchangePTB = (owner: string, ptbDetails?: PTBDetails) =>
+        this.buildRolePTB('removeExchange', owner, ptbDetails)
+
+    async removeExchange(owner: string, signer: string) {
+        return this.buildSetBytes(this.removeExchangePTB(owner), signer)
+    }
+
+    // ==== Ability Management ====
+
+    addRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptbDetails?: PTBDetails): Transaction {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        trustService.addRoleAbility({
+            package: this.pkg,
+            arguments: {
+                self: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: [this.tokenAddress, this.getRoleTypePath(role), this.getAbilityTypePath(ability)],
+        })(ptb)
+        return ptb
+    }
+
+    /** Grants an ability to a role. Only Master can call this. */
+    async addRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
+        return this.buildSetBytes(this.addRoleAbilityPTB(role, ability), signer)
+    }
+
+    removeRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptbDetails?: PTBDetails): Transaction {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        trustService.removeRoleAbility({
+            package: this.pkg,
+            arguments: {
+                self: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: [this.tokenAddress, this.getRoleTypePath(role), this.getAbilityTypePath(ability)],
+        })(ptb)
+        return ptb
+    }
+
+    /** Removes an ability from a role. Only Master can call this. */
+    async removeRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
+        return this.buildSetBytes(this.removeRoleAbilityPTB(role, ability), signer)
+    }
+
+    // ==== Private Helpers ====
+
+    private get pkg() {
+        return Config.vars.PACKAGE_ID
+    }
+
+    private get typeArgs(): [string] {
+        return [this.tokenAddress]
+    }
+
+    private buildSetBytes(ptb: Transaction, signer: string) {
+        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    }
+
+    private buildRolePTB(func: keyof typeof trustService, owner: string, ptbDetails?: PTBDetails) {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb;
+        (trustService[func] as Function)({
+            package: this.pkg,
+            arguments: {
+                self: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                owner,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: this.typeArgs,
+        })(ptb)
+        return ptb
+    }
+
+    private getRoleTypePath(role: RoleTypes): string {
+        const ROLE_TYPE_MAP: Record<RoleTypes, string> = {
+            none: `${Config.vars.PACKAGE_ID}::trust_service::None`,
+            master: `${Config.vars.PACKAGE_ID}::trust_service::Master`,
+            issuer: `${Config.vars.PACKAGE_ID}::trust_service::Issuer`,
+            exchange: `${Config.vars.PACKAGE_ID}::trust_service::Exchange`,
+            transfer_agent: `${Config.vars.PACKAGE_ID}::trust_service::TransferAgent`,
+        }
+        return ROLE_TYPE_MAP[role]
+    }
+
+    private getAbilityTypePath(ability: AbilityType): string {
+        return `${Config.vars.PACKAGE_ID}::abilities::${ability}`
     }
 
     private async findUpgradeCapId(owner: string): Promise<string | undefined> {
@@ -187,86 +259,5 @@ export class Roles {
         }
 
         return undefined
-    }
-
-    // ==== Exchange ====
-
-    setExchangePTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('set_exchange', owner, ptbDetails)
-
-    async setExchange(owner: string, signer: string) {
-        return this.buildSetBytes(this.setExchangePTB(owner), signer)
-    }
-
-    removeExchangePTB = (owner: string, ptbDetails?: PTBDetails) =>
-        this.buildRolePTB('remove_exchange', owner, ptbDetails)
-
-    async removeExchange(owner: string, signer: string) {
-        return this.buildSetBytes(this.removeExchangePTB(owner), signer)
-    }
-
-    // ==== Ability Management Functions ====
-
-    private getRoleTypePath(role: RoleTypes): string {
-        const ROLE_TYPE_MAP: Record<RoleTypes, string> = {
-            none: `${Config.vars.PACKAGE_ID}::trust_service::None`,
-            master: `${Config.vars.PACKAGE_ID}::trust_service::Master`,
-            issuer: `${Config.vars.PACKAGE_ID}::trust_service::Issuer`,
-            exchange: `${Config.vars.PACKAGE_ID}::trust_service::Exchange`,
-            transfer_agent: `${Config.vars.PACKAGE_ID}::trust_service::TransferAgent`,
-        }
-        return ROLE_TYPE_MAP[role]
-    }
-
-    private getAbilityTypePath(ability: AbilityType): string {
-        return `${Config.vars.PACKAGE_ID}::abilities::${ability}`
-    }
-
-    /**
-     * Add an ability to a role. Only Master can call this.
-     */
-    addRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptbDetails?: PTBDetails): Transaction {
-        ptbDetails ??= newPTBDetails()
-        const ptb = ptbDetails.ptb
-        const roleType = this.getRoleTypePath(role)
-        const abilityType = this.getAbilityTypePath(ability)
-
-        ptb.moveCall({
-            target: this.getTarget('add_role_ability'),
-            typeArguments: [this.tokenAddress, roleType, abilityType],
-            arguments: [
-                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-        return ptb
-    }
-
-    async addRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
-        return this.buildSetBytes(this.addRoleAbilityPTB(role, ability), signer)
-    }
-
-    /**
-     * Remove an ability from a role. Only Master can call this.
-     */
-    removeRoleAbilityPTB(role: RoleTypes, ability: AbilityType, ptbDetails?: PTBDetails): Transaction {
-        ptbDetails ??= newPTBDetails()
-        const ptb = ptbDetails.ptb
-        const roleType = this.getRoleTypePath(role)
-        const abilityType = this.getAbilityTypePath(ability)
-
-        ptb.moveCall({
-            target: this.getTarget('remove_role_ability'),
-            typeArguments: [this.tokenAddress, roleType, abilityType],
-            arguments: [
-                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-        return ptb
-    }
-
-    async removeRoleAbility(role: RoleTypes, ability: AbilityType, signer: string) {
-        return this.buildSetBytes(this.removeRoleAbilityPTB(role, ability), signer)
     }
 }

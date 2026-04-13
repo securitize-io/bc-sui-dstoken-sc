@@ -1,4 +1,4 @@
-import { MoveType, SuiClient } from '../easysui'
+import { SuiClient } from '../easysui'
 import { Config } from './utils/config'
 import { getTokenDetails } from './token'
 import {
@@ -11,6 +11,7 @@ import {
 import { InvestorDetails } from './domains'
 import { Transaction } from '@mysten/sui/transactions'
 import { bcs } from '@mysten/sui/bcs'
+import * as registryService from '../generated/securitize/registry_service'
 
 export class Investors {
     private readonly tokenAddress: string
@@ -21,69 +22,33 @@ export class Investors {
         this.tokenDetails = getTokenDetails(tokenAddress)
     }
 
-    private getTarget(func: string) {
-        return `${Config.vars.PACKAGE_ID}::registry_service::${func}`
-    }
-
-    private buildGetPTB(func: string, args: any[], argTypes: MoveType[]) {
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo, ...args],
-            [MoveType.object, ...argTypes],
-        )
-    }
-
-    private _buildSetPTB(func: string, args: any[], argTypes?: any[], ptb?: Transaction) {
-        args = [
-            this.tokenDetails.investorInfo,
-            this.tokenDetails.auth,
-            ...args,
-            Config.vars.VERSION,
-        ]
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            args,
-            argTypes,
-            undefined,
-            false,
-            ptb
-        )
-    }
-
-    private buildSetPTB(
-        signer: string,
-        func: string,
-        args: any[],
-        argTypes?: any[],
-        ptb?: Transaction
-    ) {
-        const _ptb = this._buildSetPTB(func, args, argTypes, ptb)
-        return SuiClient.getMoveCallBytesFromPTB(_ptb, signer)
-    }
-
     // ==== View Functions ====
 
+    /** Returns full investor details including country, wallets, attributes, and total balance. */
     async getInvestorDetails(investorId: string): Promise<InvestorDetails> {
         const investor = await SuiClient.getObject(this.tokenDetails.investorInfo)
         const fields = (investor.data?.content as any)?.fields
 
         const investorsTableId = fields.investors.id
-        const { object: investorObject } = await SuiClient.client.core.getDynamicObjectField({
-            parentId: investorsTableId,
-            name: {
-                type: '0x1::string::String',
-                bcs: bcs.string().serialize(investorId).toBytes(),
-            },
-            include: { json: true },
-        })
-
-        if (!investorObject) {
-            throw `Investor ${investorId} does not exist.`
+        let investorFields: any
+        try {
+            investorFields = await SuiClient.getDynamicFieldValue(
+                investorsTableId,
+                '0x1::string::String',
+                bcs.string().serialize(investorId).toBytes(),
+            )
+        } catch (e: any) {
+            const msg = e?.message || ''
+            if (msg.includes('not found') || msg.includes('not%20found')) {
+                throw new Error(`Investor ${investorId} does not exist.`)
+            }
+            throw e
         }
 
-        let investorFields = (investorObject as any).json
+        if (!investorFields) {
+            throw new Error(`Investor ${investorId} does not exist.`)
+        }
+
         const country = investorFields.country
         const totalBalance = investorFields.total_balance
         const wallets = investorFields.wallets
@@ -125,186 +90,134 @@ export class Investors {
     }
 
     async isInvestor(investorId: string, sender: string) {
-        const ptb = this.buildGetPTB('is_investor', [investorId], [MoveType.string])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isInvestor, { investorId }), sender)
     }
 
     async getInvestorIdByWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('get_investor_id_by_wallet', [wallet], [MoveType.address])
-        return SuiClient.devInspectString(ptb, sender)
+        return SuiClient.devInspectString(this.buildView(registryService.getInvestorIdByWallet, { wallet }), sender)
     }
 
     async isWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_wallet', [wallet], [MoveType.address])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isWallet, { wallet }), sender)
     }
 
     async isSpecialWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_special_wallet', [wallet], [MoveType.address])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isSpecialWallet, { wallet }), sender)
     }
 
     async getSpecialWalletType(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('get_special_wallet_type', [wallet], [MoveType.address])
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getSpecialWalletType, { wallet }), sender)
     }
 
     async investorWalletBalanceTotal(investorId: string, sender: string) {
-        const ptb = this.buildGetPTB('investor_wallet_balance_total', [investorId], [MoveType.string])
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.investorWalletBalanceTotal, { investorId }), sender)
     }
 
     async investorWalletBalance(walletAddress: string, sender: string) {
-        const ptb = this.buildGetPTB('investor_wallet_balance', [walletAddress], [MoveType.address])
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.investorWalletBalance, { investorInfo: this.tokenDetails.investorInfo, walletAddr: walletAddress }), sender)
     }
 
     async isAccreditedInvestorById(investorId: string, sender: string) {
-        const ptb = this.buildGetPTB('is_accredited_investor_by_id', [investorId], [MoveType.string])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isAccreditedInvestorById, { investorId }), sender)
     }
 
     async isAccreditedInvestor(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_accredited_investor', [wallet], [MoveType.address])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isAccreditedInvestor, { wallet }), sender)
     }
 
     async isQualifiedInvestorById(investorId: string, sender: string) {
-        const ptb = this.buildGetPTB('is_qualified_investor_by_id', [investorId], [MoveType.string])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isQualifiedInvestorById, { investorId }), sender)
     }
 
     async isQualifiedInvestor(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_qualified_investor', [wallet], [MoveType.address])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(registryService.isQualifiedInvestor, { wallet }), sender)
     }
 
     async getCountryCompliance(country: string, sender: string) {
-        const ptb = this.buildGetPTB('get_country_compliance', [country], [MoveType.string])
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getCountryCompliance, { country }), sender)
     }
 
     async getCountry(investorId: string, sender: string) {
-        const ptb = this.buildGetPTB('get_country', [investorId], [MoveType.string])
-        return SuiClient.devInspectString(ptb, sender)
+        return SuiClient.devInspectString(this.buildView(registryService.getCountry, { investorId }), sender)
     }
 
     async getAttributeValue(investorId: string, attributeId: AttributeType, sender: string) {
-        const ptb = this.buildGetPTB('get_attribute_value', [investorId, attributeId], [MoveType.string, MoveType.u64])
-        return Number(await SuiClient.devInspectU64(ptb, sender))
+        return Number(await SuiClient.devInspectU64(this.buildView(registryService.getAttributeValue, { investorId, attributeId }), sender))
     }
 
     async getAttributeExpiration(investorId: string, attributeId: AttributeType, sender: string) {
-        const ptb = this.buildGetPTB('get_attribute_expiration', [investorId, attributeId], [MoveType.string, MoveType.u64])
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getAttributeExpiration, { investorId, attributeId }), sender)
     }
 
     async getTotalInvestorsCount(sender: string) {
-        const ptb = SuiClient.getPTB(
-            this.getTarget('get_total_investors_count'),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo],
-            [],
-            sender
-        )
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getTotalInvestorsCount), sender)
     }
 
     async getAccreditedInvestorCount(sender: string) {
-        const ptb = SuiClient.getPTB(
-            this.getTarget('get_accredited_investor_count'),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo],
-            [],
-            sender
-        )
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getAccreditedInvestorCount), sender)
     }
 
     async getUsInvestorCount(sender: string) {
-        const ptb = SuiClient.getPTB(
-            this.getTarget('get_us_investor_count'),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo],
-            [],
-            sender
-        )
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getUsInvestorCount), sender)
     }
 
     async getUsAccreditedInvestorCount(sender: string) {
-        const ptb = SuiClient.getPTB(
-            this.getTarget('get_us_accredited_investor_count'),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo],
-            [],
-            sender
-        )
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getUsAccreditedInvestorCount), sender)
     }
 
     async getJpInvestorCount(sender: string) {
-        const ptb = SuiClient.getPTB(
-            this.getTarget('get_jp_investor_count'),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo],
-            [],
-            sender
-        )
-        return SuiClient.devInspectU64(ptb, sender)
+        return SuiClient.devInspectU64(this.buildView(registryService.getJpInvestorCount), sender)
     }
 
     async getEuRetailInvestorCount(toCountry: string, sender: string): Promise<bigint | null> {
-        const ptb = this.buildGetPTB('get_eu_retail_investor_count', [toCountry], [MoveType.string])
-        return SuiClient.devInspectOptionU64(ptb, sender)
+        return SuiClient.devInspectOptionU64(this.buildView(registryService.getEuRetailInvestorCount, { toCountry }), sender)
     }
 
     // ==== Investor Count Setters ====
 
     async setTotalInvestorsCount(count: number, signer: string) {
-        return this.buildSetPTB(signer, 'set_total_investors_count', [count])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setTotalInvestorsCount, { count }), signer)
     }
 
     async setUsInvestorsCount(count: number, signer: string) {
-        return this.buildSetPTB(signer, 'set_us_investors_count', [count])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setUsInvestorsCount, { count }), signer)
     }
 
     async setUsAccreditedInvestorsCount(count: number, signer: string) {
-        return this.buildSetPTB(signer, 'set_us_accredited_investors_count', [count])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setUsAccreditedInvestorsCount, { count }), signer)
     }
 
     async setAccreditedInvestorsCount(count: number, signer: string) {
-        return this.buildSetPTB(signer, 'set_accredited_investors_count', [count])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setAccreditedInvestorsCount, { count }), signer)
     }
 
     async setJpInvestorsCount(count: number, signer: string) {
-        return this.buildSetPTB(signer, 'set_jp_investors_count', [count])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setJpInvestorsCount, { count }), signer)
     }
 
-    // ==== Setters ====
+    // ==== Investor CRUD ====
 
     registerInvestorPTB(investorId: string, ptb?: Transaction) {
-        ptb ??= new Transaction()
-        return this._buildSetPTB('register_investor', [investorId], [], ptb)
+        return this.buildMutation(registryService.registerInvestor, { investorId }, ptb)
     }
 
+    /** Registers a new investor. Aborts if investor already exists. */
     async registerInvestor(investorId: string, signer: string) {
-        const ptb = this.registerInvestorPTB(investorId)
-        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.registerInvestorPTB(investorId), signer)
     }
 
     registerInvestorIfNotExistsPTB(investorId: string, ptb?: Transaction) {
-        ptb ??= new Transaction()
-        return this._buildSetPTB('register_investor_if_not_exists', [investorId], [], ptb)
+        return this.buildMutation(registryService.registerInvestorIfNotExists, { investorId }, ptb)
     }
 
+    /** Registers an investor if not already registered. No-op if investor exists. */
     async registerInvestorIfNotExists(investorId: string, signer: string) {
-        const ptb = this.registerInvestorIfNotExistsPTB(investorId)
-        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.registerInvestorIfNotExistsPTB(investorId), signer)
     }
 
+    /** Removes an investor and all associated data. */
     async removeInvestor(investorId: string, signer: string) {
-        return this.buildSetPTB(signer, 'remove_investor', [investorId])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.removeInvestor, { investorId }), signer)
     }
 
     updateInvestorPTB(
@@ -314,36 +227,22 @@ export class Investors {
         attributes: Attribute[],
         ptb?: Transaction
     ) {
-        ptb ??= new Transaction()
-
         const attributeIds = attributes.map((a) => a.name)
         const attributeValues = attributes.map((a) => a.status)
         const attributeExpirations = attributes.map((a) => a.expiry)
 
-        const args = [
-            Config.vars.PAS_NAMESPACE,
+        return this.buildMutation(registryService.updateInvestor, {
+            namespace: Config.vars.PAS_NAMESPACE,
             investorId,
             country,
             wallets,
             attributeIds,
             attributeValues,
             attributeExpirations,
-        ]
-        const argTypes = [
-            MoveType.object,
-            MoveType.object,
-            MoveType.object,
-            MoveType.string,
-            MoveType.string,
-            MoveType.vec_address,
-            MoveType.vec_u64,
-            MoveType.vec_u64,
-            MoveType.vec_u64,
-            MoveType.object,
-        ]
-        return this._buildSetPTB('update_investor', args, argTypes, ptb)
+        }, ptb)
     }
 
+    /** Updates investor country, wallets, and attributes in a single transaction. */
     async updateInvestor(
         investorId: string,
         country: string,
@@ -351,31 +250,32 @@ export class Investors {
         attributes: Attribute[],
         signer: string
     ) {
-        const ptb = this.updateInvestorPTB(investorId, country, wallets, attributes)
-        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.updateInvestorPTB(investorId, country, wallets, attributes), signer)
     }
+
+    // ==== Wallet Management ====
 
     addWalletPTB(investorId: string, walletAddr: string, ptb?: Transaction) {
-        ptb ??= new Transaction()
-        return this._buildSetPTB(
-            'add_wallet',
-            [Config.vars.PAS_NAMESPACE, investorId, walletAddr],
-            [],
-            ptb
-        )
+        return this.buildMutation(registryService.addWallet, {
+            namespace: Config.vars.PAS_NAMESPACE,
+            investorId,
+            walletAddr,
+        }, ptb)
     }
 
+    /** Adds a wallet to an investor and creates the associated PAS account. */
     async addWallet(investorId: string, walletAddr: string, signer: string) {
-        const ptb = this.addWalletPTB(investorId, walletAddr)
-        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.addWalletPTB(investorId, walletAddr), signer)
     }
 
     async removeWallet(investorId: string, walletAddr: string, signer: string) {
-        return this.buildSetPTB(signer, 'remove_wallet', [investorId, walletAddr])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.removeWallet, { investorId, walletAddr }), signer)
     }
 
+    // ==== Investor Attributes ====
+
     async setCountry(investorId: string, country: string, signer: string) {
-        return this.buildSetPTB(signer, 'set_country', [investorId, country])
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setCountry, { investorId, country }), signer)
     }
 
     async setAttribute(
@@ -385,11 +285,28 @@ export class Investors {
         attributeExpiration: number,
         signer: string
     ) {
-        return this.buildSetPTB(signer, 'set_attribute', [
+        return SuiClient.getMoveCallBytesFromPTB(this.buildMutation(registryService.setAttribute, {
             investorId,
             attributeId,
             attributeValue,
             attributeExpiration,
-        ])
+        }), signer)
+    }
+
+    // ==== Private Helpers ====
+
+    private get pkg() { return Config.vars.PACKAGE_ID }
+    private get typeArgs(): [string] { return [this.tokenAddress] }
+
+    private buildView(fn: Function, extraArgs: Record<string, any> = {}): Transaction {
+        const ptb = new Transaction()
+        fn({ package: this.pkg, arguments: { investorInfo: this.tokenDetails.investorInfo, ...extraArgs }, typeArguments: this.typeArgs })(ptb)
+        return ptb
+    }
+
+    private buildMutation(fn: Function, extraArgs: Record<string, any>, ptb?: Transaction): Transaction {
+        ptb ??= new Transaction()
+        fn({ package: this.pkg, arguments: { investorInfo: this.tokenDetails.investorInfo, auth: this.tokenDetails.auth, ...extraArgs, version: Config.vars.VERSION }, typeArguments: this.typeArgs })(ptb)
+        return ptb
     }
 }

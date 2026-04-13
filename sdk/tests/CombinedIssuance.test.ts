@@ -16,7 +16,7 @@ describe('CombinedIssuance', () => {
     let issuanceTime: number
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         combinedIssuance = new CombinedIssuance(tokenAddress)
         investors = new Investors(tokenAddress)

@@ -4,7 +4,7 @@
 
 ### Major Changes
 
-- The coin is seperated from the other pacakges on deploymenbt
+- The coin is seperated from the other pacakges on deployment
 
 ### Patch Changes
 
@@ -14,7 +14,7 @@
 
 ### Major Changes
 
-- The coin is seperated from the other pacakges on deploymenbt
+- The coin is seperated from the other pacakges on deployment
 
 ## 3.0.0
 

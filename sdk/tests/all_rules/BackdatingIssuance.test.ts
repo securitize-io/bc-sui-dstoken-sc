@@ -9,7 +9,7 @@ describe('BackdatingIssuance Rule', () => {
     let backdatingIssuance: BackdatingIssuance
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         backdatingIssuance = new BackdatingIssuance(tokenAddress)
     })

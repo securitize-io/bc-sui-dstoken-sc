@@ -1,8 +1,9 @@
-import {SuiClient, MoveType} from "../easysui";
+import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
 import {getTokenDetails} from "./token";
 import {newPTBDetails, PTBDetails} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
+import * as walletManager from "../generated/securitize/wallet_manager";
 
 export class Wallets {
     private readonly tokenAddress: string;
@@ -13,85 +14,96 @@ export class Wallets {
         this.tokenDetails = getTokenDetails(tokenAddress);
     }
 
-    private getTarget(func: string) {
-        return `${Config.vars.PACKAGE_ID}::wallet_manager::${func}`
-    }
-
-    private buildGetPTB(func: string, args: any[], argTypes: MoveType[]) {
-        return SuiClient.getPTB(
-            this.getTarget(func),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo, ...args],
-            [MoveType.object, ...argTypes],
-        )
-    }
-
-    private buildSetBytes(ptb: Transaction, signer: string) {
-        return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
-    }
-
-    /**
-     * Helper function to build wallet PTB calls with PAS_NAMESPACE
-     * Handles both deployment (using ptbDetails.tokenDetails) and post-deployment (using derived IDs)
-     */
-    private buildWalletPTB(func: string, wallet: string, ptbDetails?: PTBDetails) {
-        ptbDetails ??= newPTBDetails()
-        const ptb = ptbDetails.ptb
-        return this.buildWalletPTBSimple(func, wallet, ptbDetails, [ptb.object(Config.vars.PAS_NAMESPACE)])
-    }
-
-    /**
-     * Helper function to build wallet PTB calls without PAS_NAMESPACE
-     */
-    private buildWalletPTBSimple(func: string, wallet: string, ptbDetails?: PTBDetails, args: any[] = []) {
-        ptbDetails ??= newPTBDetails()
-        const ptb = ptbDetails.ptb
-        ptb.moveCall({
-            target: this.getTarget(func),
-            typeArguments: [this.tokenAddress],
-            arguments: [
-                ptbDetails.tokenDetails?.investorInfo || ptb.object(this.tokenDetails.investorInfo),
-                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
-                ...args,
-                ptb.pure.address(wallet),
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-        return ptb
-    }
-
     // ==== View Functions ====
 
+    /** Returns whether a wallet is registered as a platform wallet. */
     async isPlatformWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_platform_wallet', [wallet], [MoveType.address])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(walletManager.isPlatformWallet, { wallet }), sender)
     }
 
     async isIssuerWallet(wallet: string, sender: string) {
-        const ptb = this.buildGetPTB('is_issuer_wallet', [wallet], [MoveType.address])
-        return SuiClient.devInspectBool(ptb, sender)
+        return SuiClient.devInspectBool(this.buildView(walletManager.isIssuerWallet, { wallet }), sender)
     }
 
-    // ==== Setter Functions ====
+    // ==== Issuer Wallet Management ====
 
-    addIssuerWalletPTB = (wallet: string, ptbDetails?: PTBDetails) =>
-        this.buildWalletPTB('add_issuer_wallet', wallet, ptbDetails)
+    addIssuerWalletPTB = (wallet: string, ptbDetails?: PTBDetails) => {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        walletManager.addIssuerWallet({
+            package: this.pkg,
+            arguments: {
+                investorInfo: ptbDetails.tokenDetails?.investorInfo || this.tokenDetails.investorInfo,
+                auth: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                namespace: Config.vars.PAS_NAMESPACE,
+                wallet,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: this.typeArgs,
+        })(ptb)
+        return ptb
+    }
 
+    /** Registers a wallet as an issuer wallet with a PAS account. */
     async addIssuerWallet(wallet: string, signer: string) {
-        return this.buildSetBytes(this.addIssuerWalletPTB(wallet), signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.addIssuerWalletPTB(wallet), signer)
     }
 
-    addPlatformWalletPTB = (wallet: string, ptbDetails?: PTBDetails) =>
-        this.buildWalletPTB('add_platform_wallet', wallet, ptbDetails)
+    // ==== Platform Wallet Management ====
 
+    addPlatformWalletPTB = (wallet: string, ptbDetails?: PTBDetails) => {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        walletManager.addPlatformWallet({
+            package: this.pkg,
+            arguments: {
+                investorInfo: ptbDetails.tokenDetails?.investorInfo || this.tokenDetails.investorInfo,
+                auth: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                namespace: Config.vars.PAS_NAMESPACE,
+                wallet,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: this.typeArgs,
+        })(ptb)
+        return ptb
+    }
+
+    /** Registers a wallet as a platform wallet (exempt from most compliance rules). */
     async addPlatformWallet(wallet: string, signer: string) {
-        return this.buildSetBytes(this.addPlatformWalletPTB(wallet), signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.addPlatformWalletPTB(wallet), signer)
     }
 
-    removeSpecialWalletPTB = (wallet: string, ptbDetails?: PTBDetails) =>
-        this.buildWalletPTBSimple('remove_special_wallet', wallet, ptbDetails)
+    // ==== Remove Special Wallet ====
 
+    removeSpecialWalletPTB = (wallet: string, ptbDetails?: PTBDetails) => {
+        ptbDetails ??= newPTBDetails()
+        const ptb = ptbDetails.ptb
+        walletManager.removeSpecialWallet({
+            package: this.pkg,
+            arguments: {
+                investorInfo: ptbDetails.tokenDetails?.investorInfo || this.tokenDetails.investorInfo,
+                auth: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                wallet,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: this.typeArgs,
+        })(ptb)
+        return ptb
+    }
+
+    /** Removes a special wallet (issuer or platform) designation. */
     async removeSpecialWallet(wallet: string, signer: string) {
-        return this.buildSetBytes(this.removeSpecialWalletPTB(wallet), signer)
+        return SuiClient.getMoveCallBytesFromPTB(this.removeSpecialWalletPTB(wallet), signer)
+    }
+
+    // ==== Private Helpers ====
+
+    private get pkg() { return Config.vars.PACKAGE_ID }
+    private get typeArgs(): [string] { return [this.tokenAddress] }
+
+    private buildView(fn: Function, extraArgs: Record<string, any> = {}): Transaction {
+        const ptb = new Transaction()
+        fn({ package: this.pkg, arguments: { investorInfo: this.tokenDetails.investorInfo, ...extraArgs }, typeArguments: this.typeArgs })(ptb)
+        return ptb
     }
 }

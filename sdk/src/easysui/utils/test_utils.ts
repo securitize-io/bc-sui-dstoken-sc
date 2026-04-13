@@ -1,21 +1,15 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { requestSuiFromFaucetV2, getFaucetHost } from '@mysten/sui/faucet'
-import { ADMIN_KEYPAIR, Config } from '../config/config'
+import { Config } from '../config/config'
 import { SuiClient } from './sui_client'
-import { USDC } from '../tokens/usdc'
 
 export function createWallet() {
     return new Ed25519Keypair()
 }
 
-export async function createFundedWallet(usdcAmount?: bigint) {
+export async function createFundedWallet() {
     const wallet = createWallet()
     await faucet(wallet.toSuiAddress())
-
-    if (usdcAmount) {
-        await USDC.faucet(usdcAmount, wallet.toSuiAddress(), ADMIN_KEYPAIR!)
-    }
-
     return wallet
 }
 
