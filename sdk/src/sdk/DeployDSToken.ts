@@ -26,23 +26,24 @@ type DeployedToken = {
  * Builds the transaction bytes for publishing the token package.
  * Returns the bytes and the patched module/struct names.
  */
-export function buildDeployTokenBytes(tokenSymbol: string, signer: string) {
+export async function buildDeployTokenBytes(tokenSymbol: string, signer: string) {
     const { bytecode, moduleName, structName } = patchTokenTemplate(
         getTokenTemplateBytecode(),
         tokenSymbol
     )
 
-    const tx = new Transaction()
-    const [upgradeCap] = tx.publish({
+    const ptb = new Transaction()
+    const [upgradeCap] = ptb.publish({
         modules: [Array.from(bytecode)],
         dependencies: [
             normalizeSuiObjectId('0x1'),
             normalizeSuiObjectId('0x2'),
         ],
     })
-    tx.transferObjects([upgradeCap], signer)
+    ptb.transferObjects([upgradeCap], signer)
 
-    return { tx, moduleName, structName }
+    const bytes = await SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    return { bytes, moduleName, structName }
 }
 
 /**
@@ -134,7 +135,7 @@ export async function buildSetupTokenBytes(
     })
 
     if (request.complianceRules) {
-        await new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
+        await new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails, true, signer)
     }
 
     if (request.countriesComplianceStatuses) {
@@ -200,8 +201,8 @@ export async function createDSToken(request: DeploymentRequest, signer: Keypair)
     try {
         // Step 1: Deploy token package
         const signerAddress = signer.toSuiAddress()
-        const { tx, moduleName, structName } = buildDeployTokenBytes(tokenSymbol, signerAddress)
-        const publishResp = await SuiClient.signAndExecute(tx, signer)
+        const { bytes: deployBytes, moduleName, structName } = await buildDeployTokenBytes(tokenSymbol, signerAddress)
+        const publishResp = await SuiClient.executeMoveCallBytes(deployBytes, signer)
         const deployed = parseDeployTokenResult(publishResp, moduleName, structName)
 
         // Step 2: Build and execute setup
