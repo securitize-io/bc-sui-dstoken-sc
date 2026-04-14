@@ -17,7 +17,7 @@ export function toFormatType(type: FORMAT_TYPES, bytes: Uint8Array<ArrayBuffer>)
         case FORMAT_TYPES.hex:
             return toHex(bytes)
         default:
-            throw "The FORMAT_TYPES must be one of hex or base64"
+            throw new Error("The FORMAT_TYPES must be one of hex or base64")
     }
 }
 

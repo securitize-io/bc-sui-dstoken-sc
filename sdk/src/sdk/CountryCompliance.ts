@@ -8,6 +8,8 @@ import {
     toRegionId,
     ComplianceStatus,
 } from "./domains";
+import {Transaction} from "@mysten/sui/transactions";
+import * as complianceService from "../generated/securitize/compliance_service";
 
 export class CountryCompliance {
     private readonly tokenAddress: string;
@@ -18,18 +20,16 @@ export class CountryCompliance {
         this.tokenDetails = getTokenDetails(tokenAddress);
     }
 
-    private getComplianceTarget(func: string) {
-        return `${Config.vars.PACKAGE_ID}::compliance_service::${func}`
-    }
-
     // ==== View Functions ====
 
+    /** Returns the compliance status for a country (none, us, eu, forbidden, jp). */
     async get(country: string, sender: string): Promise<ComplianceStatus> {
-        const ptb = SuiClient.getPTB(
-            this.getComplianceTarget('get_country_compliance'),
-            [this.tokenAddress],
-            [this.tokenDetails.investorInfo, country],
-        )
+        const ptb = new Transaction()
+        complianceService.getCountryCompliance({
+            package: this.pkg,
+            arguments: { registry: this.tokenDetails.investorInfo, country },
+            typeArguments: this.typeArgs,
+        })(ptb)
         const result = await SuiClient.devInspectU64(ptb, sender)
         return fromRegionId(Number(result))
     }
@@ -44,21 +44,22 @@ export class CountryCompliance {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
-        ptb.moveCall({
-            target: this.getComplianceTarget('set_country_compliance'),
-            typeArguments: [this.tokenAddress],
-            arguments: [
-                ptbDetails.tokenDetails?.investorInfo || ptb.object(this.tokenDetails.investorInfo),
-                ptb.pure.string(country),
-                ptb.pure.u64(toRegionId(complianceRegion)),
-                ptbDetails.tokenDetails?.auth || ptb.object(this.tokenDetails.auth),
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
+        complianceService.setCountryCompliance({
+            package: this.pkg,
+            arguments: {
+                registry: ptbDetails.tokenDetails?.investorInfo || this.tokenDetails.investorInfo,
+                country,
+                complianceRegion: toRegionId(complianceRegion),
+                auth: ptbDetails.tokenDetails?.auth || this.tokenDetails.auth,
+                version: Config.vars.VERSION,
+            },
+            typeArguments: this.typeArgs,
+        })(ptb)
 
         return ptb
     }
 
+    /** Sets the compliance region for a country (e.g., 'us', 'eu', 'forbidden'). */
     async set(
         signer: string,
         country: string,
@@ -67,4 +68,9 @@ export class CountryCompliance {
         const ptb = this.setCountryCompliancePTB(country, complianceRegion)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Private Helpers ====
+
+    private get pkg() { return Config.vars.PACKAGE_ID }
+    private get typeArgs(): [string] { return [this.tokenAddress] }
 }

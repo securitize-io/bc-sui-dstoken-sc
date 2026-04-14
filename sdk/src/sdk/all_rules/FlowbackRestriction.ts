@@ -7,15 +7,17 @@ export class FlowbackRestriction extends Rule {
         super(tokenAddress, 'FlowbackRestriction', 'flowback_restriction')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        block_flowback_end_time_ms?: number, // blockFlowbackEndTime
+        blockFlowbackEndTimeMs?: number,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.u64(block_flowback_end_time_ms || 0),
+            ptb.pure.u64(blockFlowbackEndTimeMs || 0),
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -23,11 +25,13 @@ export class FlowbackRestriction extends Rule {
 
     async register(
         signer: string,
-        block_flowback_end_time_ms?: number, // blockFlowbackEndTime
+        blockFlowbackEndTimeMs?: number,
     ) {
-        const ptb = this.registerPTB(block_flowback_end_time_ms)
+        const ptb = this.registerPTB(blockFlowbackEndTimeMs)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setFlowbackEndTimePTB(endTimeMs?: number, ptbDetails?: PTBDetails) {
         if (endTimeMs === undefined) {

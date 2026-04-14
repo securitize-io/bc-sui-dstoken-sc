@@ -1,12 +1,7 @@
 // Config
-export { Config, ADMIN_KEYPAIR, DENY_LIST_ID, CLOCK_ID } from './config/config'
+export { Config, ADMIN_KEYPAIR, ADMIN_ADDRESS, DENY_LIST_ID, CLOCK_ID } from './config/config'
 export type { ConfigVars, BaseConfigVars, ExtraVarsMap } from './config/config'
-export { STATIC_CONFIGS } from './config/static'
 export type { Network } from './config/static'
-
-// Tokens
-export * from './tokens/coin'
-export * from './tokens/usdc'
 
 // Utils
 export * from './utils/cost_analyzer'

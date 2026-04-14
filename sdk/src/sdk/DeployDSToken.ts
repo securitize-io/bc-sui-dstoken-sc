@@ -1,200 +1,231 @@
-import { ADMIN_KEYPAIR, SuiClient } from '../easysui'
+import { SuiClient } from '../easysui'
+import { Keypair } from '@mysten/sui/cryptography'
 import { Config } from './utils/config'
 import { DeploymentRequest, PTBDetails } from './domains'
 import { Transaction } from '@mysten/sui/transactions'
+import { normalizeSuiObjectId } from '@mysten/sui/utils'
 import { Rules } from './rules'
 import { Roles } from './roles'
 import { Wallets } from './wallets'
 import { CountryCompliance } from './CountryCompliance'
-import { TOKEN_TEMPLATE, MOVE_TOML } from './templates'
+import { getTokenTemplateBytecode, patchTokenTemplate } from './tokenTemplate'
 import { PublishSingleton } from '../easysui'
-import fs from 'fs'
-import path from 'path'
 import { COIN_REGISTRY } from '../easysui/config/config'
 import { DSToken } from './DSToken'
 
-async function deployToken(tokenSymbol: string): Promise<string[]> {
-    const module = tokenSymbol.toLowerCase()
-    const symbolCapitalized =
-        tokenSymbol.charAt(0).toUpperCase() + tokenSymbol.slice(1).toLowerCase()
-
-    const contract = TOKEN_TEMPLATE.replaceAll('{MODULE}', module).replaceAll(
-        '{SYMBOL}',
-        symbolCapitalized
-    )
-
-    // Create a directory for the token package (mainnet uses persistent directory)
-    const isMainnet = Config.vars.NETWORK === 'mainnet'
-    const basePath = isMainnet ? Config.vars.MAINNET_TOKENS_PATH : Config.vars.TEMP_PATH
-    const tokenDir = path.join(process.cwd(), basePath, module)
-    const sourcesDir = path.join(tokenDir, 'sources')
-    if (!isMainnet) {
-        fs.rmSync(tokenDir, { recursive: true, force: true })
-    }
-
-    // Create directories
-    fs.mkdirSync(sourcesDir, { recursive: true })
-
-    // Write the Move.toml file
-    const moveToml = MOVE_TOML.replaceAll('{MODULE}', module)
-    fs.writeFileSync(path.join(tokenDir, 'Move.toml'), moveToml)
-
-    // Write the contract source file
-    fs.writeFileSync(path.join(sourcesDir, `${module}.move`), contract)
-
-    // Publish the package (isTokenPackage=true to skip -e flag)
-    const publishResp = await PublishSingleton.publishPackage(ADMIN_KEYPAIR!, tokenDir, true)
-    // Clean up temporary directory (mainnet preserved for auditing)
-    if (isMainnet) {
-        console.log(`Mainnet deployment: contract preserved at ${tokenDir}`)
-    } else {
-        fs.rmSync(tokenDir, { recursive: true, force: true })
-    }
-
-    // Extract and return the package ID
-    const packageId = PublishSingleton.findPublishedPackageId(publishResp)
-    const upgradeCap = PublishSingleton.findUpgradeCapId(publishResp)
-    return [packageId, upgradeCap]
+type DeployedToken = {
+    packageId: string
+    upgradeCapId: string
+    moduleName: string
+    structName: string
 }
 
-export async function createDSToken(request: DeploymentRequest) {
+// ==== Step 1: Deploy Token Package ====
+
+/**
+ * Builds the transaction bytes for publishing the token package.
+ * Returns the bytes and the patched module/struct names.
+ */
+export async function buildDeployTokenBytes(tokenSymbol: string, signer: string) {
+    const { bytecode, moduleName, structName } = patchTokenTemplate(
+        getTokenTemplateBytecode(),
+        tokenSymbol
+    )
+
+    const ptb = new Transaction()
+    const [upgradeCap] = ptb.publish({
+        modules: [Array.from(bytecode)],
+        dependencies: [
+            normalizeSuiObjectId('0x1'),
+            normalizeSuiObjectId('0x2'),
+        ],
+    })
+    ptb.transferObjects([upgradeCap], signer)
+
+    const bytes = await SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    return { bytes, moduleName, structName }
+}
+
+/**
+ * Extracts the deployed token info from a publish transaction result.
+ */
+export function parseDeployTokenResult(publishResp: any, moduleName: string, structName: string): DeployedToken {
+    return {
+        packageId: PublishSingleton.findPublishedPackageId(publishResp),
+        upgradeCapId: PublishSingleton.findUpgradeCapId(publishResp),
+        moduleName,
+        structName,
+    }
+}
+
+// ==== Step 2: Setup Token ====
+
+/**
+ * Builds the setup transaction bytes for a deployed token.
+ * This includes: create_ds_token, setup, roles, rules, compliance, template command, finalize.
+ */
+export async function buildSetupTokenBytes(
+    request: DeploymentRequest,
+    deployed: DeployedToken,
+    signer: string,
+) {
+    if (request.lockManagerType !== 'investor') {
+        throw new Error(`not_implemented: lock manager type ${request.lockManagerType}`)
+    }
+
+    if (!['regulated', 'whitelisted'].includes(request.complianceType)) {
+        throw new Error(`not_implemented: compliance type ${request.complianceType}`)
+    }
+
     const tokenDescription = request.tokenDescription
     const tokenSymbol = tokenDescription.symbol
+    const { packageId, upgradeCapId, moduleName, structName } = deployed
+
+    let ptb = new Transaction()
+    const tokenPackage = `${packageId}::${moduleName}`
+    const tokenAddressId = `${tokenPackage}::${structName}`
+
+    const [metadataCap, treasuryCap] = ptb.moveCall({
+        target: `${tokenPackage}::create_ds_token`,
+        arguments: [
+            ptb.pure.string(tokenDescription.name),
+            ptb.pure.string(tokenSymbol),
+            ptb.pure.string(tokenDescription.iconUri),
+            ptb.pure.string(tokenDescription.description),
+            ptb.pure.u8(tokenDescription.decimals),
+            ptb.object(COIN_REGISTRY),
+        ],
+    })
+
+    const [auth, treasury, investorInfo, complianceConfig, setupFinalize] = ptb.moveCall({
+        target: `${Config.vars.PACKAGE_ID}::setup::setup`,
+        typeArguments: [tokenAddressId],
+        arguments: [
+            ptb.object(Config.vars.SETUP_REGISTRY),
+            ptb.object(Config.vars.PAS_NAMESPACE),
+            treasuryCap,
+            metadataCap,
+            ptb.object(Config.vars.VERSION),
+        ],
+    })
+
+    const ptbDetails: PTBDetails = {
+        ptb,
+        tokenDetails: {
+            investorInfo,
+            auth,
+            complianceConfig,
+        },
+    }
+
+    const roles = new Roles(tokenAddressId)
+
+    // Set roles BEFORE transferring service ownership (signer needs Master role)
+    if (request.owners) {
+        roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptbDetails)
+
+        if (request.owners.redemptionAddress) {
+            const wallets = new Wallets(tokenAddressId)
+            wallets.addPlatformWalletPTB(request.owners.redemptionAddress, ptbDetails)
+        }
+    }
+
+    request.roles.forEach((r) => {
+        roles.updateRolePTB(r.address, r.role, ptbDetails)
+    })
+
+    if (request.complianceRules) {
+        await new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails, true, signer)
+    }
+
+    if (request.countriesComplianceStatuses) {
+        const countryCompliance = new CountryCompliance(tokenAddressId)
+        request.countriesComplianceStatuses.forEach((c) => {
+            countryCompliance.setCountryCompliancePTB(
+                c.countryName,
+                c.complianceStatus,
+                ptbDetails
+            )
+        })
+    }
+
+    // Set the transfer approval witness command in templates for <T>
+    const dsToken = new DSToken(tokenAddressId)
+    dsToken.setTransferTemplateCommandPTB(ptbDetails)
+
+    // Transfer service ownership + upgrade cap LAST (after all other role operations)
+    // This must be last because it transfers Master role away from signer
+    if (request.owners && request.owners.tokenOwner !== signer) {
+        roles.setServiceOwnerPTB(request.owners.tokenOwner, ptbDetails, upgradeCapId)
+    }
+
+    ptb.moveCall({
+        target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,
+        typeArguments: [tokenAddressId],
+        arguments: [
+            setupFinalize,
+            auth,
+            treasury,
+            investorInfo,
+            complianceConfig,
+            ptb.object(Config.vars.VERSION),
+        ],
+    })
+
+    const bytes = await SuiClient.getMoveCallBytesFromPTB(ptb, signer)
+    return { bytes, tokenAddressId }
+}
+
+/**
+ * Extracts the token address from a setup transaction result.
+ */
+export function parseSetupTokenResult(result: any): string {
+    const objectTypes: Record<string, string> = result.objectTypes ?? {}
+    const currencyEntry = Object.entries(objectTypes).find(([_, type]) =>
+        type.includes('::coin_registry::Currency<')
+    )
+    if (!currencyEntry) {
+        throw new Error('Currency object not found in transaction result')
+    }
+    return currencyEntry[1]
+        .replace(/^.*::coin_registry::Currency</, '')
+        .slice(0, -1)
+}
+
+// ==== Convenience: Full deploy with Keypair (for tests / internal use) ====
+
+/** Deploys a new DS token end-to-end: publishes the token package, then sets up roles, rules, compliance, and templates. */
+export async function createDSToken(request: DeploymentRequest, signer: Keypair) {
+    const tokenSymbol = request.tokenDescription.symbol
 
     try {
-        if (request.lockManagerType !== 'investor') {
-            throw new Error(`not_implemented: lock manager type ${request.lockManagerType}`)
-        }
+        // Step 1: Deploy token package
+        const signerAddress = signer.toSuiAddress()
+        const { bytes: deployBytes, moduleName, structName } = await buildDeployTokenBytes(tokenSymbol, signerAddress)
+        const publishResp = await SuiClient.executeMoveCallBytes(deployBytes, signer)
+        const deployed = parseDeployTokenResult(publishResp, moduleName, structName)
 
-        if (!['regulated', 'whitelisted'].includes(request.complianceType)) {
-            throw new Error(`not_implemented: compliance type ${request.complianceType}`)
-        }
-
-        // Deploy the token contract
-        const [deployedPackageId, upgradeCapId] = await deployToken(tokenSymbol)
-
-        let ptb = new Transaction()
-        const tokenPackage = `${deployedPackageId}::${tokenSymbol.toLowerCase()}`
-        const tokenAddressId = `${tokenPackage}::${tokenSymbol.charAt(0).toUpperCase() + tokenSymbol.slice(1).toLowerCase()}`
-
-        const [metadataCap, treasuryCap] = ptb.moveCall({
-            target: `${tokenPackage}::create_ds_token`,
-            arguments: [
-                ptb.pure.string(tokenDescription.name),
-                ptb.pure.string(tokenSymbol),
-                ptb.pure.string(tokenDescription.iconUri),
-                ptb.pure.string(tokenDescription.description),
-                ptb.pure.u8(tokenDescription.decimals),
-                ptb.object(COIN_REGISTRY),
-            ],
-        })
-
-        const [auth, treasury, investorInfo, complianceConfig, setupFinalize] = ptb.moveCall({
-            target: `${Config.vars.PACKAGE_ID}::setup::setup`,
-            typeArguments: [tokenAddressId],
-            arguments: [
-                ptb.object(Config.vars.SETUP_REGISTRY),
-                ptb.object(Config.vars.PAS_NAMESPACE),
-                treasuryCap,
-                metadataCap,
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-
-        const ptbDetails: PTBDetails = {
-            ptb,
-            tokenDetails: {
-                investorInfo,
-                auth,
-                complianceConfig,
-            },
-        }
-
-        const roles = new Roles(tokenAddressId)
-
-        // Set roles BEFORE transferring service ownership (signer needs Master role)
-        if (request.owners) {
-            roles.setTransferAgentPTB(request.owners.walletRegistrarOwner, ptbDetails)
-
-            if (request.owners.redemptionAddress) {
-                const wallets = new Wallets(tokenAddressId)
-                wallets.addPlatformWalletPTB(request.owners.redemptionAddress, ptbDetails)
-            }
-        }
-
-        request.roles.forEach((r) => {
-            roles.updateRolePTB(r.address, r.role, ptbDetails)
-        })
-
-        if (request.complianceRules) {
-            await new Rules(tokenAddressId).updatePTB(request.complianceRules, ptbDetails)
-        }
-
-        if (request.countriesComplianceStatuses) {
-            const countryCompliance = new CountryCompliance(tokenAddressId)
-            request.countriesComplianceStatuses.forEach((c) => {
-                countryCompliance.setCountryCompliancePTB(
-                    c.countryName,
-                    c.complianceStatus,
-                    ptbDetails
-                )
-            })
-        }
-
-        // Set the transfer approval witness command in templates for <T>
-        const dsToken = new DSToken(tokenAddressId)
-        dsToken.setTransferTemplateCommandPTB(ptbDetails)
-
-        // Transfer service ownership + upgrade cap LAST (after all other role operations)
-        // This must be last because it transfers Master role away from signer
-        if (request.owners && request.owners.tokenOwner !== ADMIN_KEYPAIR!.toSuiAddress()) {
-            roles.setServiceOwnerPTB(request.owners.tokenOwner, ptbDetails, upgradeCapId)
-        }
-
-        ptb.moveCall({
-            target: `${Config.vars.PACKAGE_ID}::setup::finalize_setup`,
-            typeArguments: [tokenAddressId],
-            arguments: [
-                setupFinalize,
-                auth,
-                treasury,
-                investorInfo,
-                complianceConfig,
-                ptb.object(Config.vars.VERSION),
-            ],
-        })
-
-        const result = await SuiClient.signAndExecute(ptb, ADMIN_KEYPAIR!)
-
-        // In gRPC, object types use full 64-char addresses.
-        // Match by checking the suffix after the address prefix.
-        const objectTypes: Record<string, string> = result.objectTypes ?? {}
-        const currencyEntry = Object.entries(objectTypes).find(([_, type]) =>
-            type.includes('::coin_registry::Currency<')
-        )
-        if (!currencyEntry) {
-            throw new Error('Currency object not found in transaction result')
-        }
-        const tokenAddress = currencyEntry[1]
-            .replace(/^.*::coin_registry::Currency</, '')
-            .slice(0, -1)
+        // Step 2: Build and execute setup
+        const { bytes } = await buildSetupTokenBytes(request, deployed, signerAddress)
+        const result = await SuiClient.executeMoveCallBytes(bytes, signer)
 
         return {
-            id: tokenAddress,
+            id: parseSetupTokenResult(result),
         }
     } catch (e: any) {
-        throw handleError(e, tokenSymbol)
+        const err = handleError(e, tokenSymbol)
+        throw new Error(err.message)
     }
 }
 
 function handleError(e: any, tokenSymbol: string) {
-    const abortError = e?.cause?.effects.abortError
+    const abortError = e?.cause?.effects?.abortError
     const error = abortError?.error_code || -1
 
     let message = `Token ${tokenSymbol} failed to deploy with error: ${e}`
 
     if (
-        abortError?.module_id.endsWith('coin_registry') &&
+        abortError?.module_id?.endsWith('coin_registry') &&
         abortError?.function === 'new_currency' &&
         abortError?.error_code === 2
     ) {

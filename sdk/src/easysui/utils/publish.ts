@@ -1,6 +1,6 @@
 import fs from 'fs'
 import { Keypair } from '@mysten/sui/cryptography'
-import { ADMIN_KEYPAIR, Config } from '../config/config'
+import { Config } from '../config/config'
 
 import { execSync } from 'child_process'
 
@@ -21,8 +21,7 @@ export class PublishSingleton {
         return packagePath
     }
 
-    public static async publish(signer?: Keypair, packagePath?: string) {
-        signer ??= ADMIN_KEYPAIR!
+    public static async publish(signer: Keypair, packagePath?: string) {
         const _packagePath = this.getPackagePath(packagePath)
 
         if (!PublishSingleton.instance) {
@@ -69,12 +68,6 @@ export class PublishSingleton {
         return this.findUpgradeCapId(this.publishResponse())
     }
 
-    public static get usdcTreasuryCap(): string {
-        return this.findObjectIdByType(
-            `${this.packageId}::treasury::Treasury<${this.packageId}::usdc::USDC>`,
-            false
-        )
-    }
 
     /**
      * Returns the Move environment to use for the -e flag.
@@ -98,7 +91,7 @@ export class PublishSingleton {
         return undefined // Plain testnet, no -e flag
     }
 
-    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false, isTokenPackage: boolean = false) {
+    private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {
         const network = Config.vars.NETWORK
 
         if (!fs.existsSync(packagePath)) {
@@ -113,15 +106,14 @@ export class PublishSingleton {
         const isEphemeralChain = network !== 'mainnet' && network !== 'testnet'
         const moveEnv = this.getMoveEnv()
 
-        if (isEphemeralChain && !isTokenPackage) {
+        if (isEphemeralChain) {
             this.cleanPubFile()
         }
 
         let publishCmd: string
         if (isEphemeralChain) {
             publishCmd = `test-publish --build-env testnet --pubfile-path ${this.pubFile}`
-        } else if (moveEnv && !isTokenPackage) {
-            // Token packages don't use -e flag - they reference the main package via Published.toml
+        } else if (moveEnv) {
             publishCmd = `publish -e ${moveEnv}`
         } else {
             publishCmd = 'publish'
@@ -148,10 +140,9 @@ export class PublishSingleton {
         }
     }
 
-    static async getPublishBytes(signer?: string, packagePath?: string, isTokenPackage: boolean = false): Promise<string> {
-        signer ??= ADMIN_KEYPAIR!.toSuiAddress()
+    static async getPublishBytes(signer: string, packagePath?: string): Promise<string> {
         const _packagePath = this.getPackagePath(packagePath)
-        const cmd = this.getPublishCmd(_packagePath, signer, true, isTokenPackage)
+        const cmd = this.getPublishCmd(_packagePath, signer, true)
         try {
             return execSync(cmd, {
                 encoding: 'utf-8',
@@ -169,9 +160,8 @@ export class PublishSingleton {
     static async publishPackage(
         signer: Keypair,
         packagePath: string,
-        isTokenPackage: boolean = false
     ): Promise<any> {
-        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress(), false, isTokenPackage)
+        const cmd = this.getPublishCmd(packagePath, signer.toSuiAddress(), false)
         let res: string
         try {
             res = execSync(cmd, {
@@ -194,25 +184,29 @@ export class PublishSingleton {
     }
 
     static findPublishedPackageId(resp: any): string {
+        // JSON-RPC format (sui client publish --json)
         const packageChng = resp.objectChanges?.find(
             (chng: any) => chng.type === 'published'
         )
-
         if (packageChng) {
             return packageChng.packageId
         }
 
-        // Fallback: check changed_objects array for package with CREATED idOperation
-        const changedObjects = (resp as any).changed_objects as
-            | Array<{ objectId: string; objectType: string; idOperation: string }>
-            | undefined
+        // gRPC format: changedObjects in effects + objectTypes map
+        const changedObjects = resp.effects?.changedObjects ?? resp.changed_objects
+        const objectTypes: Record<string, string> = resp.objectTypes ?? {}
 
-        const createdPackage = changedObjects?.find(
-            (obj) => obj.objectType === 'package' && obj.idOperation === 'CREATED'
-        )
-
-        if (createdPackage) {
-            return createdPackage.objectId
+        if (changedObjects) {
+            const createdPackage = changedObjects.find(
+                (obj: any) => {
+                    const type = obj.objectType || objectTypes[obj.objectId] || ''
+                    return (obj.idOperation === 'Created' || obj.idOperation === 'CREATED') &&
+                        type === 'package'
+                }
+            )
+            if (createdPackage) {
+                return createdPackage.objectId
+            }
         }
 
         throw new Error('Expected to find package published')
@@ -222,35 +216,34 @@ export class PublishSingleton {
         resp: any,
         type: string
     ): any | undefined {
-        // Try standard objectChanges format first
+        // JSON-RPC format
         const found = resp.objectChanges?.find(
             (chng: any) =>
                 chng.type === 'created' && chng.objectType === type
         )
-
         if (found) {
             return found
         }
 
-        // Fallback: check changed_objects array
-        const changedObjects = (resp as any).changed_objects as
-            | Array<{ objectId: string; objectType: string; idOperation: string }>
-            | undefined
+        // gRPC format: changedObjects in effects + objectTypes map
+        const changedObjects = resp.effects?.changedObjects ?? resp.changed_objects
+        const objectTypes: Record<string, string> = resp.objectTypes ?? {}
 
-        const createdObj = changedObjects?.find(
-            (obj) => obj.idOperation === 'CREATED' && this.typeMatches(obj.objectType, type)
-        )
-
-        if (createdObj) {
-            // Return a compatible shape
-            return {
-                type: 'created',
-                objectType: createdObj.objectType,
-                objectId: createdObj.objectId,
-                owner: {} as any,
-                digest: '',
-                version: '',
-            } as any
+        if (changedObjects) {
+            const createdObj = changedObjects.find(
+                (obj: any) => {
+                    const objType = obj.objectType || objectTypes[obj.objectId] || ''
+                    return (obj.idOperation === 'Created' || obj.idOperation === 'CREATED') &&
+                        this.typeMatches(objType, type)
+                }
+            )
+            if (createdObj) {
+                return {
+                    type: 'created',
+                    objectType: createdObj.objectType || objectTypes[createdObj.objectId],
+                    objectId: createdObj.objectId,
+                }
+            }
         }
 
         return undefined

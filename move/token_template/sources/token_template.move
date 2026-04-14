@@ -1,11 +1,9 @@
-export const TOKEN_TEMPLATE = `
-module {MODULE}::{MODULE};
+module token_template::token_template;
 
 use std::string::String;
-use sui::coin::{TreasuryCap};
-use sui::coin_registry::{Self, CoinRegistry, MetadataCap};
+use sui::{coin::TreasuryCap, coin_registry::{Self, CoinRegistry, MetadataCap}};
 
-public struct {SYMBOL} has key {
+public struct TOKEN_TEMPLATE has key {
     id: UID,
 }
 
@@ -17,8 +15,8 @@ public fun create_ds_token(
     decimals: u8,
     registry: &mut CoinRegistry,
     ctx: &mut TxContext,
-): (MetadataCap<{SYMBOL}>, TreasuryCap<{SYMBOL}>) {
-    let (currency, treasury_cap) = coin_registry::new_currency<{SYMBOL}>(
+): (MetadataCap<TOKEN_TEMPLATE>, TreasuryCap<TOKEN_TEMPLATE>) {
+    let (currency, treasury_cap) = coin_registry::new_currency<TOKEN_TEMPLATE>(
         registry,
         decimals,
         symbol,
@@ -30,4 +28,3 @@ public fun create_ds_token(
     let metadata_cap = currency.finalize(ctx);
     (metadata_cap, treasury_cap)
 }
-`

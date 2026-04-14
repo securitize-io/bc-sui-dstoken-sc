@@ -62,7 +62,7 @@ describe('Rules (Compliance)', () => {
     let rules: Rules
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         rules = new Rules(tokenAddress)
     })

@@ -1,24 +1,25 @@
 import {Rule} from "./Rule";
 import {SuiClient} from "../../easysui";
-import {PTBDetails} from "../domains/PTBDetails";
-import {newPTBDetails} from "../domains/PTBDetails";
+import {newPTBDetails, PTBDetails} from "../domains/PTBDetails";
 
 export class ForceFullTransfer extends Rule {
     constructor(tokenAddress: string) {
         super(tokenAddress, 'ForceFullTransfer', 'force_full_transfer')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        force_full_transfer_us?: boolean, // forceFullTransfer
-        force_full_transfer_worldwide?: boolean, // worldWideForceFullTransfer
+        forceFullTransferUs?: boolean,
+        forceFullTransferWorldwide?: boolean,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.bool(!!force_full_transfer_us),
-            ptb.pure.bool(!!force_full_transfer_worldwide),
+            ptb.pure.bool(!!forceFullTransferUs),
+            ptb.pure.bool(!!forceFullTransferWorldwide),
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -26,12 +27,14 @@ export class ForceFullTransfer extends Rule {
 
     async register(
         signer: string,
-        force_full_transfer_us?: boolean, // forceFullTransfer
-        force_full_transfer_worldwide?: boolean, // worldWideForceFullTransfer
+        forceFullTransferUs?: boolean,
+        forceFullTransferWorldwide?: boolean,
     ) {
-        const ptb = this.registerPTB(force_full_transfer_us, force_full_transfer_worldwide)
+        const ptb = this.registerPTB(forceFullTransferUs, forceFullTransferWorldwide)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setForceUsPTB(force?: boolean, ptbDetails?: PTBDetails) {
         if (force === undefined) {

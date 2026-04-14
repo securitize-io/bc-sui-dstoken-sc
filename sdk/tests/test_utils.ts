@@ -85,7 +85,7 @@ export async function createTestToken(
     testTokenRequest.complianceRules = complianceRules
     testTokenRequest.countriesComplianceStatuses = countriesComplianceStatuses
     testTokenRequest.owners = owners
-    const res = await createDSToken(testTokenRequest)
+    const res = await createDSToken(testTokenRequest, ADMIN_KEYPAIR!)
     return res.id
 }
 

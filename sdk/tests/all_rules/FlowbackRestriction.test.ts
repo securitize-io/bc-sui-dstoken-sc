@@ -9,7 +9,7 @@ describe('FlowbackRestriction Rule', () => {
     let flowbackRestriction: FlowbackRestriction
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         flowbackRestriction = new FlowbackRestriction(tokenAddress)
     })
