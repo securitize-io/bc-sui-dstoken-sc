@@ -1,6 +1,6 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
-import {getTokenDetails} from "./token";
+import {getTokenDetails, TokenDetails} from "./token";
 import {InvestorLockInfo, LockRecord} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import {bcs} from "@mysten/sui/bcs";
@@ -8,7 +8,7 @@ import * as lockManager from "../generated/securitize/lock_manager";
 
 export class LockService {
     private readonly tokenAddress: string;
-    private readonly tokenDetails: any;
+    private readonly tokenDetails: TokenDetails;
 
     constructor(tokenAddress: string) {
         this.tokenAddress = tokenAddress;

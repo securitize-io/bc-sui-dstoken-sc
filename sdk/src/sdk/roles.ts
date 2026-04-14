@@ -1,6 +1,6 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
-import {getTokenDetails} from "./token";
+import {getTokenDetails, TokenDetails} from "./token";
 import {AbilityType, newPTBDetails, PTBDetails, RoleTypes} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import {normalizeSuiAddress} from "@mysten/sui/utils";
@@ -8,7 +8,7 @@ import * as trustService from "../generated/securitize/trust_service";
 
 export class Roles {
     private readonly tokenAddress: string;
-    private readonly tokenDetails: any;
+    private readonly tokenDetails: TokenDetails;
 
     constructor(tokenAddress: string) {
         this.tokenAddress = tokenAddress;

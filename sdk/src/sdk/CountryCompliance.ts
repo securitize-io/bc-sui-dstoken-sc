@@ -1,6 +1,6 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
-import {getTokenDetails} from "./token";
+import {getTokenDetails, TokenDetails} from "./token";
 import {
     newPTBDetails,
     PTBDetails,
@@ -13,7 +13,7 @@ import * as complianceService from "../generated/securitize/compliance_service";
 
 export class CountryCompliance {
     private readonly tokenAddress: string;
-    private readonly tokenDetails: any;
+    private readonly tokenDetails: TokenDetails;
 
     constructor(tokenAddress: string) {
         this.tokenAddress = tokenAddress;

@@ -1,6 +1,6 @@
 import { SuiClient } from '../easysui'
 import { Config } from './utils/config'
-import { getTokenDetails } from './token'
+import { getTokenDetails, TokenDetails } from './token'
 import {
     Attribute,
     AttributeStatus,
@@ -15,7 +15,7 @@ import * as registryService from '../generated/securitize/registry_service'
 
 export class Investors {
     private readonly tokenAddress: string
-    private readonly tokenDetails: any
+    private readonly tokenDetails: TokenDetails
 
     constructor(tokenAddress: string) {
         this.tokenAddress = tokenAddress

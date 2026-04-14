@@ -214,7 +214,7 @@ export async function createDSToken(request: DeploymentRequest, signer: Keypair)
         }
     } catch (e: any) {
         const err = handleError(e, tokenSymbol)
-        throw new Error(err.message)
+        throw new Error(err.message, { cause: e })
     }
 }
 

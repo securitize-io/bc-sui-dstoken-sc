@@ -1,12 +1,12 @@
 import {ADMIN_ADDRESS, SuiClient} from "../../easysui";
 import {Config} from "../utils/config";
-import {getTokenDetails} from "../token";
+import {getTokenDetails, TokenDetails} from "../token";
 import {Transaction, TransactionResult} from "@mysten/sui/transactions";
 import {newPTBDetails, PTBDetails} from "../domains";
 
 export class Rule {
     protected readonly tokenAddress: string;
-    protected readonly tokenDetails: any;
+    protected readonly tokenDetails: TokenDetails;
     private readonly ruleType: string;
     private readonly ruleModule: string;
 

@@ -1,13 +1,13 @@
 import {SuiClient} from "../easysui";
 import {Config} from "./utils/config";
-import {getTokenDetails} from "./token";
+import {getTokenDetails, TokenDetails} from "./token";
 import {newPTBDetails, PTBDetails} from "./domains";
 import {Transaction} from "@mysten/sui/transactions";
 import * as walletManager from "../generated/securitize/wallet_manager";
 
 export class Wallets {
     private readonly tokenAddress: string;
-    private readonly tokenDetails: any;
+    private readonly tokenDetails: TokenDetails;
 
     constructor(tokenAddress: string) {
         this.tokenAddress = tokenAddress;
