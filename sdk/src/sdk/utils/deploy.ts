@@ -20,13 +20,13 @@ type DependencyArtifacts = {
 export async function deploy(signer: Keypair) {
     const network = process.env.NETWORK ?? 'localnet'
 
-    // On testnet/mainnet, skip publishing — use already deployed packages from .env
+    const result = await baseDeploy(Config, undefined, signer)
+
+    // On testnet/mainnet, skip publishing pas setup
     if (network === 'testnet' || network === 'mainnet') {
         Config.invalidateCache()
-        return `Using existing deployment on ${network}`
+        return result
     }
-
-    const result = await baseDeploy(Config, undefined, signer)
 
     const artifacts = await resolveDependencyArtifacts()
     await setupPas(artifacts, signer)
