@@ -1,5 +1,12 @@
 # @securitize/sui-sdk
 
+## 5.2.0
+
+### Minor Changes
+
+- Use https to clone MystenLab repositories
+- Add key pair on create token and use latest changes to use gRPC
+
 ## 5.0.0
 
 ### Major Changes
