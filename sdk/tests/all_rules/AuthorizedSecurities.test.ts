@@ -9,7 +9,7 @@ describe('AuthorizedSecurities Rule', () => {
     let authorizedSecurities: AuthorizedSecurities
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         authorizedSecurities = new AuthorizedSecurities(tokenAddress)
     })
@@ -65,7 +65,7 @@ describe('AuthorizedSecurities Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = authorizedSecurities.registerPTB(BigInt(500000))
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

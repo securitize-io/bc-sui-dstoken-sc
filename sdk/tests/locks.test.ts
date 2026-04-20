@@ -17,7 +17,7 @@ describe('LockService', () => {
     const testInvestor3 = 'LockTestInvestor3'
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         lockService = new LockService(tokenAddress)
 

@@ -1,6 +1,6 @@
 {
     "name": "@securitize/sui-sdk",
-    "version": "5.0.0",
+    "version": "5.3.0",
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
@@ -21,14 +21,14 @@
         "prepublishOnly": "pnpm build",
         "changeset": "changeset",
         "version": "changeset version",
-        "deploy_localnet": "rm -f ./Pub.localnet.toml && sui client switch --env localnet && cross-env NETWORK=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
-        "deploy_devnet": "rm -f ./Pub.devnet.toml && sui client switch --env devnet && cross-env NETWORK=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts",
-        "deploy_testnet": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy.ts --",
-        "deploy_mainnet": "sui client switch --env mainnet && cross-env NETWORK=mainnet pnpm exec ts-node ./src/scripts/deploy.ts",
-        "deploy_devnet_test_token": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
-        "deploy_testnet_test_token": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec ts-node ./src/scripts/deploy_test_token.ts",
-        "exp": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec ts-node ./src/scripts/test_registerInvestor.ts",
-        "test": "jest --runInBand",
+        "deploy_localnet": "rm -f ./Pub.localnet.toml && sui client switch --env localnet && cross-env NETWORK=localnet MVR_FALLBACK_NETWORK=testnet pnpm exec tsx ./src/scripts/deploy.ts",
+        "deploy_devnet": "rm -f ./Pub.devnet.toml && sui client switch --env devnet && cross-env NETWORK=devnet MVR_FALLBACK_NETWORK=testnet pnpm exec tsx ./src/scripts/deploy.ts",
+        "deploy_testnet": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec tsx ./src/scripts/deploy.ts --",
+        "deploy_mainnet": "sui client switch --env mainnet && cross-env NETWORK=mainnet pnpm exec tsx ./src/scripts/deploy.ts",
+        "deploy_devnet_test_token": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec tsx ./src/scripts/deploy_test_token.ts",
+        "deploy_testnet_test_token": "sui client switch --env testnet && cross-env NETWORK=testnet pnpm exec tsx ./src/scripts/deploy_test_token.ts",
+        "exp": "sui client switch --env devnet && cross-env NETWORK=devnet pnpm exec tsx ./src/scripts/test_registerInvestor.ts",
+        "test": "NODE_OPTIONS='--experimental-vm-modules' jest --runInBand",
         "lint": "npx prettier -c **/*.ts",
         "fix": "npx prettier -c **/*.ts --write",
         "clean": "rm -rf ./node_modules"
@@ -44,11 +44,14 @@
     },
     "dependencies": {
         "@iarna/toml": "^2.2.5",
-        "@mysten/sui": "^1.45.2",
+        "@mysten/bcs": "^2.0.3",
+        "@mysten/codegen": "^0.8.5",
+        "@mysten/move-bytecode-template": "^0.3.0",
+        "@mysten/sui": "^2.14.1",
         "@types/node": "^24.3.1",
         "cross-env": "^10.0.0",
         "dotenv": "^17.2.3",
-        "ts-node": "^10.9.2",
+        "tsx": "^4.19.0",
         "typescript": "^5.9.2"
     }
 }

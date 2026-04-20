@@ -1,7 +1,8 @@
 import { deploy } from '../src/sdk/utils/deploy'
+import { ADMIN_KEYPAIR } from '../src'
 
 beforeAll(async () => {
-    await deploy()
+    await deploy(ADMIN_KEYPAIR!)
 })
 
 describe('Publish', () => {

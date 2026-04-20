@@ -1,48 +1,74 @@
-# Steps to execute the integration tests
+# Securitize Sui SDK
 
-## First setup the sui local environment and test address
-1. Run a localnet with 
-```
-sui start --with-faucet --force-regenesis
-```
-2. Switch to the localnet environment with 
-```
-sui client switch --env localnet
-```
-**If localnet is not defined, create it and then switch to localnet.**
-```
-sui client new-env --alias localnet --rpc http://127.0.0.1:9000
-sui client switch --env localnet
-```
-3. Import an address that is created for testing purposes and is used within the contracts with 
-```
-sui keytool import --alias admin suiprivkey1qpq4r2l7kr3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q ed25519
-```
-4. Switch to that address and get some sui tokens to publish the contracts and run the transactions 
-```
-sui client switch --address admin
-sui client faucet
+## RPC Transport
+
+The SDK uses **gRPC** exclusively for all Sui network communication (`@mysten/sui/grpc`). JSON-RPC is not used.
+
+Key details:
+- Transaction building and execution use `SuiGrpcClient`
+- Read-only view functions use `simulateTransaction` (gRPC equivalent of `devInspectTransactionBlock`)
+- The `GRPC_URL` environment variable is required (e.g. `https://fullnode.devnet.sui.io:443`)
+
+## Code Generation
+
+The SDK uses `@mysten/codegen` to generate type-safe TypeScript wrappers for Move function calls. The generated code lives in `src/generated/` and handles argument type serialization automatically (addresses as `ptb.pure.address()`, objects as `ptb.object()`, strings as `ptb.pure.string()`, Clock auto-injected, etc.).
+
+### Regenerating
+
+When the Move contracts change, regenerate the wrappers:
+
+```bash
+cd sdk
+npx sui-ts-codegen generate
 ```
 
-## Lastly create the env file and run the integration tests
-1. Create the initial .env file with required variables
+This reads `sui-codegen.config.ts`, runs `sui move summary` on the Move package, and outputs typed TypeScript files to `src/generated/`.
+
+### How it's used
+
+Service classes import generated functions and call them with named arguments:
+
+```typescript
+import * as dsToken from '../generated/securitize/ds_token'
+
+dsToken.issueTokens({
+    package: Config.vars.PACKAGE_ID,
+    arguments: { treasury, auth, investors, to, value, ... },
+    typeArguments: [tokenAddress],
+})(ptb)
 ```
-    touch .env
-    echo "NETWORK=localnet" >> .env
-    echo "ADMIN_PRIVATE_KEY=suiprivkey1qpq4r2l7kr3n5vrtt56qah5nj576hj6ppjexztq38x43n03cxjmhqp7rz6q" >> .env
-    echo "FULLNODE_URL=http://127.0.0.1:9000" >> .env
+
+The generated code replaces manual `ptb.moveCall()` with `MoveType` annotations, eliminating the address-vs-object type bugs that affected gRPC.
+
+## Token Template
+
+Token deployment uses pre-compiled Move bytecode with WASM-based identifier patching. No `sui` CLI or `sui move build` is needed at deploy time.
+
+The flow:
+1. Load pre-compiled bytecode from `src/sdk/tokenTemplate/getBytecode.ts`
+2. Patch `token_template` (module) and `TOKEN_TEMPLATE` (struct) identifiers with the token symbol using `@mysten/move-bytecode-template`
+3. Publish the patched bytecode via `tx.publish()`
+
+The Move source lives in `move/token_template/`. See its [README](../move/token_template/README.md) for instructions on regenerating the embedded bytecode.
+
+## Running Integration Tests
+
+Integration tests should only be run on **devnet** or **localnet**. Do not run `.ts` tests on testnet — testnet deployments are persistent and shared across environments.
+
+### Running tests on devnet
+
+On devnet (and localnet), `deploy()` publishes fresh securitize packages each run. The `Pub.devnet.toml` ephemeral publish file is automatically cleaned before each deploy to avoid stale entries.
+
+Set `.env`:
 ```
-2. Install the dependencies with 
+NETWORK=devnet
+ADMIN_PRIVATE_KEY=<your-key>
+```
+
+Run tests:
 ```
 pnpm install
-```
-3. Run publish test first 
-```
 pnpm test publish.test.ts
-```
-
-4. Then run all other tests
-```
 pnpm test "**/*.test.ts" -- --testPathIgnorePatterns=publish.test.ts
 ```
 

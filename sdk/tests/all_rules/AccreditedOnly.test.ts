@@ -9,7 +9,7 @@ describe('AccreditedOnly Rule', () => {
     let accreditedOnly: AccreditedOnly
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         accreditedOnly = new AccreditedOnly(tokenAddress)
     })
@@ -69,7 +69,7 @@ describe('AccreditedOnly Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = accreditedOnly.registerPTB(true, true)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

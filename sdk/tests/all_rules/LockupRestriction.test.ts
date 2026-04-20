@@ -12,7 +12,7 @@ describe('LockupRestriction Rule', () => {
     let euInvestorKP: Keypair
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         lockupRestriction = new LockupRestriction(tokenAddress)
         dsToken = new DSToken(tokenAddress)
@@ -91,7 +91,7 @@ describe('LockupRestriction Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = lockupRestriction.registerPTB(1000000, 2000000)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

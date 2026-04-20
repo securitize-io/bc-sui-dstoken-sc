@@ -1,10 +1,28 @@
 # @securitize/sui-sdk
 
+## 5.3.0
+
+### Minor Changes
+
+- Use https to clone MystenLab repositories
+- Add key pair on create token and use latest changes to use gRPC
+
+### Patch Changes
+
+- Fix publish testnet contracts
+
+## 5.2.0
+
+### Minor Changes
+
+- Use https to clone MystenLab repositories
+- Add key pair on create token and use latest changes to use gRPC
+
 ## 5.0.0
 
 ### Major Changes
 
-- The coin is seperated from the other pacakges on deploymenbt
+- The coin is seperated from the other pacakges on deployment
 
 ### Patch Changes
 
@@ -14,7 +32,7 @@
 
 ### Major Changes
 
-- The coin is seperated from the other pacakges on deploymenbt
+- The coin is seperated from the other pacakges on deployment
 
 ## 3.0.0
 

@@ -36,7 +36,7 @@ describe('DSTokenBulk', () => {
     }
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         dsTokenBulk = new DSTokenBulk(tokenAddress)
         dsToken = new DSToken(tokenAddress)

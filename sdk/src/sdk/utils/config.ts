@@ -7,8 +7,6 @@ interface ConfigVars extends BaseConfigVars {
     PAS_PACKAGE_ID: string
     PTB_PACKAGE_ID: string
     PAS_NAMESPACE: string
-    TEMP_PATH: string
-    MAINNET_TOKENS_PATH: string
     SECURITIZE_TESTNET_ENV: string
 }
 
@@ -41,11 +39,9 @@ export class Config extends BaseConfig<ConfigVars> {
             UPGRADE_CAP_ID: process.env.UPGRADE_CAP_ID || baseVars.UPGRADE_CAP_ID,
             SETUP_REGISTRY: process.env.SETUP_REGISTRY || '',
             VERSION: process.env.VERSION || '',
-            PAS_PACKAGE_ID: process.env.PAS_PACKAGE_ID!,
+            PAS_PACKAGE_ID: process.env.PAS_PACKAGE_ID || '',
             PTB_PACKAGE_ID: process.env.PTB_PACKAGE_ID || '',
             PAS_NAMESPACE: process.env.PAS_NAMESPACE || '',
-            TEMP_PATH: process.env.TEMP_PATH || './temp_tokens',
-            MAINNET_TOKENS_PATH: process.env.MAINNET_TOKENS_PATH || './mainnet_tokens',
             SECURITIZE_TESTNET_ENV: process.env.SECURITIZE_TESTNET_ENV || '',
         }
         return this._cachedVars

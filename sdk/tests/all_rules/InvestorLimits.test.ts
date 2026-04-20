@@ -9,7 +9,7 @@ describe('InvestorLimits Rule', () => {
     let investorLimits: InvestorLimits
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         investorLimits = new InvestorLimits(tokenAddress)
     })
@@ -120,7 +120,7 @@ describe('InvestorLimits Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = investorLimits.registerPTB(2000, 100, 500, 300, 150, 100, 200, 25)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

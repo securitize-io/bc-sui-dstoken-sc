@@ -62,7 +62,7 @@ describe('Rules (Compliance)', () => {
     let rules: Rules
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         rules = new Rules(tokenAddress)
     })
@@ -172,7 +172,7 @@ describe('Rules (Compliance)', () => {
 
             const ptb = await rules.updatePTB(complianceRules)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

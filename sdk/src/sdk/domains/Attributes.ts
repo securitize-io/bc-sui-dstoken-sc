@@ -32,7 +32,7 @@ export function toAttributeType(type: string): AttributeType {
     }
 
     if (!map[type]) {
-        throw `Attribute type ${type} does not exist`
+        throw new Error(`Attribute type ${type} does not exist`)
     }
 
     return map[type]
@@ -50,7 +50,7 @@ export function toAttributeStatus(status: string): AttributeStatus {
     }
 
     if (!map[status]) {
-        throw `Attribute status ${status} does not exist`
+        throw new Error(`Attribute status ${status} does not exist`)
     }
 
     return map[status]

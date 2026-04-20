@@ -16,7 +16,7 @@ describe('CombinedIssuance', () => {
     let issuanceTime: number
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         combinedIssuance = new CombinedIssuance(tokenAddress)
         investors = new Investors(tokenAddress)
@@ -206,7 +206,7 @@ describe('CombinedIssuance', () => {
 
             const ptb = combinedIssuance.registerPTB(investor)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
 
         it('should create PTB with lock', () => {
@@ -228,7 +228,7 @@ describe('CombinedIssuance', () => {
 
             const ptb = combinedIssuance.registerPTB(investor)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

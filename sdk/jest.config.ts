@@ -15,7 +15,19 @@ const config: Config.InitialOptions = {
         diagnostics: { ignoreCodes: ["TS151001"] },
       },
     ],
+    // Transform ESM-only @mysten/sui so Jest can load it
+    "node_modules/@mysten/sui/.+\\.mjs$": [
+      "ts-jest",
+      {
+        useESM: true,
+        diagnostics: false,
+      },
+    ],
   },
+  // Allow @mysten/sui to be transformed (it's ESM-only in v2)
+  transformIgnorePatterns: [
+    "node_modules/(?!@mysten/sui)",
+  ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testMatch: [
     "<rootDir>/tests/**/*.test.ts", // Then run all other test files

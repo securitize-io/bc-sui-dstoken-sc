@@ -13,7 +13,7 @@ describe('Roles', () => {
     let testTransferAgent: string
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         roles = new Roles(tokenAddress)
 
@@ -365,14 +365,13 @@ describe('Roles', () => {
             await expect(roles.getRole(sender)).resolves.toBe('none')
 
             // Verify new owner owns the token's UpgradeCap
-            const newOwnerCaps = await SuiClient.client.getOwnedObjects({
+            const newOwnerCaps = await SuiClient.client.listOwnedObjects({
                 owner: newOwner,
-                filter: { StructType: '0x2::package::UpgradeCap' },
-                options: { showContent: true },
+                type: '0x2::package::UpgradeCap',
+                include: { json: true },
             })
-            const transferredCap = newOwnerCaps.data.find((o) => {
-                const content = o.data?.content as any
-                return normalizeSuiAddress(content?.fields?.package) === tokenPackageId
+            const transferredCap = newOwnerCaps.objects.find((o: any) => {
+                return normalizeSuiAddress(o.json?.package) === tokenPackageId
             })
             expect(transferredCap).toBeDefined()
 

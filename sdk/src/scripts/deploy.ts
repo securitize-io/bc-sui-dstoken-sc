@@ -1,4 +1,5 @@
 import { deploy } from '../sdk/utils/deploy'
+import { ADMIN_KEYPAIR } from '../easysui'
 
 const VALID_TESTNET_ENVS = ['testnet_alpha', 'testnet_beta', 'testnet_gamma'] as const
 
@@ -29,7 +30,7 @@ if (envArg) {
     console.log(`Deploying to Move environment: ${envArg}`)
 }
 
-deploy()
+deploy(ADMIN_KEYPAIR!)
     .then(console.log)
     .catch((err) => {
         console.error('Deployment failed:', err.message)

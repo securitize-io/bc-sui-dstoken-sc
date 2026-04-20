@@ -10,10 +10,10 @@ export abstract class Bulk {
     }
 
     /**
-     * Gets the txBytes a bulk PTB
+     * Builds transaction bytes for a bulk operation.
      *
      * @param items - Array of items to process
-     * @param signer - The signer address
+     * @param signer - The signer address (string)
      * @param buildOperation - Function that adds operations to the PTB for each item
      * @returns The transaction bytes for all the items
      */
@@ -23,7 +23,7 @@ export abstract class Bulk {
         buildOperation: (item: T, ptb: Transaction) => void,
     ): Promise<string> {
         if (items.length > this.maxSize) {
-            throw `You can only perform ${this.maxSize} transactions.`
+            throw new Error(`You can only perform ${this.maxSize} transactions.`)
         }
 
         const ptb = new Transaction();
@@ -31,19 +31,36 @@ export abstract class Bulk {
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
 
-    private chunkArray<T>(arr: T[]): T[][] {
-        const result: T[][] = []
-        for (let i = 0; i < arr.length; i += this.maxSize) {
-            result.push(arr.slice(i, i + this.maxSize))
+    /**
+     * Builds transaction bytes for each chunk of a bulk operation.
+     * Returns an array of transaction bytes, one per chunk.
+     *
+     * @param items - Array of items to process
+     * @param signer - The signer address (string)
+     * @param buildOperation - Function that adds operations to the PTB for each item
+     * @returns Array of transaction bytes, one per chunk
+     */
+    protected async bulkBytes<T>(
+        items: T[],
+        signer: string,
+        buildOperation: (item: T, ptb: Transaction) => void,
+    ): Promise<string[]> {
+        const chunks = this.chunkArray(items)
+        const results: string[] = []
+
+        for (const chunk of chunks) {
+            const bytes = await this.bulkCall(chunk, signer, buildOperation)
+            results.push(bytes)
         }
-        return result
+
+        return results
     }
 
     /**
-     * Executes the operations into one chunk at a time.
+     * Executes bulk operations using a Keypair (signs and submits each chunk).
      *
      * @param items - Array of items to process
-     * @param signer - The signer address
+     * @param signer - The signer Keypair
      * @param buildOperation - Function that adds operations to the PTB for each item
      */
     protected async bulkExecution<T>(
@@ -57,5 +74,15 @@ export abstract class Bulk {
             const bytes = await this.bulkCall(chunk, signer.toSuiAddress(), buildOperation)
             await SuiClient.executeMoveCallBytes(bytes, signer)
         }
+    }
+
+    // ==== Private Helpers ====
+
+    private chunkArray<T>(arr: T[]): T[][] {
+        const result: T[][] = []
+        for (let i = 0; i < arr.length; i += this.maxSize) {
+            result.push(arr.slice(i, i + this.maxSize))
+        }
+        return result
     }
 }

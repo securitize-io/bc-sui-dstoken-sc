@@ -19,7 +19,7 @@ describe('DSToken', () => {
     let issuanceTimeMS: number
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         issuanceTimeMS = new Date().getTime()
         tokenAddress = await createTestToken()
         dsToken = new DSToken(tokenAddress)

@@ -7,15 +7,17 @@ export class BackdatingIssuance extends Rule {
         super(tokenAddress, 'BackdatingIssuance', 'backdating_issuance')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        disallow_backdating?: boolean,
+        disallowBackdating?: boolean,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
         const ptb = ptbDetails.ptb
 
         const rule = this.newRule(ptb, [
-            ptb.pure.bool(!!disallow_backdating)
+            ptb.pure.bool(!!disallowBackdating)
         ], ptbDetails)
 
         return this._registerPTB(rule, ptbDetails)
@@ -23,11 +25,13 @@ export class BackdatingIssuance extends Rule {
 
     async register(
         signer: string,
-        disallow_backdating?: boolean,
+        disallowBackdating?: boolean,
     ) {
-        const ptb = this.registerPTB(disallow_backdating)
+        const ptb = this.registerPTB(disallowBackdating)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setDisallowBackdatingPTB(disallow?: boolean, ptbDetails?: PTBDetails) {
         if (disallow === undefined) {

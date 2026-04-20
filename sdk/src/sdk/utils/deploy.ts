@@ -1,10 +1,10 @@
 import {
-    ADMIN_KEYPAIR,
     deploy as baseDeploy,
     PublishSingleton,
     SuiClient,
     MoveType,
 } from '../../easysui'
+import { Keypair } from '@mysten/sui/cryptography'
 
 import fs from 'fs'
 import path from 'path'
@@ -17,19 +17,21 @@ type DependencyArtifacts = {
     ptbPackageId?: string
 }
 
-export async function deploy() {
-    const result = await baseDeploy(Config)
-
+export async function deploy(signer: Keypair) {
     const network = process.env.NETWORK ?? 'localnet'
-    const isTestChain = network !== 'mainnet'
 
-    if (!isTestChain) {
+    const result = await baseDeploy(Config, undefined, signer)
+
+    // On testnet/mainnet, skip publishing pas setup
+    if (network === 'testnet' || network === 'mainnet') {
+        Config.invalidateCache()
         return result
     }
 
     const artifacts = await resolveDependencyArtifacts()
-    await setupPas(artifacts)
+    await setupPas(artifacts, signer)
     patchEnvFile(network, artifacts)
+    Config.invalidateCache()
 
     return result
 }
@@ -44,8 +46,12 @@ async function resolveDependencyArtifacts(): Promise<DependencyArtifacts> {
     const pasPackageId = extractPackageId(content, 'packages/pas')
     const ptbPackageId = extractPackageId(content, 'packages/ptb')
 
+    if (!pasPackageId) {
+        return { ptbPackageId }
+    }
+
     const { pasNamespace, pasUpgradeCap } =
-        await resolvePasObjectsFromRpc(pasPackageId!)
+        await resolvePasObjectsFromRpc(pasPackageId)
 
     return {
         pasPackageId,
@@ -65,36 +71,40 @@ function extractPackageId(content: string, packagePath: string): string | undefi
 }
 
 async function resolvePasObjectsFromRpc(pasPackageId: string) {
-    const { data: objData } = await SuiClient.client.getObject({
-        id: pasPackageId,
-        options: { showPreviousTransaction: true },
+    const { object } = await SuiClient.client.getObject({
+        objectId: pasPackageId,
+        include: { previousTransaction: true },
     })
 
-    const publishDigest = objData?.previousTransaction
+    const publishDigest = object.previousTransaction
     if (!publishDigest) {
         throw new Error(`Failed to resolve publish tx for package ${pasPackageId}`)
     }
 
-    const tx = await SuiClient.client.getTransactionBlock({
+    const txResult = await SuiClient.client.getTransaction({
         digest: publishDigest,
-        options: { showObjectChanges: true },
+        include: { effects: true, objectTypes: true },
     })
 
+    const tx = txResult.Transaction ?? txResult.FailedTransaction
+    const changedObjects = tx?.effects?.changedObjects ?? []
+    const objectTypes: Record<string, string> = tx?.objectTypes ?? {}
+
+    const findCreatedByType = (type: string): string => {
+        const found = changedObjects.find(
+            (c: any) => c.idOperation === 'Created' && PublishSingleton.typeMatches(objectTypes[c.objectId] || '', type)
+        )
+        if (!found) throw new Error(`Expected to find ${type} created object`)
+        return found.objectId
+    }
+
     return {
-        pasNamespace: PublishSingleton.findObjectIdByType(
-            `${pasPackageId}::namespace::Namespace`,
-            true,
-            tx,
-        ),
-        pasUpgradeCap: PublishSingleton.findObjectIdByType(
-            '0x2::package::UpgradeCap',
-            true,
-            tx,
-        ),
+        pasNamespace: findCreatedByType(`${pasPackageId}::namespace::Namespace`),
+        pasUpgradeCap: findCreatedByType('0x2::package::UpgradeCap'),
     }
 }
 
-async function setupPas(artifacts: DependencyArtifacts) {
+async function setupPas(artifacts: DependencyArtifacts, signer: Keypair) {
     const { pasPackageId, pasNamespace, pasUpgradeCap } = artifacts
 
     if (!pasPackageId || !pasNamespace || !pasUpgradeCap) {
@@ -102,14 +112,14 @@ async function setupPas(artifacts: DependencyArtifacts) {
     }
 
     await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
+        signer,
         target: `${pasPackageId}::namespace::setup`,
         args: [pasNamespace, pasUpgradeCap],
         argTypes: [MoveType.object, MoveType.object],
     })
 
     await SuiClient.moveCall({
-        signer: ADMIN_KEYPAIR!,
+        signer,
         target: `${pasPackageId}::templates::setup`,
         args: [pasNamespace],
         argTypes: [MoveType.object],

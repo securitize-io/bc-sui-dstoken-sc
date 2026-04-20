@@ -8,11 +8,13 @@ export class HoldingLimits extends Rule {
         super(tokenAddress, 'HoldingLimits', 'holding_limits')
     }
 
+    // ==== Registration ====
+
     registerPTB(
-        min_holdings_per_investor?: bigint, // minimumHoldingsPerInvestor
-        max_holdings_per_investor?: bigint, // maximumHoldingsPerInvestor
-        minUSTokens?: bigint, // minUSTokens
-        minEUTokens?: bigint, // minEUTokens
+        minHoldingsPerInvestor?: bigint,
+        maxHoldingsPerInvestor?: bigint,
+        minUSTokens?: bigint,
+        minEUTokens?: bigint,
         ptbDetails?: PTBDetails,
     ) {
         ptbDetails ??= newPTBDetails()
@@ -32,8 +34,8 @@ export class HoldingLimits extends Rule {
         }
 
         const rule = this.newRule(ptb, [
-            ptb.pure.u64(min_holdings_per_investor || 0),
-            ptb.pure.u64(max_holdings_per_investor || 0),
+            ptb.pure.u64(minHoldingsPerInvestor || 0),
+            ptb.pure.u64(maxHoldingsPerInvestor || 0),
             ptb.pure.vector('u64', regions),
             ptb.pure.vector('u64', regionMins),
         ], ptbDetails)
@@ -43,14 +45,16 @@ export class HoldingLimits extends Rule {
 
     async register(
         signer: string,
-        min_holdings_per_investor: bigint, // minimumHoldingsPerInvestor
-        max_holdings_per_investor: bigint, // maximumHoldingsPerInvestor
+        minHoldingsPerInvestor: bigint,
+        maxHoldingsPerInvestor: bigint,
         minUSTokens?: bigint,
         minEUTokens?: bigint,
     ) {
-        const ptb = this.registerPTB(min_holdings_per_investor, max_holdings_per_investor, minUSTokens, minEUTokens)
+        const ptb = this.registerPTB(minHoldingsPerInvestor, maxHoldingsPerInvestor, minUSTokens, minEUTokens)
         return SuiClient.getMoveCallBytesFromPTB(ptb, signer)
     }
+
+    // ==== Setters ====
 
     setMinHoldingsPTB(minHoldings?: bigint, ptbDetails?: PTBDetails) {
         if (minHoldings === undefined) {

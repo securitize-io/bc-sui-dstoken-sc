@@ -1,12 +1,11 @@
-import { SuiClient as SC } from '@mysten/sui/client'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 import { toBase64, fromBase64, fromHex } from '@mysten/sui/utils'
 import { Config } from '../config/config'
 import { Transaction } from '@mysten/sui/transactions'
 import { Keypair } from '@mysten/sui/cryptography'
 import { bcs } from '@mysten/sui/bcs'
 import { analyze_cost } from './cost_analyzer'
-import type {SuiTransactionBlockResponse} from "@mysten/sui/jsonRpc";
-import {FORMAT_TYPES, hexToBase64, isHex, toFormatType} from "./byte_utils";
+import { FORMAT_TYPES, hexToBase64, isHex, toFormatType } from './byte_utils'
 
 export enum MoveType {
     u8 = 1,
@@ -25,18 +24,25 @@ export enum MoveType {
     vec_u64,
 }
 
-const txOptions = {
-    showEffects: true,
-    showObjectChanges: true,
-    showBalanceChanges: true,
-}
+/** Include options for gRPC transaction responses */
+const txInclude = {
+    effects: true,
+    objectTypes: true,
+    balanceChanges: true,
+} as const
 
 export class SuiClient {
     private static instance: SuiClient | null = null
-    private client: SC
-
+    private client: SuiGrpcClient
     private constructor() {
-        this.client = new SC({ url: Config.vars.RPC })
+        const network = Config.vars.NETWORK
+        if (!Config.vars.GRPC_URL) {
+            throw new Error('GRPC_URL is not set. Add it to your .env file.')
+        }
+        this.client = new SuiGrpcClient({
+            network,
+            baseUrl: Config.vars.GRPC_URL,
+        })
     }
 
     private static getInstance(): SuiClient {
@@ -46,32 +52,45 @@ export class SuiClient {
         return this.instance!
     }
 
-    public static get client(): SC {
+    public static get client(): SuiGrpcClient {
         return this.getInstance().client
     }
 
-    private static async waitForTransaction(
-        ptb: Transaction,
-        resp: SuiTransactionBlockResponse,
-    ) {
-        await SuiClient.client.waitForTransaction({ digest: resp.digest })
-        if (resp.effects?.status.status !== 'success') {
-            throw new Error(JSON.stringify(resp))
+
+    /**
+     * Waits for transaction confirmation and returns the result.
+     * Handles both gRPC response shape ({ $kind, Transaction }) and
+     * JSON-RPC response shape (flat SuiTransactionBlockResponse).
+     */
+    private static async waitForTransaction(ptb: Transaction, result: any) {
+        // gRPC response shape
+        if (result.$kind === 'FailedTransaction') {
+            throw new Error(JSON.stringify(result.FailedTransaction))
         }
-        analyze_cost(ptb, resp)
-        return resp
+        const txResult = result.$kind ? result.Transaction : result
+
+        // Check for failure
+        const status = txResult.status ?? txResult.effects?.status
+        if (status?.status === 'failure' || status?.success === false) {
+            throw new Error(JSON.stringify(txResult))
+        }
+
+        await SuiClient.client.waitForTransaction({
+            digest: txResult.digest,
+            include: txInclude,
+        })
+
+        analyze_cost(ptb, txResult)
+        return txResult
     }
 
-    public static async signAndExecute(
-        ptb: Transaction,
-        signer: Keypair,
-    ) {
-        const resp = await SuiClient.client.signAndExecuteTransaction({
+    public static async signAndExecute(ptb: Transaction, signer: Keypair) {
+        const result = await SuiClient.client.signAndExecuteTransaction({
             transaction: ptb,
             signer,
-            options: txOptions,
+            include: txInclude,
         })
-        return SuiClient.waitForTransaction(ptb, resp)
+        return SuiClient.waitForTransaction(ptb, result)
     }
 
     public static toMoveArg(ptb: Transaction, value: any, type?: MoveType) {
@@ -130,7 +149,15 @@ export class SuiClient {
         ptb?: Transaction
         withTransfer?: boolean
     }) {
-        ptb = this.getPTB(target, typeArgs, args, argTypes, signer.toSuiAddress(), withTransfer, ptb);
+        ptb = this.getPTB(
+            target,
+            typeArgs,
+            args,
+            argTypes,
+            signer.toSuiAddress(),
+            withTransfer,
+            ptb
+        )
 
         return SuiClient.signAndExecute(ptb, signer)
     }
@@ -144,7 +171,7 @@ export class SuiClient {
         ptb,
         withTransfer = false,
         gasOwner,
-        format = FORMAT_TYPES.hex
+        format = FORMAT_TYPES.hex,
     }: {
         signer: string
         target: string
@@ -156,15 +183,20 @@ export class SuiClient {
         gasOwner?: string
         format?: FORMAT_TYPES
     }) {
-        ptb = this.getPTB(target, typeArgs, args, argTypes, signer, withTransfer, ptb);
-        return await this.getMoveCallBytesFromPTB(ptb, signer, gasOwner, format);
+        ptb = this.getPTB(target, typeArgs, args, argTypes, signer, withTransfer, ptb)
+        return await this.getMoveCallBytesFromPTB(ptb, signer, gasOwner, format)
     }
 
-    public static async getMoveCallBytesFromPTB(ptb: Transaction, signer: string, gasOwner?: string, format: FORMAT_TYPES = FORMAT_TYPES.hex) {
+    public static async getMoveCallBytesFromPTB(
+        ptb: Transaction,
+        signer: string,
+        gasOwner?: string,
+        format: FORMAT_TYPES = FORMAT_TYPES.hex
+    ) {
         ptb.setSender(signer)
         gasOwner ??= signer
         ptb.setGasOwner(gasOwner || signer)
-        const bytes = await ptb.build({client: SuiClient.client, onlyTransactionKind: false});
+        const bytes = await ptb.build({ client: SuiClient.client, onlyTransactionKind: false })
         return toFormatType(format, bytes)
     }
 
@@ -187,7 +219,7 @@ export class SuiClient {
     public static async executeMoveCallBytes(
         bytes: Uint8Array | string,
         senderSignature: string | Keypair,
-        gasOwnerSignature?: string | Keypair,
+        gasOwnerSignature?: string | Keypair
     ) {
         const transactionBlock = this.toBytes(bytes)
         senderSignature = await this.getSignature(senderSignature, transactionBlock)
@@ -197,13 +229,20 @@ export class SuiClient {
             gasOwnerSignature = await this.getSignature(gasOwnerSignature, transactionBlock)
             signature.push(gasOwnerSignature)
         }
-        const resp = await SuiClient.client.executeTransactionBlock({
-            transactionBlock: toBase64(transactionBlock),
-            signature,
-            options: txOptions
-        })
+
+        let result: any
+        try {
+            result = await SuiClient.client.executeTransaction({
+                transaction: transactionBlock,
+                signatures: signature,
+                include: txInclude,
+            })
+        } catch (e: any) {
+            console.error('[executeMoveCallBytes FAILED]', e?.message?.slice(0, 150) || e)
+            throw e
+        }
         const ptb = Transaction.from(toBase64(transactionBlock))
-        return SuiClient.waitForTransaction(ptb, resp)
+        return SuiClient.waitForTransaction(ptb, result)
     }
 
     public static getPTB(
@@ -225,7 +264,7 @@ export class SuiClient {
         if (withTransfer && signer) {
             ptb.transferObjects([obj], signer)
         }
-        return ptb;
+        return ptb
     }
 
     public static async public_transfer(objects: string[], from: Keypair, to: string) {
@@ -235,15 +274,23 @@ export class SuiClient {
     }
 
     public static async devInspect(ptb: Transaction, sender: string) {
-        return await SuiClient.client.devInspectTransactionBlock({
-            transactionBlock: ptb,
-            sender,
-        })
+        ptb.setSenderIfNotSet(sender)
+        try {
+            const result = await SuiClient.client.simulateTransaction({
+                transaction: ptb,
+                checksEnabled: false,
+                include: { commandResults: true },
+            })
+            return result
+        } catch (e: any) {
+            console.error('[devInspect FAILED]', e?.message?.slice(0, 150) || e)
+            throw e
+        }
     }
 
     public static async devInspectRaw(ptb: Transaction, sender: string) {
         const result = await this.devInspect(ptb, sender)
-        return result.results?.[0].returnValues?.[0]?.[0]
+        return result.commandResults?.[0]?.returnValues?.[0]?.bcs
     }
 
     public static async devInspectBool(ptb: Transaction, sender: string) {
@@ -254,12 +301,17 @@ export class SuiClient {
     public static async devInspectU64(ptb: Transaction, sender: string) {
         const value = await this.devInspectRaw(ptb, sender)
         if (!value) {
-            throw new Error('devInspectU64 received empty result - the Move function may have aborted')
+            throw new Error(
+                'devInspectU64 received empty result - the Move function may have aborted'
+            )
         }
         return BigInt(bcs.u64().parse(new Uint8Array(value)))
     }
 
-    public static async devInspectOptionU64(ptb: Transaction, sender: string): Promise<bigint | null> {
+    public static async devInspectOptionU64(
+        ptb: Transaction,
+        sender: string
+    ): Promise<bigint | null> {
         const value = await this.devInspectRaw(ptb, sender)
         if (!value) return null
         const parsed = bcs.option(bcs.u64()).parse(new Uint8Array(value))
@@ -284,24 +336,53 @@ export class SuiClient {
     }
 
     public static async getObject(id: string) {
-        return SuiClient.client.getObject({
-            id,
-            options: {
-                showContent: true,
-                showType: true,
-                showDisplay: true,
-                showBcs: true,
-            },
+        const { object } = await SuiClient.client.getObject({
+            objectId: id,
+            include: { json: true },
         })
+        // gRPC JSON returns flat Move struct content (no nested { fields: ... } wrappers).
+        // We put the raw JSON directly into content.fields so downstream code accesses it
+        // via (res.data?.content as any)?.fields.X — then accesses nested structs directly
+        // as X.Y instead of X.fields.Y.
+        return {
+            data: {
+                objectId: object.objectId,
+                type: object.type,
+                version: object.version,
+                digest: object.digest,
+                content: object.json != null ? { fields: object.json } : undefined,
+            },
+        }
+    }
+
+    /**
+     * Reads a value from a Table/Bag dynamic field (not dynamic_object_field).
+     * Table uses dynamic_field internally, so getDynamicObjectField (which wraps
+     * the type as Wrapper<T>) derives the wrong field ID. Instead, we use
+     * getDynamicField to get the fieldId, then getObject with JSON to read
+     * the field content, and return the `value` portion.
+     */
+    public static async getDynamicFieldValue(
+        parentId: string,
+        nameType: string,
+        nameBcs: Uint8Array,
+    ): Promise<any> {
+        const { dynamicField } = await SuiClient.client.core.getDynamicField({
+            parentId,
+            name: { type: nameType, bcs: nameBcs },
+        })
+        const { object } = await SuiClient.client.getObject({
+            objectId: dynamicField.fieldId,
+            include: { json: true },
+        })
+        return (object as any).json?.value
     }
 
     public static async getObjectsByType(owner: string, type: string) {
-        const res = await SuiClient.client.getOwnedObjects({
+        const res = await SuiClient.client.listOwnedObjects({
             owner,
-            filter: {
-                StructType: type,
-            },
+            type,
         })
-        return res.data.map((o) => o.data?.objectId).filter((o) => o)
+        return res.objects.map((o: any) => o.objectId).filter((o: any) => o)
     }
 }

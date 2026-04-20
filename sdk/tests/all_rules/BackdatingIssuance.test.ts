@@ -9,7 +9,7 @@ describe('BackdatingIssuance Rule', () => {
     let backdatingIssuance: BackdatingIssuance
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         backdatingIssuance = new BackdatingIssuance(tokenAddress)
     })
@@ -61,13 +61,13 @@ describe('BackdatingIssuance Rule', () => {
         it('should create PTB for registration with backdating allowed', async () => {
             const ptb = backdatingIssuance.registerPTB(true)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
 
         it('should create PTB for registration with backdating disallowed', async () => {
             const ptb = backdatingIssuance.registerPTB(false)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 

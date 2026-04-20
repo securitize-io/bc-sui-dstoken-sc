@@ -1,5 +1,6 @@
-import {ADMIN_KEYPAIR, BaseConfigVars, Config} from '../config/config'
+import {BaseConfigVars, Config} from '../config/config'
 import {PublishSingleton} from './publish'
+import {Keypair} from '@mysten/sui/cryptography'
 
 export async function deploy<
     TConfig extends typeof Config = typeof Config,
@@ -7,20 +8,19 @@ export async function deploy<
 >(
     ConfigClass: TConfig = Config as TConfig,
     packagePath?: string,
+    signer?: Keypair,  // Required for publishing; optional when testnet/mainnet skips publish
 ): Promise<string> {
     const vars = ConfigClass.vars as TConfigVars
-    await PublishSingleton.publish(ADMIN_KEYPAIR!, packagePath)
+    if (!signer) {
+        throw new Error('signer is required for publishing')
+    }
+    await PublishSingleton.publish(signer, packagePath)
 
     const newConfig = {
         ...vars,
         PACKAGE_ID: PublishSingleton.packageId,
         UPGRADE_CAP_ID: PublishSingleton.upgradeCapId,
     } as TConfigVars
-
-    if (PublishSingleton.usdcTreasuryCap) {
-        newConfig.USDC_PACKAGE_ID = PublishSingleton.packageId
-        newConfig.USDC_TREASURY_CAP = PublishSingleton.usdcTreasuryCap
-    }
 
     // Process extra vars from Config.extraVars
     const extraVars = ConfigClass.extraVars
@@ -35,11 +35,12 @@ export async function deploy<
     // Use SECURITIZE_TESTNET_ENV for testnet deployments if specified
     const envSuffix = vars.NETWORK === 'testnet' ? process.env.SECURITIZE_TESTNET_ENV : undefined
     ConfigClass.write(newConfig, envSuffix)
+    ConfigClass.invalidateCache()
 
     const envFileName = envSuffix ?? vars.NETWORK
     return `Move contracts deployed successfully on ${vars.NETWORK} contract details have been stored in .env.${envFileName}`
 }
 
-export async function getDeployBytes() {
-    return await PublishSingleton.getPublishBytes()
+export async function getDeployBytes(signer: string) {
+    return await PublishSingleton.getPublishBytes(signer)
 }

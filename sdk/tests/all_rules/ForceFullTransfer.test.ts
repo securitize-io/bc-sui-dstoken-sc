@@ -10,7 +10,7 @@ describe('ForceFullTransfer Rule', () => {
     let forceFullTransfer: ForceFullTransfer
 
     beforeAll(async () => {
-        await deploy()
+        await deploy(ADMIN_KEYPAIR!)
         tokenAddress = await createTestToken()
         forceFullTransfer = new ForceFullTransfer(tokenAddress)
     })
@@ -70,7 +70,7 @@ describe('ForceFullTransfer Rule', () => {
         it('should create PTB for registration', async () => {
             const ptb = forceFullTransfer.registerPTB(true, true)
             expect(ptb).toBeDefined()
-            expect(ptb.blockData).toBeDefined()
+            expect(ptb.getData()).toBeDefined()
         })
     })
 
