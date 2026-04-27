@@ -18,6 +18,11 @@ type DeployedToken = {
     upgradeCapId: string
     moduleName: string
     structName: string
+    /** If create_ds_token was already called, pass the existing cap IDs to skip re-calling it */
+    existingCaps?: {
+        metadataCapId: string
+        treasuryCapId: string
+    }
 }
 
 // ==== Step 1: Deploy Token Package ====
@@ -85,17 +90,24 @@ export async function buildSetupTokenBytes(
     const tokenPackage = `${packageId}::${moduleName}`
     const tokenAddressId = `${tokenPackage}::${structName}`
 
-    const [metadataCap, treasuryCap] = ptb.moveCall({
-        target: `${tokenPackage}::create_ds_token`,
-        arguments: [
-            ptb.pure.string(tokenDescription.name),
-            ptb.pure.string(tokenSymbol),
-            ptb.pure.string(tokenDescription.iconUri),
-            ptb.pure.string(tokenDescription.description),
-            ptb.pure.u8(tokenDescription.decimals),
-            ptb.object(COIN_REGISTRY),
-        ],
-    })
+    let metadataCap, treasuryCap
+    if (deployed.existingCaps) {
+        // create_ds_token was already called — use the existing on-chain cap objects
+        metadataCap = ptb.object(deployed.existingCaps.metadataCapId)
+        treasuryCap = ptb.object(deployed.existingCaps.treasuryCapId)
+    } else {
+        [metadataCap, treasuryCap] = ptb.moveCall({
+            target: `${tokenPackage}::create_ds_token`,
+            arguments: [
+                ptb.pure.string(tokenDescription.name),
+                ptb.pure.string(tokenSymbol),
+                ptb.pure.string(tokenDescription.iconUri),
+                ptb.pure.string(tokenDescription.description),
+                ptb.pure.u8(tokenDescription.decimals),
+                ptb.object(COIN_REGISTRY),
+            ],
+        })
+    }
 
     const [auth, treasury, investorInfo, complianceConfig, setupFinalize] = ptb.moveCall({
         target: `${Config.vars.PACKAGE_ID}::setup::setup`,
