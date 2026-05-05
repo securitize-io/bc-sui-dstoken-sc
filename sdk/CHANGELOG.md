@@ -1,5 +1,20 @@
 # @securitize/sui-sdk
 
+## 6.0.0
+
+### Major Changes
+
+- Upgrade to mainnet sui
+
+### Minor Changes
+
+- Use https to clone MystenLab repositories
+- Add key pair on create token and use latest changes to use gRPC
+
+### Patch Changes
+
+- Fix publish testnet contracts
+
 ## 5.3.0
 
 ### Minor Changes
