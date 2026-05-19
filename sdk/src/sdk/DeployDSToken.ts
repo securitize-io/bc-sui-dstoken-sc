@@ -242,6 +242,14 @@ function handleError(e: any, tokenSymbol: string) {
         abortError?.error_code === 2
     ) {
         message = `Token with symbol ${tokenSymbol} already exists.`
+    } else if (
+        abortError?.module_id?.endsWith('trust_service') &&
+        abortError?.function === 'internal_assign_role' &&
+        abortError?.error_code === 0
+    ) {
+        message =
+            `Token ${tokenSymbol} failed to deploy: a role assignment targets an address that already has a role. ` +
+            `Check request.roles for duplicates or addresses that overlap with the signer (Master) or owners.walletRegistrarOwner (TransferAgent).`
     }
 
     return {

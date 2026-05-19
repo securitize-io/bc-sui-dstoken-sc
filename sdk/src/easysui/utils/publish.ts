@@ -91,11 +91,31 @@ export class PublishSingleton {
         return undefined // Plain testnet, no -e flag
     }
 
+    // Defense-in-depth: inputs are interpolated into a shell command below. Reject
+    // anything that could be interpreted by the shell. Sui addresses are pure hex and
+    // legitimate package paths don't contain shell metacharacters or whitespace.
+    private static assertShellSafePackagePath(packagePath: string) {
+        if (/[;&|$`<>()'"\\*?~{}\s]/.test(packagePath)) {
+            throw new Error(`PACKAGE_PATH contains unsafe characters: ${packagePath}`)
+        }
+    }
+
+    private static assertShellSafeSender(sender: string) {
+        if (!/^0x[0-9a-fA-F]+$/.test(sender)) {
+            throw new Error(`sender must be a 0x-prefixed hex address, got: ${sender}`)
+        }
+    }
+
     private static getPublishCmd(packagePath: string, sender: string, inBytes: boolean = false) {
         const network = Config.vars.NETWORK
 
         if (!fs.existsSync(packagePath)) {
             throw new Error(`Package doesn't exist under: ${packagePath}`)
+        }
+
+        this.assertShellSafePackagePath(packagePath)
+        if (inBytes) {
+            this.assertShellSafeSender(sender)
         }
 
         if (fs.existsSync(`${packagePath}/Move.lock`)) {
@@ -138,6 +158,7 @@ export class PublishSingleton {
         if (fs.existsSync(this.pubFile)) {
             fs.unlinkSync(this.pubFile)
         }
+        PublishSingleton.instance = null
     }
 
     static async getPublishBytes(signer: string, packagePath?: string): Promise<string> {

@@ -93,6 +93,10 @@ export class SuiClient {
         return SuiClient.waitForTransaction(ptb, result)
     }
 
+    // When `type` is omitted, inference is coarse: any `number` becomes u64 and any
+    // `0x…`-prefixed string becomes an object ref. Callers passing a number meant for
+    // u8/u16/u32 or an address-shaped string meant for pure.address must set `type`
+    // explicitly to avoid silent mis-encoding.
     public static toMoveArg(ptb: Transaction, value: any, type?: MoveType) {
         if (typeof value === 'object' && !Array.isArray(value)) {
             return value
@@ -379,10 +383,21 @@ export class SuiClient {
     }
 
     public static async getObjectsByType(owner: string, type: string) {
-        const res = await SuiClient.client.listOwnedObjects({
-            owner,
-            type,
-        })
-        return res.objects.map((o: any) => o.objectId).filter((o: any) => o)
+        const ids: string[] = []
+        let cursor: string | null | undefined = undefined
+        let hasNextPage = true
+        while (hasNextPage) {
+            const res: any = await SuiClient.client.listOwnedObjects({
+                owner,
+                type,
+                cursor: cursor ?? undefined,
+            })
+            for (const o of res.objects as any[]) {
+                if (o?.objectId) ids.push(o.objectId)
+            }
+            hasNextPage = res.hasNextPage
+            cursor = res.cursor
+        }
+        return ids
     }
 }
