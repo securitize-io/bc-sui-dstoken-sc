@@ -29,6 +29,8 @@ lcov.info
 gas_cost_estimation.csv
 .npmrc
 
+*.log
+
 **/.changeset/*.md
 
 Pub.*.toml
