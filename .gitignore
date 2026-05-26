@@ -22,9 +22,6 @@ lcov.info
 
 .env*
 !.env.example
-!.env.devnet
-!.env.testnet
-!.env.mainnet
 
 .coverage_map.mvcov
 .trace

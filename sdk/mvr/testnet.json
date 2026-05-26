@@ -1,0 +1,15 @@
+{
+    "mvrName": "@testdomain/securitize",
+    "suinsNftId": "",
+    "mvrRegistryId": "",
+    "repoUrl": "https://github.com/securitize-io/se-securitize",
+    "gitSubdir": "move/securitize",
+    "displayName": "Securitize (testnet)",
+    "metadata": {
+        "description": "Securitize Move package — tokenized RWA primitives (testnet)",
+        "homepage_url": "https://securitize.io",
+        "documentation_url": "https://github.com/securitize-io/se-securitize#readme",
+        "icon_url": "https://securitize.io/icon.svg",
+        "contact": "security@securitize.io"
+    }
+}
