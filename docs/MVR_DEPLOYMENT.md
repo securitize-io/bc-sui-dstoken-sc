@@ -310,7 +310,7 @@ const appCap = tx.moveCall({
   ],
 });
 
-// 2. Metadata
+// 2. Metadata — every `move_registry::*` mutator takes `&mut MoveRegistry` first.
 for (const [key, value] of [
   ['description',       'Securitize Move package — tokenized RWA primitives'],
   ['homepage_url',      'https://securitize.io'],
@@ -320,27 +320,40 @@ for (const [key, value] of [
 ] as const) {
   tx.moveCall({
     target: '@mvr/core::move_registry::set_metadata',
-    arguments: [appCap, tx.pure.string(key), tx.pure.string(value)],
+    arguments: [tx.object(mvrRegistryId), appCap, tx.pure.string(key), tx.pure.string(value)],
   });
 }
 
 // 3. Bind mainnet PackageInfo — PERMANENT
 tx.moveCall({
   target: '@mvr/core::move_registry::assign_package',
-  arguments: [appCap, tx.object(mainnetPackageInfoId)],
+  arguments: [tx.object(mvrRegistryId), appCap, tx.object(mainnetPackageInfoId)],
 });
 
-// 4. Bind testnet PackageInfo by chain ID
+// 4. Bind testnet PackageInfo by chain ID. `set_network` takes an `AppInfo`
+//    (not a `PackageInfo`), so construct one on-chain first. `app_info::new`
+//    is `(Option<ID> package_info_id, Option<address> package_address, Option<ID> upgrade_cap_id)` —
+//    populate the optional fields too when you have them in deployments/testnet.json.
+const testnetAppInfo = tx.moveCall({
+  target: '@mvr/core::app_info::new',
+  arguments: [
+    tx.pure.option('id', testnetPackageInfoId),
+    tx.pure.option('address', testnet.packages[PKG].packageId ?? null),
+    tx.pure.option('id', testnet.packages[PKG].upgradeCapId ?? null),
+  ],
+});
 tx.moveCall({
   target: '@mvr/core::move_registry::set_network',
   arguments: [
+    tx.object(mvrRegistryId),
     appCap,
     tx.pure.string(TESTNET_CHAIN_ID),
-    tx.object(testnetPackageInfoId),
+    testnetAppInfo,
   ],
 });
 
-// 5. Transfer AppCap to custody
+// 5. Transfer AppCap to custody. `register` returns an owned `AppCap`; the
+//    above calls borrow it (`&AppCap` / `&mut AppCap`) — no extra plumbing needed.
 tx.transferObjects([appCap], tx.pure.address(custody));
 
 const bytes = await tx.build({ client });
@@ -374,7 +387,7 @@ NETWORK=mainnet \
   pnpm exec tsx src/scripts/submit_signed_tx.ts
 ```
 
-From the printed `Created objects`, locate `::move_registry::AppCap` and copy its object ID into `deployments/mainnet.json` under `packages.securitize.appCapId`.
+From the printed `Created objects`, locate `::app_record::AppCap` (the `AppCap` type lives in `mvr::app_record`, not `mvr::move_registry`) and copy its object ID into `deployments/mainnet.json` under `packages.securitize.appCapId`.
 
 > **`assign_package` is permanent.** A `PackageInfo` cannot be detached from an MVR name once assigned. Verify `mainnetPackageInfoId` against `deployments/mainnet.json` before signing. `set_network` for non-mainnet bindings is reversible.
 
