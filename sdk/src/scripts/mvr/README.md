@@ -4,14 +4,15 @@ These scripts implement Phases 2.2, 3, 4, and 6 of [docs/MVR_DEPLOYMENT.md](../.
 
 ## Files
 
-| Script | Phase | Purpose |
-|---|---|---|
-| `phase-2-create-package-info.ts` | 2.2 | Wraps `securitize`'s `UpgradeCap` in a `PackageInfo`, attaches `GitInfo` + `Display`, transfers to custody. |
-| `phase-3-register-app.ts`        | 3   | **Mainnet only.** Registers `@<suins>/securitize` on the MVR registry, sets metadata, binds mainnet+testnet `PackageInfo`s, transfers the `AppCap` to custody. |
-| `phase-4-set-default.ts`         | 4   | Writes `default = <mvrName>` metadata on the `PackageInfo` to enable reverse resolution. Runs per network. |
-| `phase-6-update-git-info.ts`     | 6   | Refreshes the `GitInfo` pointer on the `PackageInfo` after a package upgrade. Runs per network. |
-| `submit-signed.ts`               | —   | Submits a pre-signed transaction (bytes + signature from Fireblocks). |
-| `_shared.ts`                     | —   | Common utilities. |
+| Script                           | Phase | Purpose                                                                                                                                                                |
+| -------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phase-2-create-package-info.ts` | 2.2   | Wraps `securitize`'s `UpgradeCap` in a `PackageInfo`, attaches `GitInfo` + `Display`, transfers to custody.                                                            |
+| `phase-3-register-app.ts`        | 3     | **Mainnet only.** Registers `@<suins>/securitize` on the MVR registry, sets metadata, binds mainnet+testnet `PackageInfo`s, transfers the `AppCap` to custody.         |
+| `phase-4-set-default.ts`         | 4     | Writes `default = <mvrName>` metadata on the `PackageInfo` to enable reverse resolution. Runs per network.                                                             |
+| `phase-6-update-git-info.ts`     | 6     | Refreshes the `GitInfo` pointer on the `PackageInfo` after a package upgrade. Runs per network.                                                                        |
+| `update-metadata.ts`             | —     | **Mainnet only.** Set or unset a single key on the MVR `AppRecord` metadata (the fields seeded by Phase 3). Set when `METADATA_VALUE` is provided; unset when omitted. |
+| `submit-signed.ts`               | —     | Submits a pre-signed transaction (bytes + signature from Fireblocks).                                                                                                  |
+| `_shared.ts`                     | —     | Common utilities.                                                                                                                                                      |
 
 ## Configuration
 
@@ -46,18 +47,19 @@ const serialized = toSerializedSignature({
 
 Common to all phase scripts:
 
-| Var | Description |
-|---|---|
-| `NETWORK` | `testnet` or `mainnet` |
-| `CUSTODY_ADDRESS` | Address that will own the created objects. Operator address on testnet/bootstrap; Fireblocks Safe in steady state. |
+| Var                    | Description                                                                                                             |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `NETWORK`              | `testnet` or `mainnet`                                                                                                  |
+| `CUSTODY_ADDRESS`      | Address that will own the created objects. Operator address on testnet/bootstrap; Fireblocks Safe in steady state.      |
 | `OPERATOR_PRIVATE_KEY` | Bech32 `suiprivkey1...`. Presence flips signing mode. Get one via `sui keytool export --key-identity <address> --json`. |
-| `GAS_BUDGET` | Optional. Defaults: 5×10⁸ for `phase-2`/`phase-3`, 1×10⁸ for `phase-4`/`phase-6`. |
-| `SDK_ROOT` | Optional. Override config / deployments / out directory root. Defaults to `process.cwd()`. |
+| `GAS_BUDGET`           | Optional. Defaults: 5×10⁸ for `phase-2`/`phase-3`, 1×10⁸ for `phase-4`/`phase-6`.                                       |
+| `SDK_ROOT`             | Optional. Override config / deployments / out directory root. Defaults to `process.cwd()`.                              |
 
 Phase-specific:
 
 - `phase-2-create-package-info.ts` → `GIT_COMMIT` (commit SHA to record in `GitInfo`).
 - `phase-6-update-git-info.ts` → `GIT_COMMIT` (the new commit after the upgrade).
+- `update-metadata.ts` → `METADATA_KEY` (the AppRecord key to mutate); `METADATA_VALUE` (omit or set to `""` to unset; any other string sets the value).
 - `submit-signed.ts` → `BYTES_FILE`, `SIG_FILE`.
 
 ## End-to-end testnet flow
@@ -102,6 +104,7 @@ sui client object $(jq -r .packages.securitize.packageInfoId < deployments/testn
 ## Mainnet flow
 
 Prerequisites:
+
 - `sdk/deployments/testnet.json` has `packages.securitize.packageInfoId` (the testnet binding to attach during Phase 3).
 - `sdk/deployments/mainnet.json` has `packages.securitize.packageId` + `upgradeCapId` (from the mainnet publish).
 - `sdk/mvr/mainnet.json` has `suinsNftId` and `mvrRegistryId` filled in.
@@ -124,6 +127,46 @@ pnpm exec tsx src/scripts/mvr/phase-3-register-app.ts
 # Phase 4: set default metadata on the mainnet PackageInfo
 pnpm exec tsx src/scripts/mvr/phase-4-set-default.ts
 ```
+
+## Maintenance — updating AppRecord metadata
+
+Phase 3 seeds five canonical keys on the on-chain `AppRecord`: `description`, `homepage_url`, `documentation_url`, `icon_url`, `contact`. Re-run `phase-3-register-app.ts` would fail (`register` is one-shot); use `update-metadata.ts` to mutate one key at a time. Mainnet only — the `MoveRegistry` is mainnet only.
+
+Prerequisites:
+
+- Phase 3 has completed and `sdk/deployments/mainnet.json.packages.securitize.appCapId` is populated.
+- `CUSTODY_ADDRESS` is the current owner of that `AppCap`.
+
+```bash
+# Update documentation URL (hot-key mode)
+NETWORK=mainnet \
+  CUSTODY_ADDRESS=0x… \
+  OPERATOR_PRIVATE_KEY=suiprivkey1… \
+  METADATA_KEY=documentation_url \
+  METADATA_VALUE=https://docs.securitize.io/sui \
+  pnpm exec tsx src/scripts/mvr/update-metadata.ts
+
+# Clear the contact key (omit METADATA_VALUE entirely — or set it to "")
+NETWORK=mainnet \
+  CUSTODY_ADDRESS=0x… \
+  OPERATOR_PRIVATE_KEY=suiprivkey1… \
+  METADATA_KEY=contact \
+  pnpm exec tsx src/scripts/mvr/update-metadata.ts
+
+# Build-only for Fireblocks signing
+NETWORK=mainnet \
+  CUSTODY_ADDRESS=0x… \
+  METADATA_KEY=homepage_url \
+  METADATA_VALUE=https://securitize.io \
+  pnpm exec tsx src/scripts/mvr/update-metadata.ts
+# → writes sdk/out/tx-mainnet-securitize-metadata-homepage_url.b64, then sign + submit-signed.ts
+```
+
+Caveats:
+
+- The Move package does not enforce a key schema — `METADATA_KEY=documentaion_url` (typo) silently writes a junk key alongside the real one. Stick to the canonical five unless you have a reason not to.
+- `documentation_url` / `icon_url` flow to suins.io and any MVR consumer quickly; smoke-test the URL first.
+- `METADATA_VALUE=""` is treated as unset. If you genuinely want an empty string on-chain you'd have to modify the script.
 
 ## Fireblocks signing (build-only mode)
 
