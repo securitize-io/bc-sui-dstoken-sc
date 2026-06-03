@@ -1,0 +1,15 @@
+{
+    "mvrName": "@securitize/dstoken",
+    "suinsNftId": "",
+    "mvrRegistryId": "",
+    "repoUrl": "https://github.com/securitize-io/bc-sui-dstoken-sc",
+    "gitSubdir": "move/securitize",
+    "displayName": "Securitize DSToken (testnet gamma)",
+    "metadata": {
+        "description": "Securitize Move package — DSToken primitives",
+        "homepage_url": "https://securitize.io",
+        "documentation_url": "https://github.com/securitize-io/bc-sui-dstoken-sc",
+        "icon_url": "https://securitize-network-icons-bucket.s3.us-east-2.amazonaws.com/securitize-logo.svg",
+        "contact": "info@securitize.io"
+    }
+}

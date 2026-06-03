@@ -1,5 +1,4 @@
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
-import { getFullnodeUrl } from '@mysten/sui/client'
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 import { Transaction } from '@mysten/sui/transactions'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography'
@@ -88,7 +87,7 @@ export function saveDeployments(d: NetworkDeployments) {
 }
 
 export function makeClient(network: Network): SuiJsonRpcClient {
-    return new SuiJsonRpcClient({ network, url: getFullnodeUrl(network) })
+    return new SuiJsonRpcClient({ network, url: getJsonRpcFullnodeUrl(network) })
 }
 
 export async function fetchUpgradeCapVersion(

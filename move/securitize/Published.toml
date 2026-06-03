@@ -13,27 +13,27 @@ upgrade-capability = "0xe2b7613bcce9d6d267f9ab51c8c061586f6903896b491314aed0d9d3
 
 [published.testnet_alpha]
 chain-id = "4c78adac"
-published-at = "0xacc5203cd6f9e1fadef1c683edec4d6bbfc2b00117fb0ca6a923c63ff2928ff5"
-original-id = "0xacc5203cd6f9e1fadef1c683edec4d6bbfc2b00117fb0ca6a923c63ff2928ff5"
+published-at = "0x0436eca6755d2aff7b69ab6e424978dc106061a2040c48cb5b8c2331c991b02d"
+original-id = "0x0436eca6755d2aff7b69ab6e424978dc106061a2040c48cb5b8c2331c991b02d"
 version = 1
 toolchain-version = "1.66.1"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xeed7fa490d45929e5cb27c7fa2592db65394f5e2f376463248775fbf6086e3b4"
+upgrade-capability = "0x87ad5e34619c9ce93698c68466e875e51c147df653e4c9fe5d609071be50959e"
 
 [published.testnet_beta]
 chain-id = "4c78adac"
-published-at = "0x62f325396180044ea2d1c5af64f502fd6aea6bcc471648367d465f33e7a72278"
-original-id = "0x62f325396180044ea2d1c5af64f502fd6aea6bcc471648367d465f33e7a72278"
+published-at = "0x951510dcf65d34af222cd5fd6080dc21b0f2de06fc38806e5455a9f7c41575a1"
+original-id = "0x951510dcf65d34af222cd5fd6080dc21b0f2de06fc38806e5455a9f7c41575a1"
 version = 1
 toolchain-version = "1.66.1"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x3204bbd910a33a8113588a165865149caf4d0055acb4eb32177fa108279f5113"
+upgrade-capability = "0xda6f21b0e55fe5a189998cbceed35ad042e89d5298c7ecc8423be841fed40c76"
 
 [published.testnet_gamma]
 chain-id = "4c78adac"
-published-at = "0xde7d71ec485b368e500e07aca4bfd5760cb01e510d548283031e345d938ce4bf"
-original-id = "0xde7d71ec485b368e500e07aca4bfd5760cb01e510d548283031e345d938ce4bf"
+published-at = "0x587284c7f782a762fca664bcf5db9ffe925ca680328aeeb5298abf1287d84abc"
+original-id = "0x587284c7f782a762fca664bcf5db9ffe925ca680328aeeb5298abf1287d84abc"
 version = 1
 toolchain-version = "1.66.1"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x1cc3838fae80fa793fa37f5f5068f6a9f922e20f51b81bbfd5b0894e28421715"
+upgrade-capability = "0x367a5c92ae99f95ea481b171b4811413a3577153974e317a4609df256ca30b7d"

@@ -2,10 +2,10 @@
   "network": "testnet",
   "packages": {
     "securitize": {
-      "packageId": "0x42723ea1673cc977197c3771583030661c899f221826ff71ac035f902099fd7e",
-      "upgradeCapId": "0xe2b7613bcce9d6d267f9ab51c8c061586f6903896b491314aed0d9d3aee3bdec",
-      "gitCommit": "f25f9e08b3e28846f3df522afc7820be81fa1122",
-      "packageInfoId": "0xa0403a71cdc899a2b42ce64b4291a6e87b87b9d5e68d85abd7154caa39325cbf"
+        "packageId": "0x587284c7f782a762fca664bcf5db9ffe925ca680328aeeb5298abf1287d84abc",
+        "upgradeCapId": "0x367a5c92ae99f95ea481b171b4811413a3577153974e317a4609df256ca30b7d",
+        "gitCommit": "cad338477977a01910be2b6be740d247643b4cd1",
+        "packageInfoId": "0x36b724b97a69a9b7210315c78ebf259236ab95a94f029a97642e58541efe3246"
     }
   }
 }
