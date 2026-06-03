@@ -46,12 +46,15 @@ async function main() {
     const isUnset = value === undefined || value === ''
     const client = makeClient('mainnet')
 
-    const tx = new Transaction()
-    tx.setSender(custody)
-    tx.setGasOwner(custody)
-    tx.setGasBudget(gasBudget)
+    const newTx = () => {
+        const tx = new Transaction()
+        tx.setSender(custody)
+        tx.setGasOwner(custody)
+        tx.setGasBudget(gasBudget)
+        return tx
+    }
 
-    if (isUnset) {
+    const addUnset = (tx: Transaction) =>
         tx.moveCall({
             target: '@mvr/core::move_registry::unset_metadata',
             arguments: [
@@ -60,18 +63,59 @@ async function main() {
                 tx.pure.string(key),
             ],
         })
-        console.log(`[plan] mainnet/${PKG} AppRecord.metadata[${key}] = (unset)`)
-    } else {
+
+    const addSet = (tx: Transaction, v: string) =>
         tx.moveCall({
             target: '@mvr/core::move_registry::set_metadata',
             arguments: [
                 tx.object(cfg.mvrRegistryId),
                 tx.object(appCapId),
                 tx.pure.string(key),
-                tx.pure.string(value),
+                tx.pure.string(v),
             ],
         })
-        console.log(`[plan] mainnet/${PKG} AppRecord.metadata[${key}] = ${value}`)
+
+    const dryRun = async (tx: Transaction) => {
+        const bytes = await tx.build({ client })
+        const res = await client.dryRunTransactionBlock({ transactionBlock: bytes })
+        const status = res.effects?.status
+        return { ok: status?.status === 'success', error: status?.error }
+    }
+
+    let tx: Transaction
+    if (isUnset) {
+        tx = newTx()
+        addUnset(tx)
+        console.log(`[plan] mainnet/${PKG} AppRecord.metadata[${key}] = (unset)`)
+    } else {
+        // MVR's set_metadata uses vec_map::insert (add-only): it aborts with
+        // EKeyAlreadyExists if the key is already present. There is no update
+        // entry function, so try a plain set first and fall back to an atomic
+        // unset+set in a single PTB when the key already exists.
+        const setTx = newTx()
+        addSet(setTx, value!)
+        const set = await dryRun(setTx)
+        if (set.ok) {
+            tx = setTx
+            console.log(`[plan] mainnet/${PKG} AppRecord.metadata[${key}] = ${value} (new key)`)
+        } else {
+            const updateTx = newTx()
+            addUnset(updateTx)
+            addSet(updateTx, value!)
+            const upd = await dryRun(updateTx)
+            if (!upd.ok) {
+                console.error(
+                    'update-metadata: dry run failed for both set and unset+set.\n' +
+                        `  set-only error:  ${set.error}\n` +
+                        `  unset+set error: ${upd.error}`,
+                )
+                process.exit(1)
+            }
+            tx = updateTx
+            console.log(
+                `[plan] mainnet/${PKG} AppRecord.metadata[${key}] = ${value} (replacing existing)`,
+            )
+        }
     }
 
     await executeOrBuildBytes(tx, client, 'mainnet', `${PKG}-metadata-${key}`)
