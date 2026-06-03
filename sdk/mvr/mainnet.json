@@ -1,15 +1,15 @@
 {
-    "mvrName": "@testdomain/securitize",
-    "suinsNftId": "FILL_IN_BEFORE_PHASE_3",
-    "mvrRegistryId": "FILL_IN_BEFORE_PHASE_3",
-    "repoUrl": "https://github.com/securitize-io/se-securitize",
+    "mvrName": "@securitize/dstoken",
+    "suinsNftId": "0xac6d47957b4527173c25d714735f6a587252ebc09cd7c6f2fff94b0b75dbda63",
+    "mvrRegistryId": "0x0e5d473a055b6b7d014af557a13ad9075157fdc19b6d51562a18511afd397727",
+    "repoUrl": "https://github.com/securitize-io/bc-sui-dstoken-sc",
     "gitSubdir": "move/securitize",
-    "displayName": "Securitize",
+    "displayName": "Securitize DSToken",
     "metadata": {
-        "description": "Securitize Move package — tokenized RWA primitives",
+        "description": "Securitize Move package — DSToken primitives",
         "homepage_url": "https://securitize.io",
-        "documentation_url": "https://github.com/securitize-io/se-securitize#readme",
-        "icon_url": "https://securitize.io/icon.svg",
-        "contact": "security@securitize.io"
+        "documentation_url": "https://github.com/securitize-io/bc-sui-dstoken-sc",
+        "icon_url": "https://securitize-network-icons-bucket.s3.us-east-2.amazonaws.com/securitize-logo.svg",
+        "contact": "info@securitize.io"
     }
 }
