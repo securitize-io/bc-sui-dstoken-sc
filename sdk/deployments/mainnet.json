@@ -1,0 +1,12 @@
+{
+  "network": "mainnet",
+  "packages": {
+    "securitize": {
+      "packageId": "0xe3e2c59d10f49629470ce8cb27c8fee358157d591b5621d0cb00016db4258c47",
+      "upgradeCapId": "0x2d1ea3d1dc9a096917dc69ac338e2f81a75268402302f84efe77bc817c17b1cc",
+      "gitCommit": "cad338477977a01910be2b6be740d247643b4cd1",
+      "packageInfoId": "0x2e4376a9c14f7db214c440ee341ec33efe10332113665e3b22cf17c2221cbb4b",
+      "appCapId": "0x9401e4aa5e57c2b5a8ea392ef2af50961ac74a4535774700a50554643822b225"
+    }
+  }
+}
