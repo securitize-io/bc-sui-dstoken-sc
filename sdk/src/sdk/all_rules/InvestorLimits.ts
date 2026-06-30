@@ -9,6 +9,9 @@ export class InvestorLimits extends Rule {
 
     // ==== Registration ====
 
+    // u64 fields accept `number` for ergonomics; values above 2^53-1 lose precision in
+    // JS Number. Investor counts stay well below that, but pass `bigint` if a caller
+    // ever needs the full u64 range.
     registerPTB(
         totalInvestorsLimit?: number,
         minimumTotalInvestors?: number,

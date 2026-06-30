@@ -21,15 +21,14 @@ lcov.info
 
 .env*
 !.env.example
-!.env.devnet
-!.env.testnet
-!.env.mainnet
 
 .coverage_map.mvcov
 .trace
 
 gas_cost_estimation.csv
 .npmrc
+
+*.log
 
 **/.changeset/*.md
 

@@ -77,6 +77,8 @@ export class LockupRestriction extends Rule {
 
     // ==== Registration ====
 
+    // Periods are u64 ms; `number` covers any realistic duration (2^53-1 ms ≈ 285k years)
+    // but loses precision beyond that. Pass `bigint` if the full u64 range is needed.
     registerPTB(
         usLockPeriodMs?: number,
         nonUsLockPeriodMs?: number,
