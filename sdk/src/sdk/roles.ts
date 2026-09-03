@@ -43,12 +43,15 @@ export class Roles {
 
     // ==== Role Management ====
 
-    updateRolePTB(owner: string, role: RoleTypes, ptbDetails?: PTBDetails, currentRole: RoleTypes = 'none', upgradeCapId?: string) {
+    updateRolePTB(owner: string, role: RoleTypes, ptbDetails?: PTBDetails, currentRole: RoleTypes = 'none') {
         ptbDetails ??= newPTBDetails()
-        const errorMessage = "No direct role-to-role change"
+
+        if (role === 'master') {
+            throw new Error('updateRolePTB does not support promoting to master — use setServiceOwner')
+        }
 
         if (currentRole === role || currentRole === "master") {
-            throw new Error(errorMessage)
+            throw new Error("No direct role-to-role change")
         }
 
         const REMOVE_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
@@ -61,17 +64,13 @@ export class Roles {
             REMOVE_MAPPING[currentRole](owner, ptbDetails)
         }
 
-        if (role === 'master') {
-            this.setServiceOwnerPTB(owner, ptbDetails, upgradeCapId)
-        } else {
-            const ADD_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
-                issuer: this.setIssuerPTB,
-                exchange: this.setExchangePTB,
-                transfer_agent: this.setTransferAgentPTB,
-            }
-            if (role in ADD_MAPPING) {
-                ADD_MAPPING[role](owner, ptbDetails)
-            }
+        const ADD_MAPPING: Record<string, (owner: string, ptbDetails: PTBDetails) => void> = {
+            issuer: this.setIssuerPTB,
+            exchange: this.setExchangePTB,
+            transfer_agent: this.setTransferAgentPTB,
+        }
+        if (role in ADD_MAPPING) {
+            ADD_MAPPING[role](owner, ptbDetails)
         }
 
         return ptbDetails
@@ -236,6 +235,11 @@ export class Roles {
         return `${Config.vars.PACKAGE_ID}::abilities::${ability}`
     }
 
+    // Auto-discovery matches the original publish package ID against UpgradeCap.package.
+    // After a token-package upgrade, `commit_upgrade` overwrites that field with the new
+    // package ID, so this returns undefined for upgraded token packages — callers must
+    // then pass `upgradeCapId` explicitly to `setServiceOwnerPTB`. Token packages are not
+    // expected to be upgraded in practice.
     private async findUpgradeCapId(owner: string): Promise<string | undefined> {
         const tokenPackageId = normalizeSuiAddress(this.tokenAddress.split('::')[0])
         let cursor: string | null | undefined = undefined
