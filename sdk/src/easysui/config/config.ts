@@ -15,6 +15,7 @@ export const COIN_REGISTRY = normalizeSuiAddress('0xc')
 export interface BaseConfigVars {
     NETWORK: Network
     GRPC_URL: string
+    GRPC_AUTH_TOKEN?: string
     PACKAGE_PATH: string
     PACKAGE_ID: string
     UPGRADE_CAP_ID: string
@@ -81,6 +82,7 @@ export class Config<TConfigVars extends BaseConfigVars = ConfigVars> {
         const envVars = {
             NETWORK,
             GRPC_URL: process.env.GRPC_URL || '',
+            GRPC_AUTH_TOKEN: process.env.GRPC_AUTH_TOKEN || undefined,
             PACKAGE_PATH: process.env.PACKAGE_PATH || '',
             PACKAGE_ID: process.env.PACKAGE_ID || '',
             UPGRADE_CAP_ID: process.env.UPGRADE_CAP_ID || '',

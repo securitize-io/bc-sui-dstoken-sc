@@ -1,4 +1,6 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { GrpcTransport } from '@protobuf-ts/grpc-transport'
+import { ChannelCredentials } from '@grpc/grpc-js'
 import { toBase64, fromBase64, fromHex } from '@mysten/sui/utils'
 import { Config } from '../config/config'
 import { Transaction } from '@mysten/sui/transactions'
@@ -39,10 +41,30 @@ export class SuiClient {
         if (!Config.vars.GRPC_URL) {
             throw new Error('GRPC_URL is not set. Add it to your .env file.')
         }
-        this.client = new SuiGrpcClient({
-            network,
-            baseUrl: Config.vars.GRPC_URL,
-        })
+        const authToken = Config.vars.GRPC_AUTH_TOKEN
+        this.client = new SuiGrpcClient(
+            authToken
+                ? {
+                      network,
+                      // Authenticated providers (e.g. Alchemy) serve native gRPC, not the
+                      // grpc-web translation `SuiGrpcClient` uses by default.
+                      transport: new GrpcTransport({
+                          host: SuiClient.toGrpcHost(Config.vars.GRPC_URL),
+                          channelCredentials: ChannelCredentials.createSsl(),
+                          meta: { authorization: `Bearer ${authToken}` },
+                      }),
+                  }
+                : {
+                      network,
+                      baseUrl: Config.vars.GRPC_URL,
+                  }
+        )
+    }
+
+    /** Strips the URL scheme/path, keeping the bare `host:port` the native gRPC transport expects. */
+    private static toGrpcHost(url: string): string {
+        const { host, port } = new URL(url)
+        return port ? host : `${host}:443`
     }
 
     private static getInstance(): SuiClient {
