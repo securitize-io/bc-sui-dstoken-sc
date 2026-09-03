@@ -43,11 +43,13 @@
         "tsup": "^8.5.1"
     },
     "dependencies": {
+        "@grpc/grpc-js": "^1.14.4",
         "@iarna/toml": "^2.2.5",
         "@mysten/bcs": "^2.0.3",
         "@mysten/codegen": "^0.8.5",
         "@mysten/move-bytecode-template": "^0.3.0",
         "@mysten/sui": "^2.14.1",
+        "@protobuf-ts/grpc-transport": "^2.11.1",
         "@types/node": "^24.3.1",
         "cross-env": "^10.0.0",
         "dotenv": "^17.2.3",
