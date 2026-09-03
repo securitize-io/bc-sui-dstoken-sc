@@ -1,5 +1,18 @@
 # @securitize/sui-sdk
 
+## 6.1.0
+
+### Minor Changes
+
+- Added the optional GRPC_AUTH_TOKEN environment variable to configure the Bearer header in gRPC connections.
+- Use https to clone MystenLab repositories
+- Add key pair on create token and use latest changes to use gRPC
+- Support authenticated gRPC providers (e.g. Alchemy) via an optional GRPC_AUTH_TOKEN env var. When set, the SDK switches from the default grpc-web transport to the native gRPC transport (`@protobuf-ts/grpc-transport` + `@grpc/grpc-js`) and sends the token as an `Authorization: Bearer` gRPC metadata header — authenticated providers like Alchemy only expose native gRPC, not grpc-web.
+
+### Patch Changes
+
+- Fix publish testnet contracts
+
 ## 6.0.0
 
 ### Major Changes
