@@ -2,6 +2,33 @@
 
 This is the internal repository to design the contracts for the **Securitize RWA platform**. 
 
+## Security Audit
+
+**This project has been independently audited by [OtterSec](https://osec.io).**
+
+The full report is available here: [Mysten Securitize — Security Assessment (OtterSec, April 2026)](audit/mysten_securitize_audit_final.pdf)
+
+| | |
+|---|---|
+| **Auditor** | OtterSec (Otter Audits LLC) |
+| **Report date** | April 14th, 2026 |
+| **Audited commit** | `eb5076d` |
+| **Scope** | `move/securitize` — the DS Protocol Move contracts (compliance service, treasury, investor registry, roles/versioning and the DS Token operations) |
+
+### Results
+
+The engagement produced **16 findings**, with **no critical and no high severity issues**:
+
+| Severity | Count |
+|----------|-------|
+| Critical | 0 |
+| High | 0 |
+| Medium | 2 |
+| Low | 7 |
+| Informational | 7 |
+
+**All 9 vulnerabilities (2 medium, 7 low) were fixed and marked as `RESOLVED` by the auditors.** The remaining informational findings were either resolved or explicitly acknowledged, as documented in the report.
+
 ## Prerequisites
 
 1. Use the correct node version in [.nvmrc](.nvmrc):
