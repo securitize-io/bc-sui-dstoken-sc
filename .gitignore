@@ -38,3 +38,9 @@ pas
 
 # codegen intermediate artifacts
 **/package_summaries
+
+# Claude Code skills (regenerable from skills-lock.json)
+.agents/
+agent/
+.claude/skills/
+.claude/settings.local.json

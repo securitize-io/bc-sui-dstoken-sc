@@ -8,6 +8,7 @@ Key details:
 - Transaction building and execution use `SuiGrpcClient`
 - Read-only view functions use `simulateTransaction` (gRPC equivalent of `devInspectTransactionBlock`)
 - The `GRPC_URL` environment variable is required (e.g. `https://fullnode.devnet.sui.io:443`)
+- The `GRPC_AUTH_TOKEN`: Some nodes use Bearer header authentication over gRPC connections (e.g., Alchemy). You can define the token using the `GRPC_AUTH_TOKEN` environment variable. It is optional.
 
 ## Code Generation
 
